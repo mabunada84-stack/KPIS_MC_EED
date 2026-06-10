@@ -14,6 +14,7 @@ import io
 import locale
 import altair as alt
 from datetime import datetime
+import os
 
 try:
     locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
@@ -159,9 +160,6 @@ if not st.session_state.hse_affiche:
 
     st.stop()
 
-# ==================================================
-# TON DASHBOARD COMMENCE ICI
-# ==================================================
 # ==================================================
 # TON DASHBOARD COMMENCE ICI
 # ==================================================
@@ -364,13 +362,19 @@ if use_new_files:
     with col1: ot_file = st.file_uploader("📂 Charger le fichier OT", type=["xlsx"])
     with col2: avis_file = st.file_uploader("📂 Charger le fichier AVIS", type=["xlsx"])
 else:
-    st.info("💡 Utilisation des données par défaut (ot.xlsx et avis.xlsx dans le répertoire).")
+    # Récupérer la date de modification du fichier ot.xlsx
+    date_fichier = datetime.now().strftime("%d/%m/%Y")
+    if os.path.exists("ot.xlsx"):
+        timestamp = os.path.getmtime("ot.xlsx")
+        date_fichier = datetime.fromtimestamp(timestamp).strftime("%d/%m/%Y")
+    st.info(f"Data Version : V1.0 – Mise à jour du : {date_fichier}")
 
 if not use_new_files or (ot_file is not None and avis_file is not None):
     try:
         if use_new_files:
             df_ot_raw = pd.read_excel(ot_file)
             avis_df_raw = pd.read_excel(avis_file)
+            date_fichier = datetime.now().strftime("%d/%m/%Y")
         else:
             df_ot_raw = pd.read_excel("ot.xlsx")
             avis_df_raw = pd.read_excel("avis.xlsx")
@@ -396,13 +400,13 @@ if not use_new_files or (ot_file is not None and avis_file is not None):
             selected_divisions = st.multiselect("Division", divisions_options, ["All"])
             if "All" in selected_divisions or len(selected_divisions) == 0: selected_divisions = ["All"]
 
+        # Filtre Date automatique : 01/01/2025 à aujourd'hui
+        start_date = pd.to_datetime("2025-01-01")
+        end_date = pd.to_datetime(datetime.now().date())
+        date_range = [start_date, end_date]
         col_date = st.columns(1)[0]
         with col_date:
-            min_date = df_ot_raw["Date de début planifiée"].min().to_pydatetime()
-            max_date = df_ot_raw["Date de début planifiée"].max().to_pydatetime()
-            date_range = st.date_input("📅 Filtre Date de début planifiée (Du - Au)", [min_date, max_date], key="date_range", format="DD/MM/YYYY")
-            if len(date_range) == 2: start_date, end_date = pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1])
-            else: start_date, end_date = min_date, max_date
+            st.date_input("📅 Filtre Date de début planifiée (Du - Au)", date_range, key="date_range", format="DD/MM/YYYY", disabled=True)
 
         def match_filters(poste):
             p = str(poste).upper()
@@ -554,7 +558,8 @@ if not use_new_files or (ot_file is not None and avis_file is not None):
             st.subheader("Synthèse des Actions KPI par Poste de Travail")
             if not df_anomalies_ot.empty:
                 display_actions = df_anomalies_ot.copy()
-                if len(selected_postes) == len(all_postes_master_list) and "All" in selected_postes:
+                # Masquer la colonne Poste de travail si "All" est sélectionné
+                if len(selected_postes) == len(all_postes_master_list):
                     display_actions = display_actions[["KPI", "Nb OT impactés", "Action Suggérée"]]
                 st.dataframe(display_actions, use_container_width=True)
             else: st.info("Tous les KPIs atteignent leurs cibles. Aucune action immédiate requise.")
@@ -605,19 +610,19 @@ if not use_new_files or (ot_file is not None and avis_file is not None):
             with c1:
                 df_m = df_class.groupby("Métier")["Total performance "].mean().reset_index()
                 chart_m = alt.Chart(df_m).mark_bar(color='#3498db').encode(x='Métier:O', y='Total performance :Q')
-                text_m = chart_m.mark_text(align='center', baseline='bottom', dy=-5).encode(text=alt.Text('Total performance :Q', format='.1f'))
+                text_m = chart_m.mark_text(align='center', baseline='bottom', dy=-10, fontSize=16).encode(text=alt.Text('Total performance :Q', format='.1f'))
                 st.altair_chart((chart_m + text_m).configure_axisY(labels=False, ticks=False, grid=False, domain=False).configure_view(stroke='transparent').properties(height=250), use_container_width=True)
 
             with c2:
                 df_a = df_class.groupby("Atelier")["Total performance "].mean().reset_index()
                 chart_a = alt.Chart(df_a).mark_bar(color='#e74c3c').encode(x='Atelier:O', y='Total performance :Q')
-                text_a = chart_a.mark_text(align='center', baseline='bottom', dy=-5).encode(text=alt.Text('Total performance :Q', format='.1f'))
+                text_a = chart_a.mark_text(align='center', baseline='bottom', dy=-10, fontSize=16).encode(text=alt.Text('Total performance :Q', format='.1f'))
                 st.altair_chart((chart_a + text_a).configure_axisY(labels=False, ticks=False, grid=False, domain=False).configure_view(stroke='transparent').properties(height=250), use_container_width=True)
 
             with c3:
                 df_d = df_class.groupby("Division")["Total performance "].mean().reset_index()
                 chart_d = alt.Chart(df_d).mark_bar(color='#2ecc71').encode(x='Division:O', y='Total performance :Q')
-                text_d = chart_d.mark_text(align='center', baseline='bottom', dy=-5).encode(text=alt.Text('Total performance :Q', format='.1f'))
+                text_d = chart_d.mark_text(align='center', baseline='bottom', dy=-10, fontSize=16).encode(text=alt.Text('Total performance :Q', format='.1f'))
                 st.altair_chart((chart_d + text_d).configure_axisY(labels=False, ticks=False, grid=False, domain=False).configure_view(stroke='transparent').properties(height=250), use_container_width=True)
 
         else:
@@ -630,62 +635,72 @@ if not use_new_files or (ot_file is not None and avis_file is not None):
         postes_avec_anomalies = anomalies_dashboard[anomalies_dashboard.index != "Total général"].index.tolist()
 
         if postes_avec_anomalies:
-            selected_poste_export = st.selectbox("Sélectionnez le poste de travail pour générer le fichier Excel :", options=postes_avec_anomalies)
+            # Ajout de l'option "All"
+            selected_poste_export = st.selectbox("Sélectionnez le poste de travail pour générer le fichier Excel :", options=["All"] + postes_avec_anomalies)
 
             if st.button("📥 Générer et télécharger le fichier Excel", type="primary"):
                 with st.spinner("Génération du fichier en cours..."):
                     output = io.BytesIO()
                     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                        kpis_en_defaut = df_anomalies_ot[df_anomalies_ot["Poste travail princ."] == selected_poste_export]["KPI"].unique().tolist()
-                        if "appel avis approuvé" in pivot_avis.columns and selected_poste_export in pivot_avis.index and pivot_avis.loc[selected_poste_export, "Nb Avis sans ordre"] > 0:
-                            kpis_en_defaut.append("appel avis approuvé")
+                        
+                        # Si "All" est sélectionné, on boucle sur tous les postes avec anomalies
+                        postes_a_traiter = postes_avec_anomalies if selected_poste_export == "All" else [selected_poste_export]
 
-                        for kpi in kpis_en_defaut:
-                            sheet_data = pd.DataFrame()
+                        for poste_export in postes_a_traiter:
+                            kpis_en_defaut = df_anomalies_ot[df_anomalies_ot["Poste travail princ."] == poste_export]["KPI"].unique().tolist()
+                            if "appel avis approuvé" in pivot_avis.columns and poste_export in pivot_avis.index and pivot_avis.loc[poste_export, "Nb Avis sans ordre"] > 0:
+                                kpis_en_defaut.append("appel avis approuvé")
 
-                            if kpi != "appel avis approuvé":
-                                df_poste_filtered = df_processed[df_processed["Poste travail princ."] == selected_poste_export].copy()
-                                if kpi == "TAUX_REALISATION_CORRECTIF/PT": subset_ot = df_poste_filtered[(df_poste_filtered["Nº appel pl.entret."].fillna(0) == 0) & (~df_poste_filtered["Statut OT"].isin(["CLOT", "TCLO"]))]
-                                elif kpi == "OT préparation <1 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "CRÉÉ") & (df_poste_filtered["Age préparation"] != "<1 mois")]
-                                elif kpi == "OT préparation >3 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "CRÉÉ") & (df_poste_filtered["Age préparation"] == ">3 mois")]
-                                elif kpi == "OT planification <1 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 0) & (df_poste_filtered["Age planification"] != "<1 mois")]
-                                elif kpi == "OT planification >3 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 0) & (df_poste_filtered["Age planification"] == ">3 mois")]
-                                elif kpi == "OT exécution <1 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 1) & (df_poste_filtered["Age exécution"] != "<1 mois")]
-                                elif kpi == "OT exécution >3 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 1) & (df_poste_filtered["Age exécution"] == ">3 mois")]
-                                elif kpi == "OT LANC ESTIME": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["OT LANC ESTIME"] == "NON")]
-                                elif kpi == "Backlog préparation caractérisé": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "CRÉÉ") & (df_poste_filtered["Backlog préparation"] == "NON CARACTERISE")]
-                                elif kpi == "Backlog planification caractérisé": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Backlog planification"] == "NON CARACTERISE")]
-                                elif kpi == "OT CONFIME": subset_ot = df_poste_filtered[df_poste_filtered["OT CONFIME"] == "NON"]
-                                elif kpi == "OT_COR_EGAL": subset_ot = df_poste_filtered[df_poste_filtered["OT_COR_EGAL"] == "NON"]
-                                else: subset_ot = pd.DataFrame()
+                            for kpi in kpis_en_defaut:
+                                sheet_data = pd.DataFrame()
 
-                                if not subset_ot.empty:
-                                    old_cols = ["Ordre", "Désignation", "Emplacement technique", "Poste travail princ.", "Statut système", "Statut utilisateur", "Date de début planifiée", "Type d'ordre", "Backlog préparation", "Backlog planification"]
-                                    new_cols = ["Ordre de travail", "Désignation", "Poste technique", "Poste de travail principal", "Statut système", "Statut utilisateur", "Date de début planifiée", "Type d'ordre", "Caractérisation backlog Préparation", "Caractérisation backlog Planification"]
-                                    subset_ot = rename_safe(subset_ot, old_cols, new_cols)
-                                    subset_ot["KPI impacté"] = kpi
-                                    subset_ot["Action recommandée"] = f"Corriger l'indicateur {kpi}."
-                                    sheet_data = pd.concat([sheet_data, subset_ot])
+                                if kpi != "appel avis approuvé":
+                                    df_poste_filtered = df_processed[df_processed["Poste travail princ."] == poste_export].copy()
+                                    if kpi == "TAUX_REALISATION_CORRECTIF/PT": subset_ot = df_poste_filtered[(df_poste_filtered["Nº appel pl.entret."].fillna(0) == 0) & (~df_poste_filtered["Statut OT"].isin(["CLOT", "TCLO"]))]
+                                    elif kpi == "OT préparation <1 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "CRÉÉ") & (df_poste_filtered["Age préparation"] != "<1 mois")]
+                                    elif kpi == "OT préparation >3 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "CRÉÉ") & (df_poste_filtered["Age préparation"] == ">3 mois")]
+                                    elif kpi == "OT planification <1 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 0) & (df_poste_filtered["Age planification"] != "<1 mois")]
+                                    elif kpi == "OT planification >3 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 0) & (df_poste_filtered["Age planification"] == ">3 mois")]
+                                    elif kpi == "OT exécution <1 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 1) & (df_poste_filtered["Age exécution"] != "<1 mois")]
+                                    elif kpi == "OT exécution >3 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 1) & (df_poste_filtered["Age exécution"] == ">3 mois")]
+                                    elif kpi == "OT LANC ESTIME": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["OT LANC ESTIME"] == "NON")]
+                                    elif kpi == "Backlog préparation caractérisé": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "CRÉÉ") & (df_poste_filtered["Backlog préparation"] == "NON CARACTERISE")]
+                                    elif kpi == "Backlog planification caractérisé": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Backlog planification"] == "NON CARACTERISE")]
+                                    elif kpi == "OT CONFIME": subset_ot = df_poste_filtered[df_poste_filtered["OT CONFIME"] == "NON"]
+                                    elif kpi == "OT_COR_EGAL": subset_ot = df_poste_filtered[df_poste_filtered["OT_COR_EGAL"] == "NON"]
+                                    else: subset_ot = pd.DataFrame()
 
-                            if kpi == "appel avis approuvé":
-                                subset_avis = results['avis_df_filtered'][results['avis_df_filtered']["Poste travail princ."] == selected_poste_export].copy()
-                                if not subset_avis.empty:
-                                    old_cols_avis = ["Avis", "Désignation texte", "Emplacement technique", "Poste travail princ.", "Statut utilisateur", "Créé le"]
-                                    new_cols_avis = ["Avis", "Désignation", "Poste technique", "Poste de travail principal", "Statut", "Date de création"]
-                                    subset_avis = rename_safe(subset_avis, old_cols_avis, new_cols_avis)
-                                    subset_avis["KPI impacté"] = kpi
-                                    subset_avis["Action recommandée"] = "Créer un Ordre de Travail pour cet Avis ou clarifier son statut."
-                                    sheet_data = pd.concat([sheet_data, subset_avis])
+                                    if not subset_ot.empty:
+                                        old_cols = ["Ordre", "Désignation", "Emplacement technique", "Poste travail princ.", "Statut système", "Statut utilisateur", "Date de début planifiée", "Type d'ordre", "Backlog préparation", "Backlog planification"]
+                                        new_cols = ["Ordre de travail", "Désignation", "Poste technique", "Poste de travail principal", "Statut système", "Statut utilisateur", "Date de début planifiée", "Type d'ordre", "Caractérisation backlog Préparation", "Caractérisation backlog Planification"]
+                                        subset_ot = rename_safe(subset_ot, old_cols, new_cols)
+                                        subset_ot["KPI impacté"] = kpi
+                                        subset_ot["Action recommandée"] = f"Corriger l'indicateur {kpi}."
+                                        sheet_data = pd.concat([sheet_data, subset_ot])
 
-                            if not sheet_data.empty:
-                                sheet_name = kpi.replace("/", "_").replace(" ", "_")[:31]
-                                sheet_data.to_excel(writer, sheet_name=sheet_name, index=False)
+                                if kpi == "appel avis approuvé":
+                                    subset_avis = results['avis_df_filtered'][results['avis_df_filtered']["Poste travail princ."] == poste_export].copy()
+                                    if not subset_avis.empty:
+                                        old_cols_avis = ["Avis", "Désignation texte", "Emplacement technique", "Poste travail princ.", "Statut utilisateur", "Créé le"]
+                                        new_cols_avis = ["Avis", "Désignation", "Poste technique", "Poste de travail principal", "Statut", "Date de création"]
+                                        subset_avis = rename_safe(subset_avis, old_cols_avis, new_cols_avis)
+                                        subset_avis["KPI impacté"] = kpi
+                                        subset_avis["Action recommandée"] = "Créer un Ordre de Travail pour cet Avis ou clarifier son statut."
+                                        sheet_data = pd.concat([sheet_data, subset_avis])
+
+                                if not sheet_data.empty:
+                                    # Nom de l'onglet personnalisé selon si c'est "All" ou un poste spécifique
+                                    base_name = poste_export.replace(" ", "_").replace("/", "_")[:20]
+                                    kpi_name = kpi.replace("/", "_").replace(" ", "_")[:10]
+                                    sheet_name = f"{base_name}_{kpi_name}"[:31]
+                                    sheet_data.to_excel(writer, sheet_name=sheet_name, index=False)
 
                     output.seek(0)
+                    nom_fichier = "Plan_Action_Tous_Postes.xlsx" if selected_poste_export == "All" else f"Plan_Action_{selected_poste_export.replace(' ', '_')}.xlsx"
                     st.download_button(
                         label="✅ Cliquez ici pour télécharger le fichier",
                         data=output.getvalue(),
-                        file_name=f"Plan_Action_{selected_poste_export.replace(' ', '_')}.xlsx",
+                        file_name=nom_fichier,
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
         else:
@@ -693,6 +708,3 @@ if not use_new_files or (ot_file is not None and avis_file is not None):
 
     except Exception as e:
         st.error(f"Une erreur est survenue lors du traitement des fichiers : {e}")
-
-
-

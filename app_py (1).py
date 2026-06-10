@@ -33,8 +33,12 @@ import random
 import time
 import streamlit as st
 
+import random
+import time
+import streamlit as st
+
 # =====================================
-# MINUTE SECURITE
+# MINUTE SÉCURITÉ
 # =====================================
 
 consignes_securite = [
@@ -91,75 +95,377 @@ if not st.session_state.consigne_validee:
     st.markdown("""
     <style>
 
-    .security-container{
-        display:flex;
-        justify-content:center;
-        align-items:center;
-        height:85vh;
+    /* ── Masquer les éléments Streamlit par défaut ── */
+    #MainMenu, footer, header, .stToolbar, [data-testid="stSidebar"] {
+        visibility: hidden;
+        height: 0;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
     }
 
-    .security-card{
-        width:80%;
-        max-width:950px;
-        background:linear-gradient(135deg,#0f172a,#1e293b);
-        border-radius:25px;
-        padding:45px;
-        text-align:center;
-        color:white;
-        box-shadow:0px 12px 35px rgba(0,0,0,0.35);
+    .block-container {
+        padding: 0 !important;
+        max-width: 100% !important;
     }
 
-    .security-title{
-        font-size:48px;
-        font-weight:700;
-        margin-bottom:10px;
+    /* ── Page plein écran ── */
+    .hse-page {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background:
+            radial-gradient(ellipse at 20% 50%, rgba(220, 38, 38, 0.08) 0%, transparent 60%),
+            radial-gradient(ellipse at 80% 50%, rgba(234, 179, 8, 0.06) 0%, transparent 60%),
+            linear-gradient(160deg, #0a0e1a 0%, #111827 40%, #0f172a 100%);
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        padding: 20px;
+        box-sizing: border-box;
     }
 
-    .security-subtitle{
-        font-size:24px;
-        color:#cbd5e1;
-        margin-bottom:30px;
+    /* ── Carte principale ── */
+    .hse-card {
+        width: 100%;
+        max-width: 820px;
+        background: linear-gradient(165deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95));
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 28px;
+        padding: 0;
+        overflow: hidden;
+        box-shadow:
+            0 4px 6px rgba(0,0,0,0.1),
+            0 25px 60px -12px rgba(0,0,0,0.5),
+            inset 0 1px 0 rgba(255,255,255,0.04);
     }
 
-    .security-text{
-        background:white;
-        color:#1f2937;
-        border-left:8px solid #f59e0b;
-        border-radius:18px;
-        padding:30px;
-        font-size:28px;
-        font-weight:600;
-        line-height:1.6;
+    /* ── Bandeau supérieur rouge ── */
+    .hse-top-bar {
+        background: linear-gradient(90deg, #b91c1c, #dc2626, #ef4444);
+        padding: 18px 40px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
     }
 
-    .security-footer{
-        margin-top:30px;
-        font-size:22px;
-        color:#f8fafc;
-        font-style:italic;
+    .hse-top-bar .bar-icon {
+        font-size: 28px;
+        animation: pulse-icon 2s ease-in-out infinite;
+    }
+
+    .hse-top-bar .bar-label {
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.95);
+    }
+
+    /* ── Contenu ── */
+    .hse-body {
+        padding: 50px 55px 45px;
+    }
+
+    /* ── En-tête ── */
+    .hse-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+
+    .hse-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(234, 179, 8, 0.1);
+        border: 1px solid rgba(234, 179, 8, 0.25);
+        border-radius: 100px;
+        padding: 8px 22px;
+        margin-bottom: 24px;
+        animation: fadeInDown 0.6s ease-out;
+    }
+
+    .hse-badge span {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: #fbbf24;
+    }
+
+    .hse-title {
+        font-size: 38px;
+        font-weight: 800;
+        color: #f8fafc;
+        letter-spacing: -0.5px;
+        line-height: 1.15;
+        margin: 0 0 12px;
+        animation: fadeInDown 0.7s ease-out 0.1s both;
+    }
+
+    .hse-subtitle {
+        font-size: 15px;
+        font-weight: 400;
+        color: #64748b;
+        letter-spacing: 1px;
+        animation: fadeInDown 0.7s ease-out 0.2s both;
+    }
+
+    .hse-subtitle .dot {
+        display: inline-block;
+        width: 4px;
+        height: 4px;
+        background: #475569;
+        border-radius: 50%;
+        margin: 0 12px;
+        vertical-align: middle;
+    }
+
+    /* ── Bloc consigne ── */
+    .hse-consigne-block {
+        position: relative;
+        background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
+        border: 1px solid rgba(255,255,255,0.07);
+        border-left: 5px solid #f59e0b;
+        border-radius: 16px;
+        padding: 36px 40px;
+        margin-bottom: 36px;
+        animation: fadeInUp 0.8s ease-out 0.3s both;
+    }
+
+    .hse-consigne-block::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: 16px;
+        background: linear-gradient(135deg, rgba(245,158,11,0.03), transparent 60%);
+        pointer-events: none;
+    }
+
+    .hse-consigne-label {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: #f59e0b;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .hse-consigne-label::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: linear-gradient(90deg, rgba(245,158,11,0.3), transparent);
+    }
+
+    .hse-consigne-text {
+        font-size: 22px;
+        font-weight: 600;
+        color: #e2e8f0;
+        line-height: 1.65;
+        position: relative;
+        z-index: 1;
+    }
+
+    /* ── Pied de carte ── */
+    .hse-footer-area {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        animation: fadeInUp 0.8s ease-out 0.5s both;
+    }
+
+    .hse-footer-quote {
+        font-size: 13px;
+        color: #475569;
+        font-style: italic;
+        line-height: 1.5;
+        max-width: 400px;
+    }
+
+    .hse-footer-quote strong {
+        color: #64748b;
+        font-style: normal;
+    }
+
+    .hse-timer {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 12px;
+        padding: 12px 20px;
+    }
+
+    .hse-timer-icon {
+        font-size: 18px;
+        animation: spin-slow 3s linear infinite;
+    }
+
+    .hse-timer-text {
+        font-size: 13px;
+        color: #94a3b8;
+        font-weight: 500;
+    }
+
+    /* ── Barre de progression ── */
+    .hse-progress-track {
+        width: 100%;
+        height: 3px;
+        background: rgba(255,255,255,0.05);
+        border-radius: 3px;
+        margin-top: 32px;
+        overflow: hidden;
+    }
+
+    .hse-progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #f59e0b, #fbbf24);
+        border-radius: 3px;
+        animation: progress-fill 10s linear forwards;
+    }
+
+    /* ── Bandeau inférieur ── */
+    .hse-bottom-bar {
+        background: rgba(0,0,0,0.2);
+        padding: 14px 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 30px;
+        border-top: 1px solid rgba(255,255,255,0.03);
+    }
+
+    .hse-bottom-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        color: #475569;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+    }
+
+    .hse-bottom-item .item-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+    }
+
+    .dot-green { background: #22c55e; }
+    .dot-amber { background: #f59e0b; }
+    .dot-red { background: #ef4444; }
+
+    /* ── Animations ── */
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-15px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(15px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse-icon {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.7; transform: scale(1.1); }
+    }
+
+    @keyframes spin-slow {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
+    @keyframes progress-fill {
+        from { width: 0%; }
+        to { width: 100%; }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+        .hse-body { padding: 32px 24px 30px; }
+        .hse-title { font-size: 26px; }
+        .hse-consigne-text { font-size: 18px; }
+        .hse-consigne-block { padding: 24px 20px; }
+        .hse-footer-area { flex-direction: column; gap: 16px; align-items: flex-start; }
+        .hse-top-bar { padding: 14px 24px; }
+        .hse-bottom-bar { flex-wrap: wrap; gap: 12px 24px; padding: 12px 24px; }
     }
 
     </style>
     """, unsafe_allow_html=True)
 
     st.markdown(f"""
-    <div class="security-container">
-        <div class="security-card">
+    <div class="hse-page">
+        <div class="hse-card">
 
-            <div class="security-title">
-                🦺 HSE - CONSIGNE DE SÉCURITÉ
+            <!-- Bandeau rouge -->
+            <div class="hse-top-bar">
+                <span class="bar-icon">⚠</span>
+                <span class="bar-label">Alerte Sécurité — Lecture Obligatoire</span>
             </div>
 
-            <div class="security-subtitle">
-                Sécurité • Santé • Environnement
+            <!-- Corps -->
+            <div class="hse-body">
+
+                <!-- En-tête -->
+                <div class="hse-header">
+                    <div class="hse-badge">
+                        <span>◆</span>
+                        <span>Minute HSE</span>
+                    </div>
+                    <h1 class="hse-title">Consigne de Sécurité</h1>
+                    <p class="hse-subtitle">
+                        Hygiène<span class="dot"></span>Santé<span class="dot"></span>Environnement
+                    </p>
+                </div>
+
+                <!-- Bloc consigne -->
+                <div class="hse-consigne-block">
+                    <div class="hse-consigne-label">Consigne du jour</div>
+                    <div class="hse-consigne-text">{st.session_state.consigne_securite}</div>
+                </div>
+
+                <!-- Pied -->
+                <div class="hse-footer-area">
+                    <p class="hse-footer-quote">
+                        <strong>« Aucune tâche n'est si urgente ni si importante qu'elle justifie de la faire de manière unsafe. »</strong>
+                    </p>
+                    <div class="hse-timer">
+                        <span class="hse-timer-icon">⏳</span>
+                        <span class="hse-timer-text">Redirection automatique…</span>
+                    </div>
+                </div>
+
+                <!-- Barre de progression -->
+                <div class="hse-progress-track">
+                    <div class="hse-progress-bar"></div>
+                </div>
+
             </div>
 
-            <div class="security-text">
-                ⚠️ {st.session_state.consigne_securite}
-            </div>
-
-            <div class="security-footer">
-                Aucun travail n'est plus urgent que la sécurité
+            <!-- Bandeau inférieur -->
+            <div class="hse-bottom-bar">
+                <div class="hse-bottom-item">
+                    <span class="item-dot dot-green"></span>
+                    Sécurité
+                </div>
+                <div class="hse-bottom-item">
+                    <span class="item-dot dot-amber"></span>
+                    Santé
+                </div>
+                <div class="hse-bottom-item">
+                    <span class="item-dot dot-red"></span>
+                    Environnement
+                </div>
             </div>
 
         </div>

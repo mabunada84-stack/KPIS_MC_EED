@@ -29,6 +29,10 @@ import streamlit as st
 import random
 import time
 
+import streamlit as st
+import random
+import time
+
 # ==================================================
 # HSE - CONSIGNE DE SECURITE
 # ==================================================
@@ -103,21 +107,50 @@ if not st.session_state.hse_affiche:
 
     consigne = random.choice(consignes)
 
-    st.markdown("# 🦺 HSE - CONSIGNE DE SÉCURITÉ")
-    st.markdown("### Sécurité • Santé • Environnement")
+    st.markdown("""
+    <h1 style='text-align:center;font-size:55px;'>
+        🦺 HSE - CONSIGNE DE SÉCURITÉ
+    </h1>
+    """, unsafe_allow_html=True)
 
-    st.warning(consigne)
+    st.markdown("""
+    <h3 style='text-align:center;color:gray;'>
+        Sécurité • Santé • Environnement
+    </h3>
+    """, unsafe_allow_html=True)
+
+    st.markdown(
+        f"""
+        <div style="
+            background-color:#fff3cd;
+            border-left:10px solid #ffc107;
+            padding:30px;
+            border-radius:15px;
+            font-size:34px;
+            font-weight:bold;
+            text-align:center;
+            margin-top:25px;
+            margin-bottom:25px;
+        ">
+            ⚠️ {consigne}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     st.success("Aucun travail n'est plus urgent que la sécurité")
 
     with st.spinner("Chargement du tableau de bord..."):
-        time.sleep(10)
+        time.sleep(8)
 
     st.session_state.hse_affiche = True
     st.rerun()
 
     st.stop()
 
+# ==================================================
+# TON DASHBOARD COMMENCE ICI
+# ==================================================
 # ==================================================
 # TON DASHBOARD COMMENCE ICI
 # ==================================================

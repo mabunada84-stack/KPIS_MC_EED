@@ -25,14 +25,75 @@ except:
 
 st.set_page_config(page_title="Dashboard KPIS MC et FEED", layout="wide")
 
+import streamlit as st
 import random
 import time
-import streamlit as st
+
+# ==================================================
+# HSE - CONSIGNE DE SECURITE
+# ==================================================
 
 consignes = [
+    "Port obligatoire des EPI avant toute intervention.",
     "Port obligatoire du casque de sécurité.",
+    "Port obligatoire des lunettes de protection.",
+    "Port obligatoire des gants adaptés au travail.",
+    "Utiliser les protections auditives dans les zones bruyantes.",
+    "Vérifier l'absence de tension avant toute intervention électrique.",
+    "Respecter la procédure de consignation et déconsignation.",
+    "Ne jamais intervenir sur un équipement en marche.",
+    "Baliser et sécuriser la zone de travail.",
+    "Maintenir le poste de travail propre et ordonné.",
+    "Vérifier l'état des outils avant utilisation.",
+    "Utiliser uniquement du matériel homologué.",
+    "Respecter les permis de travail en vigueur.",
+    "Identifier les risques avant de commencer une tâche.",
+    "Signaler immédiatement toute situation dangereuse.",
+    "Signaler tout incident ou presque accident.",
+    "Ne jamais neutraliser un dispositif de sécurité.",
     "Vérifier les détecteurs de gaz avant utilisation.",
-    "Respecter la procédure de consignation.",
+    "Vérifier la bonne ventilation des zones de travail.",
+    "Respecter les règles des espaces confinés.",
+    "Contrôler l'atmosphère avant d'entrer dans un espace confiné.",
+    "Utiliser les points d'ancrage pour les travaux en hauteur.",
+    "Vérifier l'état des échafaudages avant utilisation.",
+    "Sécuriser les outils lors des travaux en hauteur.",
+    "Ne pas travailler seul lors d'opérations à risque.",
+    "Contrôler les élingues avant chaque levage.",
+    "Respecter les limites de charge des équipements.",
+    "Vérifier l'état des appareils de levage.",
+    "Maintenir les voies de circulation dégagées.",
+    "Respecter la signalisation de sécurité.",
+    "Vérifier les extincteurs à proximité du chantier.",
+    "Connaître les issues de secours les plus proches.",
+    "Respecter les procédures d'arrêt d'urgence.",
+    "Vérifier les flexibles et raccords avant mise en service.",
+    "Contrôler les fuites avant démarrage d'un équipement.",
+    "Respecter les distances de sécurité.",
+    "Ne jamais contourner une procédure HSE.",
+    "Porter les EPI adaptés au risque identifié.",
+    "Prévenir son responsable avant toute intervention particulière.",
+    "Analyser les risques avant chaque démarrage de chantier.",
+    "Vérifier la stabilité des équipements.",
+    "Utiliser les bons outils pour la bonne tâche.",
+    "Respecter les consignes spécifiques du chantier.",
+    "Ne jamais prendre de raccourci au détriment de la sécurité.",
+    "Arrêter immédiatement les travaux en cas de danger.",
+    "Protéger l'environnement lors des interventions.",
+    "Collecter et trier correctement les déchets.",
+    "Éviter toute pollution accidentelle.",
+    "Respecter les consignes de stockage des produits dangereux.",
+    "Lire les fiches de sécurité avant manipulation.",
+    "Vérifier les équipements avant chaque prise de poste.",
+    "S'assurer de la disponibilité des moyens de secours.",
+    "Communiquer clairement avec l'équipe avant intervention.",
+    "Respecter les règles de circulation des engins.",
+    "Garder une vigilance permanente sur son environnement.",
+    "Prendre le temps d'effectuer le travail en sécurité.",
+    "La sécurité est l'affaire de tous.",
+    "Chaque incident peut être évité par la prévention.",
+    "Aucun travail n'est plus urgent que la sécurité.",
+    "Zéro accident commence par un comportement sûr."
 ]
 
 if "hse_affiche" not in st.session_state:
@@ -40,17 +101,26 @@ if "hse_affiche" not in st.session_state:
 
 if not st.session_state.hse_affiche:
 
-    st.title("🦺 HSE - CONSIGNE DE SÉCURITÉ")
+    consigne = random.choice(consignes)
 
-    st.info(random.choice(consignes))
+    st.markdown("# 🦺 HSE - CONSIGNE DE SÉCURITÉ")
+    st.markdown("### Sécurité • Santé • Environnement")
+
+    st.warning(consigne)
 
     st.success("Aucun travail n'est plus urgent que la sécurité")
 
-    time.sleep(5)
+    with st.spinner("Chargement du tableau de bord..."):
+        time.sleep(10)
 
     st.session_state.hse_affiche = True
     st.rerun()
+
     st.stop()
+
+# ==================================================
+# TON DASHBOARD COMMENCE ICI
+# ==================================================
 # ==================================
 # TON DASHBOARD COMMENCE ICI
 # ==================================

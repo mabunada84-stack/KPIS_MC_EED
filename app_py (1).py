@@ -34,6 +34,10 @@ import random
 import time
 import streamlit as st
 
+import streamlit as st
+import random
+import time
+
 # ==================================
 # HSE - MESSAGE DE PREVENTION
 # ==================================
@@ -81,85 +85,66 @@ consignes_securite = [
     "La sécurité est la responsabilité de chacun."
 ]
 
-if "consigne_securite" not in st.session_state:
-    st.session_state.consigne_securite = random.choice(consignes_securite)
+if "hse_affiche" not in st.session_state:
+    st.session_state.hse_affiche = False
 
-if "consigne_validee" not in st.session_state:
-    st.session_state.consigne_validee = False
+if not st.session_state.hse_affiche:
 
-if not st.session_state.consigne_validee:
+    consigne = random.choice(consignes_securite)
 
-    st.markdown("""
-    <style>
-
-    .security-container{
+    st.markdown(f"""
+    <div style="
         display:flex;
         justify-content:center;
         align-items:center;
         height:85vh;
-    }
+    ">
+        <div style="
+            width:80%;
+            max-width:950px;
+            background:linear-gradient(135deg,#0f172a,#1e293b);
+            border-radius:25px;
+            padding:50px;
+            text-align:center;
+            color:white;
+            box-shadow:0px 12px 35px rgba(0,0,0,0.35);
+        ">
 
-    .security-card{
-        width:80%;
-        max-width:950px;
-        background:linear-gradient(135deg,#0f172a,#1e293b);
-        border-radius:25px;
-        padding:50px;
-        text-align:center;
-        color:white;
-        box-shadow:0px 12px 35px rgba(0,0,0,0.35);
-    }
-
-    .security-title{
-        font-size:50px;
-        font-weight:700;
-        margin-bottom:15px;
-    }
-
-    .security-subtitle{
-        font-size:24px;
-        color:#cbd5e1;
-        margin-bottom:30px;
-    }
-
-    .security-text{
-        background:white;
-        color:#1f2937;
-        border-left:8px solid #f59e0b;
-        border-radius:18px;
-        padding:30px;
-        font-size:28px;
-        font-weight:600;
-        line-height:1.6;
-    }
-
-    .security-footer{
-        margin-top:30px;
-        font-size:22px;
-        color:#f8fafc;
-        font-style:italic;
-    }
-
-    </style>
-    """, unsafe_allow_html=True)
-
-    st.markdown(f"""
-    <div class="security-container">
-        <div class="security-card">
-
-            <div class="security-title">
+            <div style="
+                font-size:50px;
+                font-weight:700;
+                margin-bottom:15px;
+            ">
                 🦺 HSE - MESSAGE DE PRÉVENTION
             </div>
 
-            <div class="security-subtitle">
+            <div style="
+                font-size:24px;
+                color:#cbd5e1;
+                margin-bottom:30px;
+            ">
                 Consigne Sécurité du Jour
             </div>
 
-            <div class="security-text">
-                ⚠️ {st.session_state.consigne_securite}
+            <div style="
+                background:white;
+                color:#1f2937;
+                border-left:8px solid #f59e0b;
+                border-radius:18px;
+                padding:30px;
+                font-size:28px;
+                font-weight:600;
+                line-height:1.6;
+            ">
+                ⚠️ {consigne}
             </div>
 
-            <div class="security-footer">
+            <div style="
+                margin-top:30px;
+                font-size:22px;
+                color:#f8fafc;
+                font-style:italic;
+            ">
                 Zéro accident est l'affaire de tous
             </div>
 
@@ -169,10 +154,14 @@ if not st.session_state.consigne_validee:
 
     time.sleep(10)
 
-    st.session_state.consigne_validee = True
+    st.session_state.hse_affiche = True
     st.rerun()
 
-    st.stop()
+# ==================================
+# A PARTIR D'ICI COMMENCE TON DASHBOARD
+# ==================================
+
+# Ton code Dashboard KPI ici
 # =====================================
 # VOTRE DASHBOARD COMMENCE ICI
 # =====================================

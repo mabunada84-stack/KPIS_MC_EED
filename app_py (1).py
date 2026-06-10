@@ -26,6 +26,9 @@ except:
 st.set_page_config(page_title="Dashboard KPIS MC et FEED", layout="wide")
 import random
 
+import random
+import time
+
 # =========================
 # SECONDE SECURITE
 # =========================
@@ -79,81 +82,92 @@ if "consigne_securite" not in st.session_state:
 if "consigne_validee" not in st.session_state:
     st.session_state.consigne_validee = False
 
-import time
-
 if not st.session_state.consigne_validee:
 
     st.markdown("""
     <style>
-    .security-container {
+
+    .security-container{
         display:flex;
         justify-content:center;
         align-items:center;
-        height:75vh;
+        height:80vh;
     }
 
-    .security-card {
-        width:70%;
+    .security-card{
+        width:75%;
+        max-width:900px;
         background:linear-gradient(135deg,#0f172a,#1e293b);
-        border-radius:20px;
+        border-radius:25px;
         padding:40px;
         text-align:center;
         color:white;
-        box-shadow:0px 8px 25px rgba(0,0,0,0.3);
+        box-shadow:0 10px 30px rgba(0,0,0,0.30);
     }
 
-    .security-title {
+    .security-title{
         font-size:42px;
         font-weight:bold;
-        margin-bottom:20px;
+        margin-bottom:10px;
     }
 
-    .security-text {
-        background:#fff8e1;
-        color:#212121;
-        padding:25px;
-        border-radius:15px;
+    .security-subtitle{
         font-size:24px;
-        font-weight:bold;
-        margin-top:20px;
-        border-left:8px solid #ff9800;
-    }
-
-    .countdown {
-        margin-top:20px;
-        font-size:18px;
+        margin-bottom:25px;
         color:#cbd5e1;
     }
+
+    .security-text{
+        background:#fff8e1;
+        color:#212121;
+        border-left:8px solid #ff9800;
+        border-radius:15px;
+        padding:25px;
+        font-size:24px;
+        font-weight:bold;
+        line-height:1.5;
+    }
+
+    .countdown{
+        margin-top:25px;
+        font-size:20px;
+        color:#e2e8f0;
+        font-style:italic;
+    }
+
     </style>
     """, unsafe_allow_html=True)
 
-    placeholder = st.empty()
+    st.markdown(f"""
+    <div class="security-container">
+        <div class="security-card">
 
-    with placeholder.container():
-
-        st.markdown(f"""
-        <div class="security-container">
-            <div class="security-card">
-                <div class="security-title">
-                    🦺 SECONDE SÉCURITÉ
-                </div>
-
-                <div class="security-text">
-                    ⚠️ {st.session_state.consigne_securite}
-                </div>
-
-                <div class="countdown">
-                    Chargement du tableau de bord dans 10 secondes...
-                </div>
+            <div class="security-title">
+                🦺 SECONDE SÉCURITÉ
             </div>
+
+            <div class="security-subtitle">
+                Consigne du Jour
+            </div>
+
+            <div class="security-text">
+                ⚠️ {st.session_state.consigne_securite}
+            </div>
+
+            <div class="countdown">
+                La sécurité commence par la prévention
+            </div>
+
         </div>
-        """, unsafe_allow_html=True)
+    </div>
+    """, unsafe_allow_html=True)
 
     time.sleep(10)
 
     st.session_state.consigne_validee = True
     st.rerun()
 
+    st.stop()
 st.markdown("# KPI Dashboard MC et FEED")
 
 def rename_safe(df, old_names, new_names):

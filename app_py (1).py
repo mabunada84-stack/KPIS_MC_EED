@@ -137,8 +137,18 @@ if not st.session_state.hse_affiche:
         """,
         unsafe_allow_html=True
     )
-
-    st.success("Aucun travail n'est plus urgent que la sécurité")
+st.markdown("""
+<div style="
+    text-align:center;
+    font-size:32px;
+    font-weight:bold;
+    color:#198754;
+    margin-top:20px;
+    margin-bottom:20px;
+">
+    Aucun travail n'est plus urgent que la sécurité
+</div>
+""", unsafe_allow_html=True)
 
     with st.spinner("Chargement du tableau de bord..."):
         time.sleep(8)
@@ -148,25 +158,6 @@ if not st.session_state.hse_affiche:
 
     st.stop()
 
-# ==================================================
-# TON DASHBOARD COMMENCE ICI
-# ==================================================
-# ==================================================
-# TON DASHBOARD COMMENCE ICI
-# ==================================================
-# ==================================
-# TON DASHBOARD COMMENCE ICI
-# ==================================
-# ==================================
-# A PARTIR D'ICI COMMENCE TON DASHBOARD
-# ==================================
-
-# Ton code Dashboard KPI ici
-# =====================================
-# VOTRE DASHBOARD COMMENCE ICI
-# =====================================
-st.title("Dashboard")
-st.write("Bienvenue sur le tableau de bord.")
 st.markdown("# KPI Dashboard MC et FEED")
 
 def rename_safe(df, old_names, new_names):

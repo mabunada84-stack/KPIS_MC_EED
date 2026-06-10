@@ -165,7 +165,7 @@ if not st.session_state.hse_affiche:
     """, unsafe_allow_html=True)
 
     with st.spinner("Chargement du tableau de bord..."):
-        time.sleep(8)
+        time.sleep(6)
 
     st.session_state.hse_affiche = True
     st.rerun()

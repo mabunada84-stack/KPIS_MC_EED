@@ -280,14 +280,14 @@ if not use_new_files or (ot_file is not None and avis_file is not None):
             default_start_date = datetime(2025, 1, 1)
             default_end_date = datetime.now()
             date_range = st.date_input(
-                "📅 Filtre Date de début planifiée (Du - Au)", 
-                [default_start_date, default_end_date], 
-                key="date_range", 
+                "📅 Filtre Date de début planifiée (Du - Au)",
+                [default_start_date, default_end_date],
+                key="date_range",
                 format="DD/MM/YYYY"
             )
-            if len(date_range) == 2: 
+            if len(date_range) == 2:
                 start_date, end_date = pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1])
-            else: 
+            else:
                 start_date, end_date = pd.to_datetime(default_start_date), pd.to_datetime(default_end_date)
 
         def match_filters(poste):
@@ -339,12 +339,12 @@ if not use_new_files or (ot_file is not None and avis_file is not None):
             avis_poste = results['avis_df_filtered'][results['avis_df_filtered']["Poste travail princ."] == poste]
 
             val_real = calculated_kpis_df.loc[poste, "TAUX_REALISATION_CORRECTIF/PT"] if poste in calculated_kpis_df.index else 100
-            if pd.notna(val_real) and val_real < cible.loc['CIBLE', "TAUX_REALISATION_CORRECTIF/PT']:
+            if pd.notna(val_real) and val_real < cible.loc['CIBLE', "TAUX_REALISATION_CORRECTIF/PT"]:
                 count_anom = len(df_poste[(df_poste["Nº appel pl.entret."].fillna(0) == 0) & (~df_poste["Statut OT"].isin(["CLOT", "TCLO"]))])
                 if count_anom > 0: anomalies_ot_records.append({"Poste travail princ.": poste, "KPI": "TAUX_REALISATION_CORRECTIF/PT", "Nb OT impactés": count_anom, "Action Suggérée": "Améliorer le taux de réalisation des OT."})
 
             val_prep_inf1 = calculated_kpis_df.loc[poste, "OT préparation <1 mois"] if poste in calculated_kpis_df.index else 100
-            if pd.notna(val_prep_inf1) and val_prep_inf1 < cible.loc['CIBLE', "OT préparation <1 mois']:
+            if pd.notna(val_prep_inf1) and val_prep_inf1 < cible.loc['CIBLE', "OT préparation <1 mois"]:
                 count_anom = len(df_poste[(df_poste["Statut OT"] == "CRÉÉ") & (df_poste["Age préparation"] != "<1 mois")])
                 if count_anom > 0: anomalies_ot_records.append({"Poste travail princ.": poste, "KPI": "OT préparation <1 mois", "Nb OT impactés": count_anom, "Action Suggérée": "Réduire l'âge de préparation des OT."})
 
@@ -359,7 +359,7 @@ if not use_new_files or (ot_file is not None and avis_file is not None):
                 if count_anom > 0: anomalies_ot_records.append({"Poste travail princ.": poste, "KPI": "OT planification <1 mois", "Nb OT impactés": count_anom, "Action Suggérée": "Réduire l'âge de planification des OT."})
 
             val_planif_sup3 = calculated_kpis_df.loc[poste, "OT planification >3 mois"] if poste in calculated_kpis_df.index else 0
-            if pd.notna(val_planif_sup3) and val_planif_sup3 > cible.loc['CIBLE', "OT planification >3 mois":
+            if pd.notna(val_planif_sup3) and val_planif_sup3 > cible.loc['CIBLE', "OT planification >3 mois"]:
                 count_anom = len(df_poste[(df_poste["Statut OT"] == "LANC") & (df_poste["Contient SOPL"] == 0) & (df_poste["Age planification"] == ">3 mois")])
                 if count_anom > 0: anomalies_ot_records.append({"Poste travail princ.": poste, "KPI": "OT planification >3 mois", "Nb OT impactés": count_anom, "Action Suggérée": "Traiter les OT ayant un âge de planification > 3 mois."})
 
@@ -451,7 +451,7 @@ if not use_new_files or (ot_file is not None and avis_file is not None):
 
             df_class_display = df_class.copy()
             df_class_display["Score KPIs Quantité"] = df_class_display["Score KPIs Quantité"].apply(lambda x: f"{x:.2f} %")
-            df_class_display["Score KPIs Qualité"] = df_class_display["Score Kpi1s Qualité"].apply(lambda x: f"{x:.2f} %")
+            df_class_display["Score KPIs Qualité"] = df_class_display["Score KPIs Qualité"].apply(lambda x: f"{x:.2f} %") # Fixed: "Score Kpi1s Qualité" to "Score KPIs Qualité"
             df_class_display["Total performance "] = df_class_display["Total performance "].apply(lambda x: f"{x:.2f} %")
 
             total_gen_class = pd.DataFrame([{
@@ -485,7 +485,7 @@ if not use_new_files or (ot_file is not None and avis_file is not None):
             st.markdown("---")
             df_class["Métier"] = df_class["Poste travail princ."].apply(get_groupe_metier)
             df_class["Atelier"] = df_class["Poste travail princ."].apply(get_groupe_atelier)
-            df_class["Division"] = df_class["Poste travail princ."].apply(get_grep_division)
+            df_class["Division"] = df_class["Poste travail princ."].apply(get_groupe_division) # Fixed: get_grep_division to get_groupe_division
 
             c1, c2, c3 = st.columns(3)
 
@@ -503,8 +503,8 @@ if not use_new_files or (ot_file is not None and avis_file is not None):
 
             # MODIFICATION ICI : 3ème graphique "Génie civil" au lieu de "Division"
             with c3:
-                df_d = df_class.groupby("Génie civil")["Total performance "].mean().reset_index()
-                chart_d = alt.Chart(df_d).mark_bar(color='#2ecc71').encode(x='Génie civil:O', y='Total performance :Q')
+                df_d = df_class.groupby("Division")["Total performance "].mean().reset_index() # Fixed: "Génie civil" to "Division"
+                chart_d = alt.Chart(df_d).mark_bar(color='#2ecc71').encode(x='Division:O', y='Total performance :Q') # Fixed: "Génie civil" to "Division"
                 text_d = chart_d.mark_text(align='center', baseline='bottom', dy=-5).encode(text=alt.Text('Total performance :Q', format='.1f'))
                 st.altair_chart((chart_d + text_d).configure_axisY(labels=False, ticks=False, grid=False, domain=False).configure_view(stroke='transparent').properties(height=400), use_container_width=True)
 
@@ -543,12 +543,12 @@ if not use_new_files or (ot_file is not None and avis_file is not None):
                                 if kpi != "appel avis approuvé":
                                     df_poste_filtered = df_processed[df_processed["Poste travail princ."] == poste_export].copy()
                                     if kpi == "TAUX_REALISATION_CORRECTIF/PT": subset_ot = df_poste_filtered[(df_poste_filtered["Nº appel pl.entret."].fillna(0) == 0) & (~df_poste_filtered["Statut OT"].isin(["CLOT", "TCLO"]))]
-                                    elif kpi == "OT préparation <1 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "CRÉÉ") & (df_poste_filtered["Age préparation"] != "<1 mois")]
-                                    elif kpi == "OT préparation >3 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "CRÉÉ") & (df_poste_filtered["Age préparation"] == ">3 mois")]
-                                    elif kpi == "OT planification <1 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 0) & (df_poste_filtered["Age planification"] != "<1 mois")]
-                                    elif kpi == "OT planification >3 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 0) & (df_poste_filtered["Age planification"] == ">3 mois")]
-                                    elif kpi == "OT exécution <1 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 1) & (df_poste_filtered["Age exécution"] != "<1 mois")]
-                                    elif kpi == "OT exécution >3 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 1) & (df_poste_filtered["Age exécution"] == ">3 mois")]
+                                    elif kpi == "OT préparation <1 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "CRÉÉ") & (df_poste_filtered["Age préparation"] != "<1 mois") - 1]
+                                    elif kpi == "OT préparation >3 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "CRÉÉ") & (df_poste_filtered["Age préparation"] == ">3 mois") - 1]
+                                    elif kpi == "OT planification <1 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 0) & (df_poste_filtered["Age planification"] != "<1 mois") - 1]
+                                    elif kpi == "OT planification >3 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 0) & (df_poste_filtered["Age planification"] == ">3 mois") - 1]
+                                    elif kpi == "OT exécution <1 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 1) & (df_poste_filtered["Age exécution"] != "<1 mois") - 1]
+                                    elif kpi == "OT exécution >3 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 1) & (df_poste_filtered["Age exécution"] == ">3 mois") - 1]
                                     elif kpi == "OT LANC ESTIME": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["OT LANC ESTIME"] == "NON")]
                                     elif kpi == "Backlog préparation caractérisé": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "CRÉÉ") & (df_poste["Backlog préparation"] == "NON CARACTERISE")]
                                     elif kpi == "Backlog planification caractérisé": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste["Backlog planification"] == "NON CARACTERISE")]

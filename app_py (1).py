@@ -29,9 +29,13 @@ import random
 import random
 import time
 
-# =========================
-# SECONDE SECURITE
-# =========================
+import random
+import time
+import streamlit as st
+
+# =====================================
+# MINUTE SECURITE
+# =====================================
 
 consignes_securite = [
     "Port obligatoire des EPI avant toute intervention.",
@@ -91,47 +95,47 @@ if not st.session_state.consigne_validee:
         display:flex;
         justify-content:center;
         align-items:center;
-        height:80vh;
+        height:85vh;
     }
 
     .security-card{
-        width:75%;
-        max-width:900px;
+        width:80%;
+        max-width:950px;
         background:linear-gradient(135deg,#0f172a,#1e293b);
         border-radius:25px;
-        padding:40px;
+        padding:45px;
         text-align:center;
         color:white;
-        box-shadow:0 10px 30px rgba(0,0,0,0.30);
+        box-shadow:0px 12px 35px rgba(0,0,0,0.35);
     }
 
     .security-title{
-        font-size:42px;
-        font-weight:bold;
+        font-size:48px;
+        font-weight:700;
         margin-bottom:10px;
     }
 
     .security-subtitle{
         font-size:24px;
-        margin-bottom:25px;
         color:#cbd5e1;
+        margin-bottom:30px;
     }
 
     .security-text{
-        background:#fff8e1;
-        color:#212121;
-        border-left:8px solid #ff9800;
-        border-radius:15px;
-        padding:25px;
-        font-size:24px;
-        font-weight:bold;
-        line-height:1.5;
+        background:white;
+        color:#1f2937;
+        border-left:8px solid #f59e0b;
+        border-radius:18px;
+        padding:30px;
+        font-size:28px;
+        font-weight:600;
+        line-height:1.6;
     }
 
-    .countdown{
-        margin-top:25px;
-        font-size:20px;
-        color:#e2e8f0;
+    .security-footer{
+        margin-top:30px;
+        font-size:22px;
+        color:#f8fafc;
         font-style:italic;
     }
 
@@ -143,19 +147,19 @@ if not st.session_state.consigne_validee:
         <div class="security-card">
 
             <div class="security-title">
-                🦺 SECONDE SÉCURITÉ
+                🦺 HSE - CONSIGNE DE SÉCURITÉ
             </div>
 
             <div class="security-subtitle">
-                Consigne du Jour
+                Sécurité • Santé • Environnement
             </div>
 
             <div class="security-text">
                 ⚠️ {st.session_state.consigne_securite}
             </div>
 
-            <div class="countdown">
-                La sécurité commence par la prévention
+            <div class="security-footer">
+                Aucun travail n'est plus urgent que la sécurité
             </div>
 
         </div>

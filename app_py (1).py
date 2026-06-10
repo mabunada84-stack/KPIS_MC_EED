@@ -30,8 +30,12 @@ import streamlit as st
 import random
 import time
 
+import random
+import time
+import streamlit as st
+
 # ==================================
-# HSE - CONSIGNE DE SECURITE
+# HSE - MESSAGE DE PREVENTION
 # ==================================
 
 consignes_securite = [
@@ -100,16 +104,16 @@ if not st.session_state.consigne_validee:
         max-width:950px;
         background:linear-gradient(135deg,#0f172a,#1e293b);
         border-radius:25px;
-        padding:45px;
+        padding:50px;
         text-align:center;
         color:white;
         box-shadow:0px 12px 35px rgba(0,0,0,0.35);
     }
 
     .security-title{
-        font-size:48px;
+        font-size:50px;
         font-weight:700;
-        margin-bottom:10px;
+        margin-bottom:15px;
     }
 
     .security-subtitle{
@@ -144,11 +148,11 @@ if not st.session_state.consigne_validee:
         <div class="security-card">
 
             <div class="security-title">
-                🦺 HSE - CONSIGNE DE SÉCURITÉ
+                🦺 HSE - MESSAGE DE PRÉVENTION
             </div>
 
             <div class="security-subtitle">
-                Sécurité • Santé • Environnement
+                Consigne Sécurité du Jour
             </div>
 
             <div class="security-text">
@@ -156,7 +160,7 @@ if not st.session_state.consigne_validee:
             </div>
 
             <div class="security-footer">
-                Aucun travail n'est plus urgent que la sécurité
+                Zéro accident est l'affaire de tous
             </div>
 
         </div>

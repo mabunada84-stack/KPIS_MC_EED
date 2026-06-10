@@ -28,11 +28,122 @@ st.set_page_config(page_title="Dashboard KPIS MC et FEED", layout="wide")
 import random
 import time
 
-st.markdown("""
-<h1 style='color:red;text-align:center;'>
-TEST HSE
-</h1>
-""", unsafe_allow_html=True)
+import random
+import time
+import streamlit as st
+
+# ==================================
+# HSE - CONSIGNE DE SECURITE
+# ==================================
+
+consignes_securite = [
+    "Port obligatoire des EPI avant toute intervention.",
+    "Vérifier l'absence de tension avant toute opération électrique.",
+    "Respecter la procédure de consignation et déconsignation.",
+    "Ne jamais intervenir sur un équipement en fonctionnement.",
+    "Baliser et sécuriser la zone de travail.",
+    "Utiliser uniquement des outils en bon état.",
+    "Vérifier la validité du permis de travail.",
+    "Contrôler l'état des équipements de levage avant utilisation.",
+    "Respecter les consignes de circulation sur site.",
+    "Signaler immédiatement toute situation dangereuse.",
+    "Vérifier la présence des moyens de lutte contre l'incendie.",
+    "Ne jamais neutraliser un dispositif de sécurité.",
+    "Utiliser les points d'ancrage pour les travaux en hauteur.",
+    "Contrôler les élingues avant chaque levage.",
+    "Maintenir le poste de travail propre et ordonné.",
+    "Respecter les consignes des espaces confinés.",
+    "Vérifier l'atmosphère avant d'entrer dans un espace confiné.",
+    "Port obligatoire des lunettes de protection.",
+    "Port obligatoire des gants adaptés à l'activité.",
+    "Port obligatoire du casque de sécurité.",
+    "Utiliser les protections auditives dans les zones bruyantes.",
+    "Vérifier l'état des échafaudages avant utilisation.",
+    "Ne pas travailler seul lors des opérations à risque.",
+    "Identifier les risques avant de commencer le travail.",
+    "Respecter les limites de charge des équipements.",
+    "Sécuriser les outils lors des travaux en hauteur.",
+    "Maintenir les issues de secours dégagées.",
+    "Contrôler les flexibles et raccords avant mise en service.",
+    "Respecter les distances de sécurité autour des équipements sous tension.",
+    "Vérifier la bonne ventilation des zones de travail.",
+    "Utiliser les équipements homologués uniquement.",
+    "Signaler tout incident ou presque accident.",
+    "Respecter les consignes d'arrêt d'urgence.",
+    "Vérifier les détecteurs de gaz avant utilisation.",
+    "Respecter les plans de prévention établis.",
+    "Contrôler l'état des extincteurs de proximité.",
+    "Ne jamais contourner une procédure de sécurité.",
+    "Respecter les consignes spécifiques du chantier.",
+    "Arrêter immédiatement les travaux en cas de danger.",
+    "La sécurité est la responsabilité de chacun."
+]
+
+if "hse_affiche" not in st.session_state:
+    st.session_state.hse_affiche = False
+
+if not st.session_state.hse_affiche:
+
+    consigne = random.choice(consignes_securite)
+
+    st.markdown(
+        f"""
+        <div style="
+            background:linear-gradient(135deg,#0f172a,#1e293b);
+            padding:50px;
+            border-radius:20px;
+            text-align:center;
+            color:white;
+            margin-top:80px;
+            margin-bottom:40px;
+        ">
+
+            <h1>🦺 HSE - CONSIGNE DE SÉCURITÉ</h1>
+
+            <h3>Sécurité • Santé • Environnement</h3>
+
+            <div style="
+                background:white;
+                color:#1f2937;
+                padding:25px;
+                border-radius:15px;
+                font-size:24px;
+                font-weight:bold;
+                margin-top:25px;
+            ">
+                ⚠️ {consigne}
+            </div>
+
+            <p style="
+                margin-top:25px;
+                font-size:20px;
+                font-weight:bold;
+            ">
+                Aucun travail n'est plus urgent que la sécurité
+            </p>
+
+            <p style="
+                font-size:16px;
+                color:#d1d5db;
+            ">
+                Chargement du tableau de bord...
+            </p>
+
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    time.sleep(10)
+
+    st.session_state.hse_affiche = True
+    st.rerun()
+
+    st.stop()
+
+# ==================================
+# TON DASHBOARD COMMENCE ICI
+# ==================================
 # ==================================
 # A PARTIR D'ICI COMMENCE TON DASHBOARD
 # ==================================

@@ -79,63 +79,80 @@ if "consigne_securite" not in st.session_state:
 if "consigne_validee" not in st.session_state:
     st.session_state.consigne_validee = False
 
+import time
+
 if not st.session_state.consigne_validee:
 
     st.markdown("""
-    <div style="
-        background: linear-gradient(135deg,#0f172a,#1e293b);
-        padding:35px;
+    <style>
+    .security-container {
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        height:75vh;
+    }
+
+    .security-card {
+        width:70%;
+        background:linear-gradient(135deg,#0f172a,#1e293b);
         border-radius:20px;
+        padding:40px;
         text-align:center;
         color:white;
-        margin-bottom:20px;
-        box-shadow:0px 6px 20px rgba(0,0,0,0.25);
-    ">
-        <h1>🦺 SECONDE SÉCURITÉ</h1>
-        <h3>Consigne Sécurité du Jour</h3>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown(f"""
-    <div style="
-        background-color:#fff8e1;
-        border-left:8px solid #ff9800;
-        padding:25px;
-        border-radius:12px;
-        font-size:22px;
-        font-weight:bold;
-        color:#212121;
-        margin-bottom:20px;
-    ">
-        ⚠️ {st.session_state.consigne_securite}
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.warning("Veuillez lire attentivement cette consigne avant d'accéder au tableau de bord.")
-
-    if st.button("✅ J'ai lu et compris la consigne", use_container_width=True):
-        st.session_state.consigne_validee = True
-        st.rerun()
-
-    st.stop()
-st.markdown(
-    """
-    <style>
-    .st-emotion-cache-nahz7x table, .stDataFrame table, table { font-size: 1.05em; }
-    .header-kpi {
-        background: linear-gradient(90deg, #2c3e50, #34495e); color: white; padding: 15px 20px;
-        border-radius: 8px; margin-bottom: 0px; text-align: center; font-size: 1.4em;
-        font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        box-shadow:0px 8px 25px rgba(0,0,0,0.3);
     }
-    .header-anomalie {
-        background: linear-gradient(90deg, #c0392b, #e74c3c); color: white; padding: 15px 20px;
-        border-radius: 8px; margin-bottom: 0px; text-align: center; font-size: 1.4em;
-        font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+
+    .security-title {
+        font-size:42px;
+        font-weight:bold;
+        margin-bottom:20px;
+    }
+
+    .security-text {
+        background:#fff8e1;
+        color:#212121;
+        padding:25px;
+        border-radius:15px;
+        font-size:24px;
+        font-weight:bold;
+        margin-top:20px;
+        border-left:8px solid #ff9800;
+    }
+
+    .countdown {
+        margin-top:20px;
+        font-size:18px;
+        color:#cbd5e1;
     }
     </style>
-    """,
-    unsafe_allow_html=True
-)
+    """, unsafe_allow_html=True)
+
+    placeholder = st.empty()
+
+    with placeholder.container():
+
+        st.markdown(f"""
+        <div class="security-container">
+            <div class="security-card">
+                <div class="security-title">
+                    🦺 SECONDE SÉCURITÉ
+                </div>
+
+                <div class="security-text">
+                    ⚠️ {st.session_state.consigne_securite}
+                </div>
+
+                <div class="countdown">
+                    Chargement du tableau de bord dans 10 secondes...
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    time.sleep(10)
+
+    st.session_state.consigne_validee = True
+    st.rerun()
 
 st.markdown("# KPI Dashboard MC et FEED")
 

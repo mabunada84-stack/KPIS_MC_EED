@@ -27,52 +27,54 @@ st.set_page_config(page_title="Dashboard KPIS MC et FEED", layout="wide")
 import random
 import time
 import streamlit as st
+import random
+import time
 
-# =====================================
-# MINUTE SECURITE
-# =====================================
+# ==================================
+# HSE - CONSIGNE DE SECURITE
+# ==================================
 
 consignes_securite = [
     "Port obligatoire des EPI avant toute intervention.",
-    "Verifier l'absence de tension avant toute operation electrique.",
-    "Respecter la procedure de consignation et deconsignation.",
-    "Ne jamais intervenir sur un equipement en fonctionnement.",
-    "Baliser et securiser la zone de travail.",
-    "Utiliser uniquement des outils en bon etat.",
-    "Verifier la validite du permis de travail.",
-    "Controler l'etat des equipements de levage avant utilisation.",
+    "Vérifier l'absence de tension avant toute opération électrique.",
+    "Respecter la procédure de consignation et déconsignation.",
+    "Ne jamais intervenir sur un équipement en fonctionnement.",
+    "Baliser et sécuriser la zone de travail.",
+    "Utiliser uniquement des outils en bon état.",
+    "Vérifier la validité du permis de travail.",
+    "Contrôler l'état des équipements de levage avant utilisation.",
     "Respecter les consignes de circulation sur site.",
-    "Signaler immediatement toute situation dangereuse.",
-    "Verifier la presence des moyens de lutte contre l'incendie.",
-    "Ne jamais neutraliser un dispositif de securite.",
+    "Signaler immédiatement toute situation dangereuse.",
+    "Vérifier la présence des moyens de lutte contre l'incendie.",
+    "Ne jamais neutraliser un dispositif de sécurité.",
     "Utiliser les points d'ancrage pour les travaux en hauteur.",
-    "Controler les elingues avant chaque levage.",
-    "Maintenir le poste de travail propre et ordonne.",
-    "Respecter les consignes des espaces confines.",
-    "Verifier l'atmosphere avant d'entrer dans un espace confine.",
+    "Contrôler les élingues avant chaque levage.",
+    "Maintenir le poste de travail propre et ordonné.",
+    "Respecter les consignes des espaces confinés.",
+    "Vérifier l'atmosphère avant d'entrer dans un espace confiné.",
     "Port obligatoire des lunettes de protection.",
-    "Port obligatoire des gants adaptes a l'activite.",
-    "Port obligatoire du casque de securite.",
+    "Port obligatoire des gants adaptés à l'activité.",
+    "Port obligatoire du casque de sécurité.",
     "Utiliser les protections auditives dans les zones bruyantes.",
-    "Verifier l'etat des echafaudages avant utilisation.",
-    "Ne pas travailler seul lors des operations a risque.",
+    "Vérifier l'état des échafaudages avant utilisation.",
+    "Ne pas travailler seul lors des opérations à risque.",
     "Identifier les risques avant de commencer le travail.",
-    "Respecter les limites de charge des equipements.",
-    "Securiser les outils lors des travaux en hauteur.",
-    "Maintenir les issues de secours degagees.",
-    "Controler les flexibles et raccords avant mise en service.",
-    "Respecter les distances de securite autour des equipements sous tension.",
-    "Verifier la bonne ventilation des zones de travail.",
-    "Utiliser les equipements homologues uniquement.",
+    "Respecter les limites de charge des équipements.",
+    "Sécuriser les outils lors des travaux en hauteur.",
+    "Maintenir les issues de secours dégagées.",
+    "Contrôler les flexibles et raccords avant mise en service.",
+    "Respecter les distances de sécurité autour des équipements sous tension.",
+    "Vérifier la bonne ventilation des zones de travail.",
+    "Utiliser les équipements homologués uniquement.",
     "Signaler tout incident ou presque accident.",
-    "Respecter les consignes d'arret d'urgence.",
-    "Verifier les detecteurs de gaz avant utilisation.",
-    "Respecter les plans de prevention etablis.",
-    "Controler l'etat des extincteurs de proximite.",
-    "Ne jamais contourner une procedure de securite.",
-    "Respecter les consignes specifiques du chantier.",
-    "Arreter immediatement les travaux en cas de danger.",
-    "La securite est la responsabilite de chacun."
+    "Respecter les consignes d'arrêt d'urgence.",
+    "Vérifier les détecteurs de gaz avant utilisation.",
+    "Respecter les plans de prévention établis.",
+    "Contrôler l'état des extincteurs de proximité.",
+    "Ne jamais contourner une procédure de sécurité.",
+    "Respecter les consignes spécifiques du chantier.",
+    "Arrêter immédiatement les travaux en cas de danger.",
+    "La sécurité est la responsabilité de chacun."
 ]
 
 if "consigne_securite" not in st.session_state:
@@ -83,573 +85,81 @@ if "consigne_validee" not in st.session_state:
 
 if not st.session_state.consigne_validee:
 
-    st.markdown("""<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"><style>
+    st.markdown("""
+    <style>
 
-    #MainMenu, footer, header, .stToolbar, [data-testid="stSidebar"] {
-        visibility: hidden !important;
-        height: 0 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        overflow: hidden !important;
-    }
-    .block-container {
-        padding: 0 !important;
-        max-width: 100% !important;
+    .security-container{
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        height:85vh;
     }
 
-    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-
-    :root {
-        --bg-deep: #060a13;
-        --bg-card: rgba(15, 23, 42, 0.92);
-        --bg-surface: rgba(30, 41, 59, 0.5);
-        --red-main: #dc2626;
-        --red-glow: rgba(220, 38, 38, 0.15);
-        --amber: #f59e0b;
-        --amber-dim: rgba(245, 158, 11, 0.12);
-        --amber-border: rgba(245, 158, 11, 0.3);
-        --text-primary: #f1f5f9;
-        --text-secondary: #94a3b8;
-        --text-muted: #475569;
-        --border-subtle: rgba(255, 255, 255, 0.06);
-        --green: #22c55e;
+    .security-card{
+        width:80%;
+        max-width:950px;
+        background:linear-gradient(135deg,#0f172a,#1e293b);
+        border-radius:25px;
+        padding:45px;
+        text-align:center;
+        color:white;
+        box-shadow:0px 12px 35px rgba(0,0,0,0.35);
     }
 
-    body {
-        font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
-        background: var(--bg-deep) !important;
-        color: var(--text-primary) !important;
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-        -webkit-font-smoothing: antialiased;
+    .security-title{
+        font-size:48px;
+        font-weight:700;
+        margin-bottom:10px;
     }
 
-    .bg-layer {
-        position: fixed;
-        inset: 0;
-        z-index: 0;
-        pointer-events: none;
-    }
-    .bg-grid {
-        background-image:
-            linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
-        background-size: 60px 60px;
-    }
-    .bg-glow-red {
-        background: radial-gradient(ellipse 70% 50% at 50% -10%, var(--red-glow), transparent 70%);
-    }
-    .bg-glow-amber {
-        background: radial-gradient(ellipse 50% 40% at 85% 90%, rgba(245,158,11,0.06), transparent 60%);
+    .security-subtitle{
+        font-size:24px;
+        color:#cbd5e1;
+        margin-bottom:30px;
     }
 
-    .particles {
-        position: fixed;
-        inset: 0;
-        z-index: 0;
-        overflow: hidden;
-    }
-    .particle {
-        position: absolute;
-        width: 2px;
-        height: 2px;
-        background: rgba(245, 158, 11, 0.25);
-        border-radius: 50%;
-        animation: float-up linear infinite;
-    }
-    @keyframes float-up {
-        0% { transform: translateY(100vh) scale(0); opacity: 0; }
-        10% { opacity: 1; }
-        90% { opacity: 1; }
-        100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+    .security-text{
+        background:white;
+        color:#1f2937;
+        border-left:8px solid #f59e0b;
+        border-radius:18px;
+        padding:30px;
+        font-size:28px;
+        font-weight:600;
+        line-height:1.6;
     }
 
-    .hse-card {
-        position: relative;
-        z-index: 10;
-        width: 100%;
-        max-width: 780px;
-        margin: 20px;
-        background: var(--bg-card);
-        backdrop-filter: blur(30px);
-        border: 1px solid var(--border-subtle);
-        border-radius: 24px;
-        overflow: hidden;
-        box-shadow:
-            0 1px 0 rgba(255,255,255,0.03) inset,
-            0 30px 80px -20px rgba(0,0,0,0.6),
-            0 0 120px -40px var(--red-glow);
-        opacity: 0;
-        transform: translateY(30px) scale(0.97);
-        animation: card-enter 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
-    }
-    @keyframes card-enter {
-        to { opacity: 1; transform: translateY(0) scale(1); }
+    .security-footer{
+        margin-top:30px;
+        font-size:22px;
+        color:#f8fafc;
+        font-style:italic;
     }
 
-    .top-bar {
-        background: linear-gradient(90deg, #991b1b, #dc2626, #b91c1c);
-        padding: 16px 36px;
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        position: relative;
-        overflow: hidden;
-    }
-    .top-bar::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 60%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-        animation: bar-shimmer 4s ease-in-out infinite;
-    }
-    @keyframes bar-shimmer {
-        0%, 100% { left: -60%; }
-        50% { left: 100%; }
-    }
-    .top-bar-icon {
-        font-size: 22px;
-        animation: pulse-warn 2s ease-in-out infinite;
-        flex-shrink: 0;
-    }
-    @keyframes pulse-warn {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.6; transform: scale(1.15); }
-    }
-    .top-bar-label {
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 3.5px;
-        text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.92);
-        position: relative;
-        z-index: 1;
-    }
-    .top-bar-separator {
-        width: 1px;
-        height: 20px;
-        background: rgba(255,255,255,0.2);
-        margin: 0 4px;
-        flex-shrink: 0;
-    }
-    .top-bar-status {
-        font-size: 10px;
-        font-weight: 600;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        color: rgba(255,255,255,0.55);
-        position: relative;
-        z-index: 1;
-    }
-
-    .card-body {
-        padding: 48px 52px 44px;
-    }
-
-    .header {
-        text-align: center;
-        margin-bottom: 40px;
-    }
-    .badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        background: var(--amber-dim);
-        border: 1px solid var(--amber-border);
-        border-radius: 100px;
-        padding: 7px 20px;
-        margin-bottom: 22px;
-        opacity: 0;
-        animation: fade-down 0.6s ease-out 0.5s forwards;
-    }
-    .badge-diamond {
-        width: 7px;
-        height: 7px;
-        background: var(--amber);
-        transform: rotate(45deg);
-        border-radius: 1px;
-    }
-    .badge-text {
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: 3px;
-        text-transform: uppercase;
-        color: var(--amber);
-    }
-    .title {
-        font-size: 36px;
-        font-weight: 800;
-        color: var(--text-primary);
-        letter-spacing: -0.5px;
-        line-height: 1.15;
-        margin-bottom: 14px;
-        opacity: 0;
-        animation: fade-down 0.6s ease-out 0.6s forwards;
-    }
-    .subtitle {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 13px;
-        font-weight: 400;
-        color: var(--text-muted);
-        letter-spacing: 1.5px;
-        opacity: 0;
-        animation: fade-down 0.6s ease-out 0.7s forwards;
-    }
-    .subtitle span {
-        padding: 0 14px;
-    }
-    .subtitle .sep {
-        width: 3px;
-        height: 3px;
-        background: var(--text-muted);
-        border-radius: 50%;
-        display: inline-block;
-    }
-    @keyframes fade-down {
-        from { opacity: 0; transform: translateY(-12px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-
-    .consigne-block {
-        position: relative;
-        background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.005));
-        border: 1px solid var(--border-subtle);
-        border-left: 4px solid var(--amber);
-        border-radius: 16px;
-        padding: 34px 38px;
-        margin-bottom: 36px;
-        opacity: 0;
-        animation: fade-up 0.7s ease-out 0.85s forwards;
-    }
-    .consigne-block::before {
-        content: '';
-        position: absolute;
-        top: -1px;
-        left: -1px;
-        width: 200px;
-        height: 200px;
-        background: radial-gradient(circle, rgba(245,158,11,0.06), transparent 70%);
-        pointer-events: none;
-        border-radius: 16px 0 0 0;
-    }
-    @keyframes fade-up {
-        from { opacity: 0; transform: translateY(14px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    .consigne-label {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-size: 9px;
-        font-weight: 700;
-        letter-spacing: 3px;
-        text-transform: uppercase;
-        color: var(--amber);
-        margin-bottom: 18px;
-    }
-    .consigne-label::after {
-        content: '';
-        flex: 1;
-        height: 1px;
-        background: linear-gradient(90deg, var(--amber-border), transparent);
-    }
-    .consigne-text {
-        position: relative;
-        z-index: 1;
-        font-size: 21px;
-        font-weight: 600;
-        color: var(--text-primary);
-        line-height: 1.7;
-    }
-
-    .footer-area {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 24px;
-        opacity: 0;
-        animation: fade-up 0.7s ease-out 1s forwards;
-    }
-    .quote {
-        font-size: 12.5px;
-        color: var(--text-muted);
-        font-style: italic;
-        line-height: 1.6;
-        max-width: 380px;
-    }
-    .quote strong {
-        color: var(--text-secondary);
-        font-style: normal;
-        font-weight: 500;
-    }
-    .timer-box {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        background: var(--bg-surface);
-        border: 1px solid var(--border-subtle);
-        border-radius: 14px;
-        padding: 14px 22px;
-        flex-shrink: 0;
-    }
-    .timer-ring {
-        position: relative;
-        width: 36px;
-        height: 36px;
-        flex-shrink: 0;
-    }
-    .timer-ring svg {
-        transform: rotate(-90deg);
-        width: 36px;
-        height: 36px;
-    }
-    .timer-ring-bg {
-        fill: none;
-        stroke: rgba(255,255,255,0.06);
-        stroke-width: 3;
-    }
-    .timer-ring-fg {
-        fill: none;
-        stroke: var(--amber);
-        stroke-width: 3;
-        stroke-linecap: round;
-        stroke-dasharray: 88;
-        stroke-dashoffset: 0;
-        filter: drop-shadow(0 0 4px rgba(245,158,11,0.4));
-    }
-    .timer-ring-text {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 11px;
-        font-weight: 700;
-        color: var(--amber);
-    }
-    .timer-info {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-    }
-    .timer-label {
-        font-size: 10px;
-        font-weight: 600;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        color: var(--text-muted);
-    }
-    .timer-sublabel {
-        font-size: 11px;
-        color: var(--text-secondary);
-        font-weight: 500;
-    }
-
-    .progress-track {
-        width: 100%;
-        height: 2px;
-        background: rgba(255,255,255,0.04);
-        border-radius: 2px;
-        margin-top: 34px;
-        overflow: hidden;
-        opacity: 0;
-        animation: fade-up 0.5s ease-out 1.1s forwards;
-    }
-    .progress-bar {
-        height: 100%;
-        background: linear-gradient(90deg, var(--amber), #fbbf24);
-        border-radius: 2px;
-        width: 0%;
-        animation: progress-fill 10s linear 1.2s forwards;
-        box-shadow: 0 0 8px rgba(245,158,11,0.3);
-    }
-    @keyframes progress-fill {
-        from { width: 0%; }
-        to { width: 100%; }
-    }
-
-    .bottom-bar {
-        background: rgba(0, 0, 0, 0.25);
-        border-top: 1px solid rgba(255,255,255,0.03);
-        padding: 16px 36px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 36px;
-    }
-    .pillar {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 11px;
-        font-weight: 500;
-        color: var(--text-muted);
-        letter-spacing: 0.8px;
-    }
-    .pillar-dot {
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        position: relative;
-    }
-    .pillar-dot::after {
-        content: '';
-        position: absolute;
-        inset: -3px;
-        border-radius: 50%;
-        opacity: 0.3;
-    }
-    .dot-hygiene { background: var(--green); }
-    .dot-hygiene::after { background: var(--green); }
-    .dot-sante { background: var(--amber); }
-    .dot-sante::after { background: var(--amber); }
-    .dot-env { background: var(--red-main); }
-    .dot-env::after { background: var(--red-main); }
-    .pillar-line {
-        width: 1px;
-        height: 16px;
-        background: rgba(255,255,255,0.06);
-    }
-
-    @media (max-width: 640px) {
-        .card-body { padding: 32px 24px 28px; }
-        .title { font-size: 26px; }
-        .consigne-text { font-size: 17px; }
-        .consigne-block { padding: 24px 20px; }
-        .footer-area {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 18px;
-        }
-        .quote { max-width: 100%; }
-        .timer-box { justify-content: center; }
-        .top-bar { padding: 14px 20px; }
-        .top-bar-status, .top-bar-separator { display: none; }
-        .bottom-bar { gap: 20px; flex-wrap: wrap; padding: 14px 20px; }
-        .pillar-line { display: none; }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-        *, *::before, *::after {
-            animation-duration: 0.01ms !important;
-            transition-duration: 0.01ms !important;
-        }
-        .particle { display: none; }
-    }
-
-    </style>""", unsafe_allow_html=True)
-
-    # Particules generées en JS
-    st.markdown("""<script>
-    (function(){
-        var c = document.createElement('div');
-        c.className = 'particles';
-        c.id = 'particles-container';
-        document.body.appendChild(c);
-        for(var i=0;i<18;i++){
-            var p = document.createElement('div');
-            p.className = 'particle';
-            p.style.left = (Math.random()*100)+'%';
-            p.style.animationDuration = (12+Math.random()*20)+'s';
-            p.style.animationDelay = (Math.random()*15)+'s';
-            var s = (1.5+Math.random()*2)+'px';
-            p.style.width = s;
-            p.style.height = s;
-            p.style.opacity = 0.15+Math.random()*0.25;
-            c.appendChild(p);
-        }
-    })();
-    </script>""", unsafe_allow_html=True)
-
-    # Fond
-    st.markdown("""<div class="bg-layer bg-grid"></div>
-    <div class="bg-layer bg-glow-red"></div>
-    <div class="bg-layer bg-glow-amber"></div>""", unsafe_allow_html=True)
-
-    consigne = st.session_state.consigne_securite
+    </style>
+    """, unsafe_allow_html=True)
 
     st.markdown(f"""
-    <div class="hse-card">
+    <div class="security-container">
+        <div class="security-card">
 
-        <div class="top-bar" role="alert">
-            <span class="top-bar-icon" aria-hidden="true">&#9888;</span>
-            <span class="top-bar-label">Alerte Securite - Lecture Obligatoire</span>
-            <span class="top-bar-separator"></span>
-            <span class="top-bar-status">Non acquittee</span>
-        </div>
-
-        <div class="card-body">
-
-            <header class="header">
-                <div class="badge">
-                    <div class="badge-diamond"></div>
-                    <span class="badge-text">Minute HSE</span>
-                </div>
-                <h1 class="title">Consigne de Securite</h1>
-                <p class="subtitle">
-                    <span>Hygiene</span>
-                    <i class="sep"></i>
-                    <span>Sante</span>
-                    <i class="sep"></i>
-                    <span>Environnement</span>
-                </p>
-            </header>
-
-            <div class="consigne-block" role="region" aria-label="Consigne de securite">
-                <div class="consigne-label">Consigne du jour</div>
-                <p class="consigne-text">{consigne}</p>
+            <div class="security-title">
+                🦺 HSE - CONSIGNE DE SÉCURITÉ
             </div>
 
-            <div class="footer-area">
-                <p class="quote">
-                    <strong>&#171; Aucune tache n'est si urgente ni si importante qu'elle justifie de la faire de maniere unsafe. &#187;</strong>
-                </p>
-                <div class="timer-box" aria-live="polite">
-                    <div class="timer-ring">
-                        <svg viewBox="0 0 36 36">
-                            <circle class="timer-ring-bg" cx="18" cy="18" r="14"></circle>
-                            <circle class="timer-ring-fg" cx="18" cy="18" r="14"></circle>
-                        </svg>
-                        <span class="timer-ring-text">10</span>
-                    </div>
-                    <div class="timer-info">
-                        <span class="timer-label">Redirection</span>
-                        <span class="timer-sublabel">dans 10 secondes</span>
-                    </div>
-                </div>
+            <div class="security-subtitle">
+                Sécurité • Santé • Environnement
             </div>
 
-            <div class="progress-track">
-                <div class="progress-bar"></div>
+            <div class="security-text">
+                ⚠️ {st.session_state.consigne_securite}
+            </div>
+
+            <div class="security-footer">
+                Aucun travail n'est plus urgent que la sécurité
             </div>
 
         </div>
-
-        <div class="bottom-bar">
-            <div class="pillar">
-                <span class="pillar-dot dot-hygiene"></span>
-                Securite
-            </div>
-            <div class="pillar-line"></div>
-            <div class="pillar">
-                <span class="pillar-dot dot-sante"></span>
-                Sante
-            </div>
-            <div class="pillar-line"></div>
-            <div class="pillar">
-                <span class="pillar-dot dot-env"></span>
-                Environnement
-            </div>
-        </div>
-
     </div>
     """, unsafe_allow_html=True)
 
@@ -659,7 +169,6 @@ if not st.session_state.consigne_validee:
     st.rerun()
 
     st.stop()
-
 # =====================================
 # VOTRE DASHBOARD COMMENCE ICI
 # =====================================

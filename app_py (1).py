@@ -33,6 +33,10 @@ import streamlit as st
 import random
 import time
 
+import streamlit as st
+import random
+import time
+
 # ==================================================
 # HSE - CONSIGNE DE SECURITE
 # ==================================================
@@ -108,15 +112,24 @@ if not st.session_state.hse_affiche:
     consigne = random.choice(consignes)
 
     st.markdown("""
-    <h1 style='text-align:center;font-size:55px;'>
+    <h1 style="
+        text-align:center;
+        font-size:60px;
+        color:#0f172a;
+        margin-bottom:10px;
+    ">
         🦺 HSE - CONSIGNE DE SÉCURITÉ
     </h1>
     """, unsafe_allow_html=True)
 
     st.markdown("""
-    <h3 style='text-align:center;color:gray;'>
+    <h2 style="
+        text-align:center;
+        color:#64748b;
+        margin-bottom:30px;
+    ">
         Sécurité • Santé • Environnement
-    </h3>
+    </h2>
     """, unsafe_allow_html=True)
 
     st.markdown(
@@ -124,31 +137,32 @@ if not st.session_state.hse_affiche:
         <div style="
             background-color:#fff3cd;
             border-left:10px solid #ffc107;
-            padding:30px;
+            padding:35px;
             border-radius:15px;
-            font-size:34px;
+            font-size:38px;
             font-weight:bold;
             text-align:center;
-            margin-top:25px;
-            margin-bottom:25px;
+            margin-top:20px;
+            margin-bottom:30px;
         ">
             ⚠️ {consigne}
         </div>
         """,
         unsafe_allow_html=True
     )
-st.markdown("""
-<div style="
-    text-align:center;
-    font-size:32px;
-    font-weight:bold;
-    color:#198754;
-    margin-top:20px;
-    margin-bottom:20px;
-">
-    Aucun travail n'est plus urgent que la sécurité
-</div>
-""", unsafe_allow_html=True)
+
+    st.markdown("""
+    <h1 style="
+        text-align:center;
+        color:#198754;
+        font-size:50px;
+        font-weight:800;
+        margin-top:20px;
+        margin-bottom:20px;
+    ">
+        Aucun travail n'est plus urgent que la sécurité
+    </h1>
+    """, unsafe_allow_html=True)
 
     with st.spinner("Chargement du tableau de bord..."):
         time.sleep(8)
@@ -158,6 +172,9 @@ st.markdown("""
 
     st.stop()
 
+# ==================================================
+# TON DASHBOARD COMMENCE ICI
+# ==================================================
 st.markdown("# KPI Dashboard MC et FEED")
 
 def rename_safe(df, old_names, new_names):

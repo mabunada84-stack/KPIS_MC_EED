@@ -24,22 +24,12 @@ except:
         pass
 
 st.set_page_config(page_title="Dashboard KPIS MC et FEED", layout="wide")
-import random
-import time
-import streamlit as st
-import random
-import time
 
-import random
-import time
-import streamlit as st
-
-import streamlit as st
 import random
 import time
 
 # ==================================
-# HSE - MESSAGE DE PREVENTION
+# HSE - CONSIGNE DE SECURITE
 # ==================================
 
 consignes_securite = [
@@ -115,7 +105,7 @@ if not st.session_state.hse_affiche:
                 font-weight:700;
                 margin-bottom:15px;
             ">
-                🦺 HSE - MESSAGE DE PRÉVENTION
+                🦺 HSE - CONSIGNE DE SÉCURITÉ
             </div>
 
             <div style="
@@ -123,7 +113,7 @@ if not st.session_state.hse_affiche:
                 color:#cbd5e1;
                 margin-bottom:30px;
             ">
-                Consigne Sécurité du Jour
+                Sécurité • Santé • Environnement
             </div>
 
             <div style="
@@ -144,8 +134,17 @@ if not st.session_state.hse_affiche:
                 font-size:22px;
                 color:#f8fafc;
                 font-style:italic;
+                font-weight:bold;
             ">
-                Zéro accident est l'affaire de tous
+                Aucun travail n'est plus urgent que la sécurité
+            </div>
+
+            <div style="
+                margin-top:15px;
+                font-size:18px;
+                color:#cbd5e1;
+            ">
+                Chargement du tableau de bord...
             </div>
 
         </div>
@@ -157,6 +156,7 @@ if not st.session_state.hse_affiche:
     st.session_state.hse_affiche = True
     st.rerun()
 
+    st.stop()
 # ==================================
 # A PARTIR D'ICI COMMENCE TON DASHBOARD
 # ==================================

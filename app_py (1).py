@@ -34,7 +34,7 @@ st.markdown(
         font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
     .header-anomalie {
-        background: linear-gradient(90deg, #c0392b, #e74c3c); color: white; padding: 15px 20px;
+        background: linear(90deg, #c0392b, #e74c3c); color: white; padding: 15px 20px;
         border-radius: 8px; margin-bottom: 0px; text-align: center; font-size: 1.4em;
         font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
@@ -215,7 +215,7 @@ def get_groupe_metier(poste):
     if "E" in p: return "Électrique"
     elif "M" in p: return "Mécanique"
     elif "R" in p: return "Instrumentation"
-    elif "G" in p: return "Génie civil" # Changement ici
+    elif "G" in p: return "Génie civil"
     return "Autre"
 
 def get_groupe_atelier(poste):
@@ -322,8 +322,7 @@ if not use_new_files or (ot_file is not None and avis_file is not None):
         calculated_kpis_df = results['calculated_kpis_df']
         df_processed = results['df_processed']
 
-        cible = pd.DataFrame([{
-            "TAUX_REALISATION_CORRECTIF/PT": 85, "OT préparation <1 mois": 80, "OT préparation >3 mois": 5, "OT préparation 1mois< <3mois": 15,
+        cible = pd.DataFrame([{            "TAUX_REALISATION_CORRECTIF/PT": 85, "OT préparation <1 mois": 80, "OT préparation >3 mois": 5, "OT préparation 1mois< <3mois": 15,
             "OT planification <1 mois": 80, "OT planification >3 mois": 5, "OT planification 1mois< <3mois": 15,
             "OT exécution <1 mois": 80, "OT exécution >3 mois": 5, "OT exécution 1mois< <3mois": 15,
             "appel avis approuvé": 95, "OT LANC ESTIME": 100, "Backlog préparation caractérisé": 100,
@@ -454,7 +453,8 @@ if not use_new_files or (ot_file is not None and avis_file is not None):
             df_class_display["Score KPIs Qualité"] = df_class_display["Score KPIs Qualité"].apply(lambda x: f"{x:.2f} %") # Fixed: "Score Kpi1s Qualité" to "Score KPIs Qualité"
             df_class_display["Total performance "] = df_class_display["Total performance "].apply(lambda x: f"{x:.2f} %")
 
-            total_gen_class = pd.DataFrame([{
+            total_gen_class = pd.DataFrame([
+                {
                 "Poste travail princ.": "Total général",
                 "Score KPIs Quantité": f"{df_class['Score KPIs Quantité'].mean():.2f} %",
                 "Score KPIs Qualité": f"{df_class['Score KPIs Qualité'].mean():.2f} %",
@@ -467,17 +467,17 @@ if not use_new_files or (ot_file is not None and avis_file is not None):
             st.markdown("---")
             col_top1, col_top2, col_top3 = st.columns(3)
             with col_top1:
-                st.markdown("#### Top 5 Quantité")
+                st.markdown("#### Top 5 Quantité par Postes de Travail à Améliorer – KPIs Quantité")
                 top5 = df_class.nsmallest(5, "Score KPIs Quantité")[["Poste travail princ.", "Score KPIs Quantité"]]
                 top5["Score KPIs Quantité"] = top5["Score KPIs Quantité"].round(2)
                 st.dataframe(top5.set_index("Poste travail princ."))
             with col_top2:
-                st.markdown("#### Top 5 Qualité")
+                st.markdown("#### Top 5 Qualité par Postes de Travail à Améliorer – KPIs Qualite")
                 top5 = df_class.nsmallest(5, "Score KPIs Qualité")[["Poste travail princ.", "Score KPIs Qualité"]]
                 top5["Score KPIs Qualité"] = top5["Score KPIs Qualité"].round(2)
                 st.dataframe(top5.set_index("Poste travail princ."))
             with col_top3:
-                st.markdown("#### Top 5 Performance Totale")
+                st.markdown("#### Top 5 Performance Totale par Postes de Travail à Améliorer – Performance Globale")
                 top5 = df_class.nsmallest(5, "Total performance ")[["Poste travail princ.", "Total performance "]]
                 top5["Total performance "] = top5["Total performance "].round(2)
                 st.dataframe(top5.set_index("Poste travail princ."))
@@ -490,23 +490,36 @@ if not use_new_files or (ot_file is not None and avis_file is not None):
             c1, c2, c3 = st.columns(3)
 
             with c1:
+                st.markdown('<h4 style="text-align: center; font-size: 18px;">Performance par Métier</h4>', unsafe_allow_html=True)
                 df_m = df_class.groupby("Métier")["Total performance "].mean().reset_index()
-                chart_m = alt.Chart(df_m).mark_bar(color='#3498db').encode(x='Métier:O', y='Total performance :Q')
-                text_m = chart_m.mark_text(align='center', baseline='bottom', dy=-5).encode(text=alt.Text('Total performance :Q', format='.1f'))
-                st.altair_chart((chart_m + text_m).configure_axisY(labels=False, ticks=False, grid=False, domain=False).configure_view(stroke='transparent').properties(height=400), use_container_width=True)
+                chart_m = alt.Chart(df_m).mark_bar(color='#3498db').encode(
+                    x=alt.X('Métier:O', axis=alt.Axis(labels=True, title='Métier', titleFontSize=16, labelFontSize=16)),
+                    y=alt.Y('Total performance :Q', axis=alt.Axis(labels=True, title='Performance Totale', titleFontSize=16, labelFontSize=16))
+                )
+                text_m = chart_m.mark_text(align='center', baseline='bottom', dy=-5).encode(text=alt.Text('Total performance :Q', format='.1f'), color=alt.value('black'), fontSize=16)
+                st.altair_chart((chart_m + text_m).configure_view(stroke='transparent').properties(height=400), use_container_width=True)
 
             with c2:
+                st.markdown('<h4 style="text-align: center; font-size: 18px;">Performance par Atelier</h4>', unsafe_allow_html=True)
                 df_a = df_class.groupby("Atelier")["Total performance "].mean().reset_index()
-                chart_a = alt.Chart(df_a).mark_bar(color='#e74c3c').encode(x='Atelier:O', y='Total performance :Q')
-                text_a = chart_a.mark_text(align='center', baseline='bottom', dy=-5).encode(text=alt.Text('Total performance :Q', format='.1f'))
-                st.altair_chart((chart_a + text_a).configure_axisY(labels=False, ticks=False, grid=False, domain=False).configure_view(stroke='transparent').properties(height=400), use_container_width=True)
+                # Rename 'Autre' to 'Génie civil' for display in the chart
+                df_a['Atelier'] = df_a['Atelier'].replace('Autre', 'Génie civil')
+                chart_a = alt.Chart(df_a).mark_bar(color='#e74c3c').encode(
+                    x=alt.X('Atelier:O', axis=alt.Axis(labels=True, title='Atelier', titleFontSize=16, labelFontSize=16)),
+                    y=alt.Y('Total performance :Q', axis=alt.Axis(labels=True, title='Performance Totale', titleFontSize=16, labelFontSize=16))
+                )
+                text_a = chart_a.mark_text(align='center', baseline='bottom', dy=-5).encode(text=alt.Text('Total performance :Q', format='.1f'), color=alt.value('black'), fontSize=16)
+                st.altair_chart((chart_a + text_a).configure_view(stroke='transparent').properties(height=400), use_container_width=True)
 
-            # MODIFICATION ICI : 3ème graphique "Génie civil" au lieu de "Division"
             with c3:
+                st.markdown('<h4 style="text-align: center; font-size: 18px;">Performance par Division</h4>', unsafe_allow_html=True)
                 df_d = df_class.groupby("Division")["Total performance "].mean().reset_index() # Fixed: "Génie civil" to "Division"
-                chart_d = alt.Chart(df_d).mark_bar(color='#2ecc71').encode(x='Division:O', y='Total performance :Q') # Fixed: "Génie civil" to "Division"
-                text_d = chart_d.mark_text(align='center', baseline='bottom', dy=-5).encode(text=alt.Text('Total performance :Q', format='.1f'))
-                st.altair_chart((chart_d + text_d).configure_axisY(labels=False, ticks=False, grid=False, domain=False).configure_view(stroke='transparent').properties(height=400), use_container_width=True)
+                chart_d = alt.Chart(df_d).mark_bar(color='#2ecc71').encode(
+                    x=alt.X('Division:O', axis=alt.Axis(labels=True, title='Division', titleFontSize=16, labelFontSize=16)),
+                    y=alt.Y('Total performance :Q', axis=alt.Axis(labels=True, title='Performance Totale', titleFontSize=16, labelFontSize=16))
+                )
+                text_d = chart_d.mark_text(align='center', baseline='bottom', dy=-5).encode(text=alt.Text('Total performance :Q', format='.1f'), color=alt.value('black'), fontSize=16)
+                st.altair_chart((chart_d + text_d).configure_view(stroke='transparent').properties(height=400), use_container_width=True)
 
         else:
             st.markdown('<div class="header-anomalie">TABLEAU DE BORD DES ANOMALIES</div>', unsafe_allow_html=True)

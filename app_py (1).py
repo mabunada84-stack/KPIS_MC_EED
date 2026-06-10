@@ -396,16 +396,24 @@ def main():
                 if "All" in selected_divisions or len(selected_divisions) == 0: selected_divisions = ["All"]
 
             # Filtre Date automatique : 01/01/2025 à aujourd'hui, calendrier forcé en français
-            start_date = pd.to_datetime("2025-01-01")
-            end_date = pd.to_datetime(datetime.now().date())
-            col_date = st.columns(1)[0]
-            with col_date:
-                st.date_input(
-                    "📅 Filtre Date de début planifiée (Du - Au)", 
-                    value=[start_date, end_date], 
-                    format="DD/MM/YYYY", 
-                    disabled=True
-                )
+           # ==========================================
+
+
+default_start = datetime(2025, 1, 1).date()
+default_end = datetime.today().date()
+
+date_range = st.date_input(
+    "📅 Filtre Date de début planifiée (Du - Au)",
+    value=(default_start, default_end),
+    format="DD/MM/YYYY"
+)
+
+if len(date_range) == 2:
+    start_date = pd.to_datetime(date_range[0])
+    end_date = pd.to_datetime(date_range[1])
+else:
+    start_date = pd.to_datetime(default_start)
+    end_date = pd.to_datetime(default_end)
 
             def match_filters(poste):
                 p = str(poste).upper()
@@ -585,17 +593,17 @@ def main():
                 st.markdown("---")
                 col_top1, col_top2, col_top3 = st.columns(3)
                 with col_top1:
-                    st.markdown("#### Top 5 Quantité")
+                    st.markdown("#### Top 5 Postes Impactant la Quantité")
                     top5 = df_class.nsmallest(5, "Score KPIs Quantité")[["Poste travail princ.", "Score KPIs Quantité"]]
                     top5["Score KPIs Quantité"] = top5["Score KPIs Quantité"].round(2)
                     st.dataframe(top5.set_index("Poste travail princ."))
                 with col_top2:
-                    st.markdown("#### Top 5 Qualité")
+                    st.markdown("#### Top 5 Postes Impactant la Qualité")
                     top5 = df_class.nsmallest(5, "Score KPIs Qualité")[["Poste travail princ.", "Score KPIs Qualité"]]
                     top5["Score KPIs Qualité"] = top5["Score KPIs Qualité"].round(2)
                     st.dataframe(top5.set_index("Poste travail princ."))
                 with col_top3:
-                    st.markdown("#### Top 5 Performance Totale")
+                    st.markdown("#### Top 5 Postes Impactant la Performance Globale")
                     top5 = df_class.nsmallest(5, "Total performance ")[["Poste travail princ.", "Total performance "]]
                     top5["Total performance "] = top5["Total performance "].round(2)
                     st.dataframe(top5.set_index("Poste travail princ."))

@@ -50,7 +50,6 @@ def inject_custom_css():
             position: relative;
             overflow: hidden;
         }
-        
         .main-header::before {
             content: '';
             position: absolute;
@@ -61,7 +60,6 @@ def inject_custom_css():
             background: rgba(255,255,255,0.05);
             border-radius: 50%;
         }
-        
         .main-header h1 {
             color: white;
             font-size: 30px;
@@ -69,14 +67,12 @@ def inject_custom_css():
             margin: 0;
             letter-spacing: -0.5px;
         }
-        
         .main-header .subtitle {
             color: rgba(255,255,255,0.7);
             font-size: 14px;
             font-weight: 400;
             margin-top: 4px;
         }
-        
         .main-header .date-badge {
             position: absolute;
             top: 28px;
@@ -107,7 +103,6 @@ def inject_custom_css():
             box-shadow: var(--shadow);
             border: 1px solid var(--border);
         }
-        
         .chart-title {
             font-size: 14px;
             font-weight: 700;
@@ -127,20 +122,17 @@ def inject_custom_css():
             box-shadow: 0 2px 6px rgba(0,0,0,0.03);
             transition: all 0.2s ease;
         }
-        
         .synthese-row:hover {
             transform: translateX(4px);
             box-shadow: 0 4px 16px rgba(0,0,0,0.08);
             border-left: 4px solid var(--accent);
         }
-        
         .synthese-kpi-name {
             font-weight: 700;
             color: var(--primary);
             font-size: 13px;
             min-width: 260px;
         }
-        
         .synthese-count {
             background: var(--primary);
             color: white;
@@ -152,13 +144,11 @@ def inject_custom_css():
             text-align: center;
             margin: 0 14px;
         }
-        
         .synthese-action {
             color: var(--text-secondary);
             font-size: 12px;
             flex: 1;
         }
-        
         .top-badge {
             display: inline-block;
             padding: 3px 10px;
@@ -168,7 +158,6 @@ def inject_custom_css():
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        
         .top-badge.red { background: #fed7d7; color: #c53030; }
         .top-badge.orange { background: #feebc8; color: #c05621; }
         .top-badge.yellow { background: #fefcbf; color: #975a16; }
@@ -178,7 +167,6 @@ def inject_custom_css():
             padding: 50px 20px;
             color: var(--text-secondary);
         }
-        
         .empty-state .icon { font-size: 44px; margin-bottom: 14px; }
         .empty-state h3 { color: var(--text); font-size: 17px; font-weight: 600; margin-bottom: 6px; }
         
@@ -211,33 +199,39 @@ def inject_custom_css():
             border-radius: 8px;
         }
         
-        .stTableContainer { width: 100% !important; }
-        
-        .dataframe th {
-            background: var(--primary) !important;
-            color: white !important;
-            font-weight: 700 !important;
-            font-size: 11px !important;
-            text-transform: uppercase !important;
-            letter-spacing: 0.3px !important;
-            padding: 10px 8px !important;
-            border: none !important;
+        /* TABLEAUX HTML PLEINE LARGEUR */
+        .table-full-width {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'Inter', sans-serif;
+            font-size: 10px;
+            display: block;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .table-full-width thead th {
+            background: var(--primary);
+            color: white;
+            font-weight: 700;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            padding: 8px 5px;
+            border: none;
             white-space: nowrap;
             position: sticky;
             top: 0;
             z-index: 10;
         }
-        
-        .dataframe td {
-            padding: 8px !important;
-            font-size: 11px !important;
-            border-bottom: 1px solid var(--border) !important;
+        .table-full-width tbody td {
+            padding: 6px 5px;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
         }
+        .table-full-width tbody tr:nth-child(even) td { background: #f9fbfd; }
+        .table-full-width tbody tr:hover td { background: #edf2f7 !important; }
         
-        .dataframe tr:hover td { background: #f7fafc !important; }
-        .dataframe tr:nth-child(even) td { background: #f9fbfd !important; }
-        .dataframe tr:nth-child(even):hover td { background: #edf2f7 !important; }
-        
+        /* ONGLETS */
         .stTabs [data-baseweb="tab-list"] {
             gap: 4px;
             background: #edf2f7;
@@ -266,10 +260,6 @@ def inject_custom_css():
             font-size: 14px;
             box-shadow: 0 4px 12px rgba(30, 58, 95, 0.3);
             width: 100%;
-        }
-        .stButton > button[kind="primary"]:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(30, 58, 95, 0.4);
         }
         .stDownloadButton > button {
             background: linear-gradient(135deg, var(--success) 0%, #276749 100%);
@@ -381,18 +371,10 @@ def main():
         st.markdown("""
         <div style="min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(135deg, #1a365d 0%, #2d3748 50%, #1a365d 100%); padding:40px;">
             <div style="font-size:64px; margin-bottom:20px;">🦺</div>
-            <h1 style="text-align:center; font-size:42px; color:#fff; font-weight:900; margin:0; letter-spacing:-1px;">
-                HSE - CONSIGNE DE SÉCURITÉ
-            </h1>
-            <p style="text-align:center; color:rgba(255,255,255,0.6); font-size:18px; margin-top:8px; font-weight:400; letter-spacing:3px; text-transform:uppercase;">
-                Sécurité &bull; Santé &bull; Environnement
-            </p>
-            <div style="background:linear-gradient(135deg, #f6e05e 0%, #ed8936 100%); padding:36px 48px; border-radius:20px; font-size:28px; font-weight:700; text-align:center; margin-top:40px; margin-bottom:40px; color:#1a202c; max-width:800px; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-                ⚠️ {consigne}
-            </div>
-            <h2 style="text-align:center; color:#48bb78; font-size:32px; font-weight:900; letter-spacing:-0.5px;">
-                Aucun travail n'est plus urgent que la sécurité
-            </h2>
+            <h1 style="text-align:center; font-size:42px; color:#fff; font-weight:900; margin:0; letter-spacing:-1px;">HSE - CONSIGNE DE SÉCURITÉ</h1>
+            <p style="text-align:center; color:rgba(255,255,255,0.6); font-size:18px; margin-top:8px; font-weight:400; letter-spacing:3px; text-transform:uppercase;">Sécurité &bull; Santé &bull; Environnement</p>
+            <div style="background:linear-gradient(135deg, #f6e05e 0%, #ed8936 100%); padding:36px 48px; border-radius:20px; font-size:28px; font-weight:700; text-align:center; margin-top:40px; margin-bottom:40px; color:#1a202c; max-width:800px; box-shadow:0 20px 60px rgba(0,0,0,0.3);">⚠️ {consigne}</div>
+            <h2 style="text-align:center; color:#48bb78; font-size:32px; font-weight:900; letter-spacing:-0.5px;">Aucun travail n'est plus urgent que la sécurité</h2>
             <div style="margin-top:40px; width:200px; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden;">
                 <div style="width:100%; height:100%; background:linear-gradient(90deg, #48bb78, #38a169); border-radius:2px; animation:loading 5.5s ease-in-out forwards;"></div>
             </div>
@@ -524,40 +506,120 @@ def main():
         results['calculated_kpis_df'] = calculated_kpis_df
         return results
 
-    def highlight_kpis(row):
-        styles = []
-        if row.name == 'CIBLE': return ['padding: 8px 6px; background-color: #1e3a5f; color: #ffffff; font-weight: 700; font-size: 11px;'] * len(row)
-        if row.name == 'Total général': return ['padding: 8px 6px; background-color: #e2e8f0; color: #1a202c; font-weight: 800; font-size: 11px; border-top: 3px solid #1e3a5f;'] * len(row)
-        for col in row.index:
-            s = 'padding: 8px 6px; font-size: 11px;'
-            try: v = float(row[col])
-            except: styles.append(s); continue
-            if col in ["OT préparation <1 mois", "OT planification <1 mois", "OT exécution <1 mois"]:
-                s += 'background-color:#c6efce; color:#006100; font-weight:600;' if v >= 80 else ('background-color:#ffeb9c; color:#9c6500; font-weight:600;' if v >= 75 else 'background-color:#ffc7ce; color:#9c0006; font-weight:600;')
-            elif col in ["OT préparation 1mois< <3mois", "OT planification 1mois< <3mois", "OT exécution 1mois< <3mois"]:
-                s += 'background-color:#c6efce; color:#006100; font-weight:600;' if v <= 15 else 'background-color:#ffc7ce; color:#9c0006; font-weight:600;'
-            elif col in ["OT préparation >3 mois", "OT planification >3 mois", "OT exécution >3 mois"]:
-                s += 'background-color:#c6efce; color:#006100; font-weight:600;' if v <= 5 else 'background-color:#ffc7ce; color:#9c0006; font-weight:600;'
-            elif col == "TAUX_REALISATION_CORRECTIF/PT":
-                s += 'background-color:#c6efce; color:#006100; font-weight:600;' if v >= 85 else ('background-color:#ffeb9c; color:#9c6500; font-weight:600;' if v >= 80 else 'background-color:#ffc7ce; color:#9c0006; font-weight:600;')
-            elif col == "appel avis approuvé":
-                s += 'background-color:#c6efce; color:#006100; font-weight:600;' if v >= 95 else ('background-color:#ffeb9c; color:#9c6500; font-weight:600;' if v >= 90 else 'background-color:#ffc7ce; color:#9c0006; font-weight:600;')
-            elif col in ["OT LANC ESTIME", "Backlog préparation caractérisé", "Backlog planification caractérisé", "OT CONFIME", "OT_COR_EGAL"]:
-                s += 'background-color:#c6efce; color:#006100; font-weight:600;' if v >= 100 else ('background-color:#ffeb9c; color:#9c6500; font-weight:600;' if v >= 95 else 'background-color:#ffc7ce; color:#9c0006; font-weight:600;')
-            styles.append(s)
-        return styles
+    # Styles HTML pour les tableaux pleine largeur
+    def get_kpi_cell_style(val, col):
+        try: v = float(val)
+        except: return ""
+        if col in ["OT préparation <1 mois", "OT planification <1 mois", "OT exécution <1 mois"]:
+            if v >= 80: return "background-color:#c6efce; color:#006100; font-weight:600;"
+            elif v >= 75: return "background-color:#ffeb9c; color:#9c6500; font-weight:600;"
+            else: return "background-color:#ffc7ce; color:#9c0006; font-weight:600;"
+        elif col in ["OT préparation 1mois< <3mois", "OT planification 1mois< <3mois", "OT exécution 1mois< <3mois"]:
+            if v <= 15: return "background-color:#c6efce; color:#006100; font-weight:600;"
+            else: return "background-color:#ffc7ce; color:#9c0006; font-weight:600;"
+        elif col in ["OT préparation >3 mois", "OT planification >3 mois", "OT exécution >3 mois"]:
+            if v <= 5: return "background-color:#c6efce; color:#006100; font-weight:600;"
+            else: return "background-color:#ffc7ce; color:#9c0006; font-weight:600;"
+        elif col == "TAUX_REALISATION_CORRECTIF/PT":
+            if v >= 85: return "background-color:#c6efce; color:#006100; font-weight:600;"
+            elif v >= 80: return "background-color:#ffeb9c; color:#9c6500; font-weight:600;"
+            else: return "background-color:#ffc7ce; color:#9c0006; font-weight:600;"
+        elif col == "appel avis approuvé":
+            if v >= 95: return "background-color:#c6efce; color:#006100; font-weight:600;"
+            elif v >= 90: return "background-color:#ffeb9c; color:#9c6500; font-weight:600;"
+            else: return "background-color:#ffc7ce; color:#9c0006; font-weight:600;"
+        elif col in ["OT LANC ESTIME", "Backlog préparation caractérisé", "Backlog planification caractérisé", "OT CONFIME", "OT_COR_EGAL"]:
+            if v >= 100: return "background-color:#c6efce; color:#006100; font-weight:600;"
+            elif v >= 95: return "background-color:#ffeb9c; color:#9c6500; font-weight:600;"
+            else: return "background-color:#ffc7ce; color:#9c0006; font-weight:600;"
+        return ""
 
-    def highlight_anomalies(row):
-        styles = []
-        if row.name == 'Total général': return ['padding: 8px 6px; background-color: #1e3a5f; color: #ffffff; font-weight: 800; font-size: 11px;'] * len(row)
-        for val in row:
-            try: v = int(val)
-            except: styles.append('padding: 8px 6px; font-size: 11px;'); continue
-            if v == 0: styles.append('padding: 8px 6px; font-size: 11px; color: #a0aec0;')
-            elif v <= 3: styles.append('padding: 8px 6px; font-size: 11px; background-color: #ffeb9c; color: #9c6500; font-weight: 600;')
-            elif v <= 10: styles.append('padding: 8px 6px; font-size: 11px; background-color: #fed7d7; color: #c53030; font-weight: 600;')
-            else: styles.append('padding: 8px 6px; font-size: 11px; background-color: #fc8181; color: #742a2a; font-weight: 800;')
-        return styles
+    def df_to_html_styled(df, is_cible=False, is_total=False):
+        html = '<table class="table-full-width"><thead><tr>'
+        for col in df.columns:
+            html += f'<th>{col}</th>'
+        html += '</tr></thead><tbody>'
+        for idx, row in df.iterrows():
+            is_c = idx == 'CIBLE'
+            is_t = idx == 'Total général'
+            if is_c:
+                html += '<tr>'
+            elif is_t:
+                html += '<tr style="border-top:3px solid #1e3a5f;">'
+            else:
+                html += '<tr>'
+            for col in df.columns:
+                val = row[col]
+                if is_c:
+                    html += f'<td style="padding:8px 5px; background-color:#1e3a5f; color:#ffffff; font-weight:700; font-size:10px;">{val}</td>'
+                elif is_t:
+                    html += f'<td style="padding:8px 5px; background-color:#e2e8f0; color:#1a202c; font-weight:800; font-size:10px;">{val}</td>'
+                else:
+                    style = get_kpi_cell_style(val, col)
+                    html += f'<td style="padding:6px 5px; font-size:10px; {style}">{val}</td>'
+            html += '</tr>'
+        html += '</tbody></table>'
+        return html
+
+    def get_class_cell_style(val, col):
+        try:
+            s = str(val); v = float(s.replace(' %', '').strip()) if ' %' in s else float(s)
+            if v >= 90: return "background-color:#c6efce; color:#006100; font-weight:700;"
+            elif v >= 80: return "background-color:#ffeb9c; color:#9c6500; font-weight:700;"
+            else: return "background-color:#ffc7ce; color:#9c0006; font-weight:700;"
+        except: return ""
+
+    def class_df_to_html(df):
+        html = '<table class="table-full-width"><thead><tr>'
+        for col in df.columns:
+            html += f'<th>{col}</th>'
+        html += '</tr></thead><tbody>'
+        for idx, row in df.iterrows():
+            is_t = row["Poste travail princ."] == "Total général"
+            if is_t:
+                html += '<tr style="border-top:3px solid #1e3a5f;">'
+            else:
+                html += '<tr>'
+            for col in df.columns:
+                val = row[col]
+                if is_t:
+                    html += f'<td style="padding:8px 5px; background-color:#e2e8f0; color:#1a202c; font-weight:800; font-size:10px;">{val}</td>'
+                else:
+                    style = get_class_cell_style(val, col) if col in ["Score KPIs Quantité", "Score KPIs Qualité", "Total performance "] else ""
+                    html += f'<td style="padding:6px 5px; font-size:10px; {style}">{val}</td>'
+            html += '</tr>'
+        html += '</tbody></table>'
+        return html
+
+    def get_anomalie_cell_style(val):
+        try: v = int(val)
+        except: return ""
+        if v == 0: return "color:#a0aec0;"
+        elif v <= 3: return "background-color:#ffeb9c; color:#9c6500; font-weight:600;"
+        elif v <= 10: return "background-color:#fed7d7; color:#c53030; font-weight:600;"
+        else: return "background-color:#fc8181; color:#742a2a; font-weight:800;"
+
+    def anomalies_df_to_html(df):
+        html = '<table class="table-full-width"><thead><tr>'
+        for col in df.columns:
+            html += f'<th>{col}</th>'
+        html += '</tr></thead><tbody>'
+        for idx, row in df.iterrows():
+            is_t = idx == 'Total général'
+            if is_t:
+                html += '<tr>'
+            else:
+                html += '<tr>'
+            for col in df.columns:
+                val = row[col]
+                if is_t:
+                    html += f'<td style="padding:8px 5px; background-color:#1e3a5f; color:#ffffff; font-weight:800; font-size:10px;">{val}</td>'
+                else:
+                    style = get_anomalie_cell_style(val)
+                    html += f'<td style="padding:6px 5px; font-size:10px; {style}">{val}</td>'
+            html += '</tr>'
+        html += '</tbody></table>'
+        return html
 
     def highlight_classification_table_kpis(row):
         styles = ['padding: 8px 6px; font-size: 11px;'] * len(row)
@@ -659,7 +721,6 @@ def main():
                 df_ot_raw = pd.read_excel("ot.xlsx")
                 avis_df_raw = pd.read_excel("avis.xlsx")
 
-            # Exclure cresseurs sur les fichiers bruts
             df_ot_raw = exclure_cresseurs(df_ot_raw)
             avis_df_raw = exclure_cresseurs(avis_df_raw)
 
@@ -668,11 +729,8 @@ def main():
             for col in ["Créé le", "Début souhaité", "Date de la clôture"]:
                 if col in avis_df_raw.columns: avis_df_raw[col] = pd.to_datetime(avis_df_raw[col], errors="coerce")
 
-            # Liste des postes sans cresseurs
             all_postes_master_list = sorted(
-                df_ot_raw[
-                    df_ot_raw["Poste travail princ."].astype(str).str.startswith(("SF1", "SF2"), na=False)
-                ]["Poste travail princ."].dropna().unique().tolist()
+                df_ot_raw[df_ot_raw["Poste travail princ."].astype(str).str.startswith(("SF1", "SF2"), na=False)]["Poste travail princ."].dropna().unique().tolist()
             )
 
             if "All" in selected_postes or len(selected_postes) == 0: selected_postes = all_postes_master_list
@@ -706,11 +764,8 @@ def main():
 
             df = df_ot_raw[(df_ot_raw["Poste travail princ."].isin(valid_postes)) & (df_ot_raw["Date de début planifiée"].between(start_date, end_date))].copy()
             avis_df = avis_df_raw[avis_df_raw["Poste travail princ."].isin(valid_postes)].copy()
-
             df = df[df["Poste travail princ."].astype(str).str.startswith(("SF1", "SF2"), na=False)].drop_duplicates()
             avis_df = avis_df[(avis_df["Ordre"].isna()) | (avis_df["Ordre"].astype(str).str.strip().eq(""))].drop_duplicates()
-
-            # Exclusion cresseurs finale
             df = exclure_cresseurs(df)
             avis_df = exclure_cresseurs(avis_df)
 
@@ -729,9 +784,7 @@ def main():
                 "Backlog planification caractérisé": 100, "OT CONFIME": 100, "OT_COR_EGAL": 100,
             }], index=["CIBLE"])
 
-            # ==================================================
             # ANOMALIES
-            # ==================================================
             anomalies_ot_records = []
             anomalies_avis_records = []
 
@@ -741,42 +794,18 @@ def main():
                 avis_poste = results['avis_df_filtered'][results['avis_df_filtered']["Poste travail princ."] == poste]
 
                 checks = [
-                    ("TAUX_REALISATION_CORRECTIF/PT", "TAUX_REALISATION_CORRECTIF/PT",
-                     df_poste[(df_poste["Nº appel pl.entret."].fillna(0) == 0) & (~df_poste["Statut OT"].isin(["CLOT", "TCLO"]))],
-                     "Améliorer le taux de réalisation des OT."),
-                    ("OT préparation <1 mois", "OT préparation <1 mois",
-                     df_poste[(df_poste["Statut OT"] == "CRÉÉ") & (df_poste["Age préparation"] != "<1 mois")],
-                     "Réduire l'âge de préparation des OT (< 1 mois)."),
-                    ("OT préparation >3 mois", "OT préparation >3 mois",
-                     df_poste[(df_poste["Statut OT"] == "CRÉÉ") & (df_poste["Age préparation"] == ">3 mois")],
-                     "Traiter les OT avec préparation > 3 mois."),
-                    ("OT planification <1 mois", "OT planification <1 mois",
-                     df_poste[(df_poste["Statut OT"] == "LANC") & (df_poste["Contient SOPL"] == 0) & (df_poste["Age planification"] != "<1 mois")],
-                     "Réduire l'âge de planification des OT (< 1 mois)."),
-                    ("OT planification >3 mois", "OT planification >3 mois",
-                     df_poste[(df_poste["Statut OT"] == "LANC") & (df_poste["Contient SOPL"] == 0) & (df_poste["Age planification"] == ">3 mois")],
-                     "Traiter les OT avec planification > 3 mois."),
-                    ("OT exécution <1 mois", "OT exécution <1 mois",
-                     df_poste[(df_poste["Statut OT"] == "LANC") & (df_poste["Contient SOPL"] == 1) & (df_poste["Age exécution"] != "<1 mois")],
-                     "Réduire l'âge d'exécution des OT (< 1 mois)."),
-                    ("OT exécution >3 mois", "OT exécution >3 mois",
-                     df_poste[(df_poste["Statut OT"] == "LANC") & (df_poste["Contient SOPL"] == 1) & (df_poste["Age exécution"] == ">3 mois")],
-                     "Traiter les OT avec exécution > 3 mois."),
-                    ("OT LANC ESTIME", "OT LANC ESTIME",
-                     df_poste[(df_poste["Statut OT"] == "LANC") & (df_poste["OT LANC ESTIME"] == "NON")],
-                     "Estimer les coûts des OT lancés."),
-                    ("Backlog préparation caractérisé", "Backlog préparation caractérisé",
-                     df_poste[(df_poste["Statut OT"] == "CRÉÉ") & (df_poste["Backlog préparation"] == "NON CARACTERISE")],
-                     "Caractériser le backlog de préparation."),
-                    ("Backlog planification caractérisé", "Backlog planification caractérisé",
-                     df_poste[(df_poste["Statut OT"] == "LANC") & (df_poste["Backlog planification"] == "NON CARACTERISE")],
-                     "Caractériser le backlog de planification."),
-                    ("OT CONFIME", "OT CONFIME",
-                     df_poste[df_poste["OT CONFIME"] == "NON"],
-                     "Confirmer les OT terminés."),
-                    ("OT_COR_EGAL", "OT_COR_EGAL",
-                     df_poste[df_poste["OT_COR_EGAL"] == "NON"],
-                     "Rapprocher les coûts réels et budgétés."),
+                    ("TAUX_REALISATION_CORRECTIF/PT", "TAUX_REALISATION_CORRECTIF/PT", df_poste[(df_poste["Nº appel pl.entret."].fillna(0) == 0) & (~df_poste["Statut OT"].isin(["CLOT", "TCLO"]))], "Améliorer le taux de réalisation des OT."),
+                    ("OT préparation <1 mois", "OT préparation <1 mois", df_poste[(df_poste["Statut OT"] == "CRÉÉ") & (df_poste["Age préparation"] != "<1 mois")], "Réduire l'âge de préparation des OT (< 1 mois)."),
+                    ("OT préparation >3 mois", "OT préparation >3 mois", df_poste[(df_poste["Statut OT"] == "CRÉÉ") & (df_poste["Age préparation"] == ">3 mois")], "Traiter les OT avec préparation > 3 mois."),
+                    ("OT planification <1 mois", "OT planification <1 mois", df_poste[(df_poste["Statut OT"] == "LANC") & (df_poste["Contient SOPL"] == 0) & (df_poste["Age planification"] != "<1 mois")], "Réduire l'âge de planification des OT (< 1 mois)."),
+                    ("OT planification >3 mois", "OT planification >3 mois", df_poste[(df_poste["Statut OT"] == "LANC") & (df_poste["Contient SOPL"] == 0) & (df_poste["Age planification"] == ">3 mois")], "Traiter les OT avec planification > 3 mois."),
+                    ("OT exécution <1 mois", "OT exécution <1 mois", df_poste[(df_poste["Statut OT"] == "LANC") & (df_poste["Contient SOPL"] == 1) & (df_poste["Age exécution"] != "<1 mois")], "Réduire l'âge d'exécution des OT (< 1 mois)."),
+                    ("OT exécution >3 mois", "OT exécution >3 mois", df_poste[(df_poste["Statut OT"] == "LANC") & (df_poste["Contient SOPL"] == 1) & (df_poste["Age exécution"] == ">3 mois")], "Traiter les OT avec exécution > 3 mois."),
+                    ("OT LANC ESTIME", "OT LANC ESTIME", df_poste[(df_poste["Statut OT"] == "LANC") & (df_poste["OT LANC ESTIME"] == "NON")], "Estimer les coûts des OT lancés."),
+                    ("Backlog préparation caractérisé", "Backlog préparation caractérisé", df_poste[(df_poste["Statut OT"] == "CRÉÉ") & (df_poste["Backlog préparation"] == "NON CARACTERISE")], "Caractériser le backlog de préparation."),
+                    ("Backlog planification caractérisé", "Backlog planification caractérisé", df_poste[(df_poste["Statut OT"] == "LANC") & (df_poste["Backlog planification"] == "NON CARACTERISE")], "Caractériser le backlog de planification."),
+                    ("OT CONFIME", "OT CONFIME", df_poste[df_poste["OT CONFIME"] == "NON"], "Confirmer les OT terminés."),
+                    ("OT_COR_EGAL", "OT_COR_EGAL", df_poste[df_poste["OT_COR_EGAL"] == "NON"], "Rapprocher les coûts réels et budgétés."),
                 ]
 
                 for kpi_name, cible_col, subset, action in checks:
@@ -809,13 +838,11 @@ def main():
                 anomalies_dashboard = pd.concat([anomalies_dashboard, total_row])
             else: anomalies_dashboard = pd.DataFrame()
 
-            # Synthèse par KPI
             all_anomalies = pd.concat([df_anomalies_ot, df_anomalies_avis], ignore_index=True) if not df_anomalies_ot.empty or not df_anomalies_avis.empty else pd.DataFrame()
             if not all_anomalies.empty:
                 synthese_par_kpi = all_anomalies.groupby(["KPI", "Action Suggérée"])["Nb OT impactés"].sum().reset_index().sort_values("Nb OT impactés", ascending=False).reset_index(drop=True)
             else: synthese_par_kpi = pd.DataFrame()
 
-            # Classification (sans les colonnes Métier/Atelier/Division dans le tableau affiché)
             qty_kpis = ["TAUX_REALISATION_CORRECTIF/PT", "OT préparation <1 mois", "OT préparation >3 mois", "OT préparation 1mois< <3mois", "OT planification <1 mois", "OT planification >3 mois", "OT planification 1mois< <3mois", "OT exécution <1 mois", "OT exécution >3 mois", "OT exécution 1mois< <3mois"]
             qual_kpis = ["appel avis approuvé", "OT LANC ESTIME", "Backlog préparation caractérisé", "Backlog planification caractérisé", "OT CONFIME", "OT_COR_EGAL"]
 
@@ -828,32 +855,22 @@ def main():
                 p_qual = (s_qual / len(qual_kpis) * 100) if qual_kpis else 0
                 class_results.append({"Poste travail princ.": poste, "Score KPIs Quantité": p_qty, "Score KPIs Qualité": p_qual, "Total performance ": (p_qty+p_qual)/2})
             df_class = pd.DataFrame(class_results)
-
-            # Colonnes Métier/Atelier/Division : uniquement pour les charts, PAS dans le tableau
             df_class["Métier"] = df_class["Poste travail princ."].apply(get_groupe_metier)
             df_class["Atelier"] = df_class["Poste travail princ."].apply(get_groupe_atelier)
             df_class["Division"] = df_class["Poste travail princ."].apply(get_groupe_division)
 
-            # Tableau KPIs final
+            # Tables finales
             total_general_kpi = pd.DataFrame(calculated_kpis_df.mean()).T; total_general_kpi.index = ["Total général"]
             final_kpi = pd.concat([cible, calculated_kpis_df, total_general_kpi]).round(2)
 
-            # Tableau Classement SANS Métier/Atelier/Division
             df_class_display = df_class[["Poste travail princ.", "Score KPIs Quantité", "Score KPIs Qualité", "Total performance "]].copy()
             df_class_display["Score KPIs Quantité"] = df_class_display["Score KPIs Quantité"].apply(lambda x: f"{x:.2f} %")
             df_class_display["Score KPIs Qualité"] = df_class_display["Score KPIs Qualité"].apply(lambda x: f"{x:.2f} %")
             df_class_display["Total performance "] = df_class_display["Total performance "].apply(lambda x: f"{x:.2f} %")
-            total_gen_class = pd.DataFrame([{
-                "Poste travail princ.": "Total général",
-                "Score KPIs Quantité": f"{df_class['Score KPIs Quantité'].mean():.2f} %",
-                "Score KPIs Qualité": f"{df_class['Score KPIs Qualité'].mean():.2f} %",
-                "Total performance ": f"{df_class['Total performance '].mean():.2f} %"
-            }])
+            total_gen_class = pd.DataFrame([{"Poste travail princ.": "Total général", "Score KPIs Quantité": f"{df_class['Score KPIs Quantité'].mean():.2f} %", "Score KPIs Qualité": f"{df_class['Score KPIs Qualité'].mean():.2f} %", "Total performance ": f"{df_class['Total performance '].mean():.2f} %"}])
             df_class_display = pd.concat([df_class_display, total_gen_class], ignore_index=True)
 
-            # ==================================================
             # HEADER
-            # ==================================================
             st.markdown(f"""
             <div class="main-header">
                 <h1>📊 KPI Dashboard MC & FEED</h1>
@@ -862,23 +879,21 @@ def main():
             </div>
             """, unsafe_allow_html=True)
 
-            # ==================================================
             # ONGLETS
-            # ==================================================
             tab_kpi, tab_anomalies = st.tabs(["📊 TABLEAU DE BORD DES KPIs", "🚨 TABLEAU DE BORD DES ANOMALIES"])
 
             with tab_kpi:
                 st.markdown('<p class="section-title">Indicateurs par Poste de Travail</p>', unsafe_allow_html=True)
-                st.table(final_kpi.style.apply(highlight_kpis, axis=1).format("{:.2f}"))
+                st.markdown(df_to_html_styled(final_kpi), unsafe_allow_html=True)
 
                 st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
                 st.markdown('<p class="section-title">🏆 Classement des Postes par Performance</p>', unsafe_allow_html=True)
-                st.table(df_class_display.style.apply(highlight_classification_table_kpis, axis=1))
+                st.markdown(class_df_to_html(df_class_display), unsafe_allow_html=True)
 
             with tab_anomalies:
                 if not anomalies_dashboard.empty:
                     st.markdown('<p class="section-title">Anomalies par Poste de Travail</p>', unsafe_allow_html=True)
-                    st.table(anomalies_dashboard.style.apply(highlight_anomalies, axis=1))
+                    st.markdown(anomalies_df_to_html(anomalies_dashboard), unsafe_allow_html=True)
                 else:
                     st.markdown("""
                     <div class="empty-state">
@@ -888,9 +903,7 @@ def main():
                     </div>
                     """, unsafe_allow_html=True)
 
-            # ==================================================
             # SYNTHÈSE PAR KPI
-            # ==================================================
             st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
             st.markdown('<p class="section-title">📋 Synthèse des Actions par KPI</p>', unsafe_allow_html=True)
 
@@ -916,9 +929,7 @@ def main():
                 </div>
                 """, unsafe_allow_html=True)
 
-            # ==================================================
             # TOP 5
-            # ==================================================
             st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
             st.markdown('<p class="section-title">🔻 Top 5 Postes à Améliorer</p>', unsafe_allow_html=True)
 
@@ -950,9 +961,7 @@ def main():
                 st.dataframe(t5, use_container_width=True, hide_index=True, height=230)
                 st.markdown('</div>', unsafe_allow_html=True)
 
-            # ==================================================
             # GRAPHIQUES
-            # ==================================================
             st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
             st.markdown('<p class="section-title">📈 Analyse par Catégorie</p>', unsafe_allow_html=True)
 
@@ -967,11 +976,11 @@ def main():
 
                 bars = alt.Chart(df_m).mark_bar(cornerRadiusTopLeft=5, cornerRadiusTopRight=5, height=20).encode(
                     x=alt.X('Performance:Q', scale=alt.Scale(domain=[0, 100], clamp=True), title=''),
-                    y=alt.Y('Métier:O', sort='-x', title='', axis=alt.Axis(labelFontSize=12, labelFontWeight='600')),
+                    y=alt.Y('Métier:O', sort='-x', title='', axis=alt.Axis(labelFontSize=12, labelFontWeight=600)),
                     color=alt.Color('Performance:Q', scale=alt.Scale(domain=[0, 50, 80, 100], range=['#e53e3e', '#ed8936', '#ecc94b', '#38a169']), legend=None),
                     tooltip=['Métier', 'Performance']
                 )
-                txt = alt.Chart(df_m).mark_text(align='left', baseline='middle', dx=6, fontSize=13, fontWeight='700').encode(
+                txt = alt.Chart(df_m).mark_text(align='left', baseline='middle', dx=6, fontSize=13, fontWeight=700).encode(
                     y=alt.Y('Métier:O', sort='-x'), text=alt.Text('Performance:Q', format='.1f')
                 )
                 st.altair_chart((bars + txt).configure_axis(grid=False, ticks=False, domain=False).configure_view(stroke='transparent').properties(height=max(120, 40 * len(df_m) + 20)), use_container_width=True)
@@ -986,11 +995,11 @@ def main():
 
                 bars = alt.Chart(df_a).mark_bar(cornerRadiusTopLeft=5, cornerRadiusTopRight=5, height=20).encode(
                     x=alt.X('Performance:Q', scale=alt.Scale(domain=[0, 100], clamp=True), title=''),
-                    y=alt.Y('Atelier:O', sort='-x', title='', axis=alt.Axis(labelFontSize=12, labelFontWeight='600')),
+                    y=alt.Y('Atelier:O', sort='-x', title='', axis=alt.Axis(labelFontSize=12, labelFontWeight=600)),
                     color=alt.Color('Performance:Q', scale=alt.Scale(domain=[0, 50, 80, 100], range=['#e53e3e', '#ed8936', '#ecc94b', '#38a169']), legend=None),
                     tooltip=['Atelier', 'Performance']
                 )
-                txt = alt.Chart(df_a).mark_text(align='left', baseline='middle', dx=6, fontSize=13, fontWeight='700').encode(
+                txt = alt.Chart(df_a).mark_text(align='left', baseline='middle', dx=6, fontSize=13, fontWeight=700).encode(
                     y=alt.Y('Atelier:O', sort='-x'), text=alt.Text('Performance:Q', format='.1f')
                 )
                 st.altair_chart((bars + txt).configure_axis(grid=False, ticks=False, domain=False).configure_view(stroke='transparent').properties(height=max(120, 40 * len(df_a) + 20)), use_container_width=True)
@@ -1005,11 +1014,11 @@ def main():
 
                 bars = alt.Chart(df_d).mark_bar(cornerRadiusTopLeft=5, cornerRadiusTopRight=5, height=20).encode(
                     x=alt.X('Performance:Q', scale=alt.Scale(domain=[0, 100], clamp=True), title=''),
-                    y=alt.Y('Division:O', sort='-x', title='', axis=alt.Axis(labelFontSize=12, labelFontWeight='600')),
+                    y=alt.Y('Division:O', sort='-x', title='', axis=alt.Axis(labelFontSize=12, labelFontWeight=600)),
                     color=alt.Color('Performance:Q', scale=alt.Scale(domain=[0, 50, 80, 100], range=['#e53e3e', '#ed8936', '#ecc94b', '#38a169']), legend=None),
                     tooltip=['Division', 'Performance']
                 )
-                txt = alt.Chart(df_d).mark_text(align='left', baseline='middle', dx=6, fontSize=13, fontWeight='700').encode(
+                txt = alt.Chart(df_d).mark_text(align='left', baseline='middle', dx=6, fontSize=13, fontWeight=700).encode(
                     y=alt.Y('Division:O', sort='-x'), text=alt.Text('Performance:Q', format='.1f')
                 )
                 st.altair_chart((bars + txt).configure_axis(grid=False, ticks=False, domain=False).configure_view(stroke='transparent').properties(height=max(120, 40 * len(df_d) + 20)), use_container_width=True)
@@ -1036,7 +1045,7 @@ def main():
                     color=alt.Color('Tranche:O', scale=alt.Scale(domain=labels, range=[color_map[l] for l in labels]), legend=None),
                     tooltip=['Tranche', 'Nb']
                 )
-                txt_h = alt.Chart(df_hist).mark_text(align='center', baseline='bottom', dy=-4, fontSize=13, fontWeight='800').encode(
+                txt_h = alt.Chart(df_hist).mark_text(align='center', baseline='bottom', dy=-4, fontSize=13, fontWeight=800).encode(
                     x=alt.X('Tranche:O', sort=labels), y='Nb:Q', text=alt.Text('Nb:Q')
                 )
                 st.altair_chart((bars_h + txt_h).configure_axisX(grid=False, ticks=False, domain=False).configure_view(stroke='transparent').properties(height=200), use_container_width=True)
@@ -1053,20 +1062,18 @@ def main():
                 df_qq["Couleur"] = ["#4299e1", "#48bb78"]
 
                 bars_q = alt.Chart(df_qq).mark_bar(cornerRadiusTopLeft=5, cornerRadiusTopRight=5).encode(
-                    x=alt.X('Type:O', title='', axis=alt.Axis(labelFontSize=13, labelFontWeight='600')),
+                    x=alt.X('Type:O', title='', axis=alt.Axis(labelFontSize=13, labelFontWeight=600)),
                     y=alt.Y('Score:Q', scale=alt.Scale(domain=[0, 100]), title='Score moyen (%)', axis=alt.Axis(grid=False, ticks=False)),
                     color=alt.Color('Couleur:N', scale=None, legend=None),
                     tooltip=['Type', 'Score']
                 )
-                txt_q = alt.Chart(df_qq).mark_text(align='center', baseline='bottom', dy=-5, fontSize=16, fontWeight='800').encode(
+                txt_q = alt.Chart(df_qq).mark_text(align='center', baseline='bottom', dy=-5, fontSize=16, fontWeight=800).encode(
                     x='Type:O', y='Score:Q', text=alt.Text('Score:Q', format='.1f')
                 )
                 st.altair_chart((bars_q + txt_q).configure_axisX(grid=False, ticks=False, domain=False).configure_view(stroke='transparent').properties(height=200, width=280), use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
 
-            # ==================================================
             # EXPORT
-            # ==================================================
             st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
             st.markdown('<p class="section-title">💾 Export des Plans d\'Action</p>', unsafe_allow_html=True)
 
@@ -1075,11 +1082,7 @@ def main():
             if postes_avec_anomalies:
                 col_exp1, col_exp2 = st.columns([1, 1])
                 with col_exp1:
-                    selected_poste_export = st.selectbox(
-                        "Poste de travail :",
-                        options=["📌 Tous les postes"] + postes_avec_anomalies,
-                        key="sel_export"
-                    )
+                    selected_poste_export = st.selectbox("Poste de travail :", options=["📌 Tous les postes"] + postes_avec_anomalies, key="sel_export")
                 with col_exp2:
                     st.markdown("<div style='height:32px;'></div>", unsafe_allow_html=True)
                     generate_btn = st.button("📥 Générer le fichier Excel", type="primary", key="btn_export", use_container_width=True)
@@ -1159,11 +1162,11 @@ def main():
                 </div>
                 """, unsafe_allow_html=True)
 
-            st.markdown("""
+            st.markdown(f"""
             <div style="text-align:center; padding:24px 0 8px 0; color:#a0aec0; font-size:11px;">
-                KPI Dashboard MC & FEED • Maintenance Conditionnelle • {date}
+                KPI Dashboard MC & FEED • Maintenance Conditionnelle • {date_fichier}
             </div>
-            """.format(date=date_fichier), unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
         except Exception as e:
             st.error(f"Une erreur est survenue : {e}")

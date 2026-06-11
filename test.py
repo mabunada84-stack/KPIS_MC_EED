@@ -124,7 +124,7 @@ def main():
         for c in ["<1 mois", ">3 mois", "1 mois < <3 mois"]: pr[c] = pr.get(c, 0)
         pr["Total"] = pr[["<1 mois", "1 mois < <3 mois", ">3 mois"]].sum(axis=1); pr["OT préparation <1 mois"] = calcul_kpi(pr["<1 mois"], pr["Total"]); pr["OT préparation >3 mois"] = calcul_kpi(pr[">3 mois"], pr["Total"], 0); pr["OT préparation 1mois< <3mois"] = calcul_kpi(pr["1 mois < <3 mois"], pr["Total"], 0)
         pl = creer_pivot(df_t, (df_t["Statut OT"] == "LANC") & (df_t["Contient SOPL"] == 0), "Age planification", valid_postes)
-        for c in ["<1 mois", ">3 mois", "1 mois < <3 mois"]: pl[c] = pl.get(c, 0)
+        for c in ["<1 mois", ">3 mois", "1 mois < <3 mois"]: pl[c] = plt.get(c, 0)
         pl["Total"] = pl[["<1 mois", "1 mois < <3 mois", ">3 mois"]].sum(axis=1); pl["OT planification <1 mois"] = calcul_kpi(pl["<1 mois"], pl["Total"]); pl["OT planification >3 mois"] = calcul_kpi(pl[">3 mois"], pl["Total"], 0); pl["OT planification 1mois< <3mois"] = calcul_kpi(pl["1 mois < <3 mois"], pl["Total"], 0)
         ex = creer_pivot(df_t, (df_t["Statut OT"] == "LANC") & (df_t["Contient SOPL"] == 1), "Age exécution", valid_postes)
         for c in ["<1 mois", ">3 mois", "1 mois < <3 mois"]: ex[c] = ex.get(c, 0)
@@ -151,7 +151,6 @@ def main():
         cible = pd.DataFrame([{k: 85 if k == "TAUX_REALISATION_CORRECTIF/PT" else (80 if "<1 mois" in k else (5 if ">3 mois" in k else (15 if "1mois" in k else (95 if k == "appel avis approuvé" else 100)))) for k in PERF_KPIS + QUAL_KPIS}], index=["CIBLE"])
         calculated_kpis_df = res['calculated_kpis_df']; df_processed = res['df_processed']
 
-        # --- CALCUL DES ANOMALIES SÉPARÉES ---
         ano_perf, ano_qual = [], []
         checks = [("TAUX_REALISATION_CORRECTIF/PT", "TAUX_REALISATION_CORRECTIF/PT", (df_processed["Nº appel pl.entret."].fillna(0) == 0) & (~df_processed["Statut OT"].isin(["CLOT", "TCLO"])), "Améliorer le taux de réalisation."), ("OT préparation <1 mois", "OT préparation <1 mois", (df_processed["Statut OT"] == "CRÉÉ") & (df_processed["Age préparation"] != "<1 mois"), "Réduire l'âge de préparation."), ("OT préparation >3 mois", "OT préparation >3 mois", (df_processed["Statut OT"] == "CRÉÉ") & (df_processed["Age préparation"] == ">3 mois"), "Traiter les OT > 3 mois."), ("OT planification <1 mois", "OT planification <1 mois", (df_processed["Statut OT"] == "LANC") & (df_processed["Contient SOPL"] == 0) & (df_processed["Age planification"] != "<1 mois"), "Réduire l'âge de planification."), ("OT planification >3 mois", "OT planification >3 mois", (df_processed["Statut OT"] == "LANC") & (df_processed["Contient SOPL"] == 0) & (df_processed["Age planification"] == ">3 mois"), "Traiter OT planif. > 3 mois."), ("OT exécution <1 mois", "OT exécution <1 mois", (df_processed["Statut OT"] == "LANC") & (df_processed["Contient SOPL"] == 1) & (df_processed["Age exécution"] != "<1 mois"), "Réduire l'âge d'exécution."), ("OT exécution >3 mois", "OT exécution >3 mois", (df_processed["Statut OT"] == "LANC") & (df_processed["Contient SOPL"] == 1) & (df_processed["Age exécution"] == ">3 mois"), "Traiter OT exéc. > 3 mois."), ("OT LANC ESTIME", "OT LANC ESTIME", (df_processed["Statut OT"] == "LANC") & (df_processed["OT LANC ESTIME"] == "NON"), "Estimer les coûts."), ("Backlog préparation caractérisé", "Backlog préparation caractérisé", (df_processed["Statut OT"] == "CRÉÉ") & (df_processed["Backlog préparation"] == "NON CARACTERISE"), "Caractériser backlog prépa."), ("Backlog planification caractérisé", "Backlog planification caractérisé", (df_processed["Statut OT"] == "LANC") & (df_processed["Backlog planification"] == "NON CARACTERISE"), "Caractériser backlog planif."), ("OT CONFIME", "OT CONFIME", df_processed["OT CONFIME"] == "NON", "Confirmer les OT terminés."), ("OT_COR_EGAL", "OT_COR_EGAL", df_processed["OT_COR_EGAL"] == "NON", "Rapprocher les coûts.")]
         
@@ -170,7 +169,6 @@ def main():
                 cnt = len(res['avis_df_filtered'][res['avis_df_filtered']["Poste travail princ."] == poste])
                 if cnt > 0: ano_qual.append({"Poste travail princ.": poste, "KPI": "appel avis approuvé", "Nb OT impactés": cnt, "Action Suggérée": "Créer un OT pour les avis sans ordre."})
 
-        # --- PRÉPARATION DES DATAFRAMES FINAUX ---
         def prep_ano(df_ano):
             if df_ano.empty: return pd.DataFrame(columns=["Poste de travail"])
             df_ot = df_ano[df_ano["KPI"] != "appel avis approuvé"].pivot_table(index="Poste travail princ.", columns="KPI", values="Nb OT impactés", aggfunc="sum", fill_value=0)
@@ -181,20 +179,24 @@ def main():
 
         def prep_kpi_table(kpi_list):
             tg = pd.DataFrame(calculated_kpis_df[kpi_list].mean()).T; tg.index = ["Total général"]
-            final = pd.concat([cible[kpi_list], calculated_kpis_df[kpi_list], tg]).round(2).rename_axis("Poste de travail").reset_index()
+            final = pd.concat([cible[kpi_list], calculated_kpi_list, tg]).round(2).rename_axis("Poste de travail").reset_index()
             return final
 
         def prep_class_table(kpi_list, col_name):
-            class_r = [{"Poste travail princ.": p, col_name: (sum(get_kpi_score(k, calculated_kpis_df.loc[p, k], cible.loc['CIBLE', k]) for k in kpi_list if k in calculated_kpis_df.columns) / len(kpi_list) * 100)} for p in calculated_kpis_df.index]
+            class_r = [{"Poste travail princ.": p, col_name: (sum(get_kpi_score(k, calculated_kpi_df.loc[p, k], cible.loc['Cible', k]) for k in kpi_list if k in calculated_kpi_df.columns) / len(kpi_list) * 100)} for p in calculated_kpis_df.index]
             df_cl = pd.DataFrame(class_r)
+            
+            # CORRECTION : Calculer la moyenne AVANT de convertir en texte
+            mean_val = df_cl[col_name].mean()
+            
             df_cl[col_name] = df_cl[col_name].apply(lambda x: f"{x:.2f} %")
-            tg_cl = pd.DataFrame([{f"Poste travail princ.": "Total général", col_name: f"{df_cl[col_name].mean():.2f} %"}])
+            tg_cl = pd.DataFrame([{f"Poste travail princ.": "Total général", col_name: f"{mean_val:.2f} %"}])
             return pd.concat([df_cl, tg_cl], ignore_index=True)
 
         df_class = pd.DataFrame([{"Poste travail princ.": p, "Indicateur de Performance": (sum(get_kpi_score(k, calculated_kpis_df.loc[p, k], cible.loc['CIBLE', k]) for k in PERF_KPIS if k in calculated_kpis_df.columns) / len(PERF_KPIS) * 100), "Indicateur de Qualité": (sum(get_kpi_score(k, calculated_kpis_df.loc[p, k], cible.loc['CIBLE', k]) for k in QUAL_KPIS if k in calculated_kpis_df.columns) / len(QUAL_KPIS) * 100)} for p in calculated_kpis_df.index])
         df_class["Atelier"] = df_class["Poste travail princ."].apply(get_atelier)
 
-        return {'kpi_perf': prep_kpi_table(PERF_KPIS), 'kpi_qual': prep_kpi_table(QUAL_KPIS), 'class_perf': prep_class_table(PERF_KPIS, "Indicateur de Performance"), 'class_qual': prep_class_table(QUAL_KPIS, "Indicateur de Qualité"), 'ano_perf': prep_ano(pd.DataFrame(ano_perf)), 'ano_qual': prep_ano(pd.DataFrame(ano_qual)), 'df_class': df_class, 'df_processed': df_processed, 'df_ano_perf': pd.DataFrame(ano_perf), 'df_ano_qual': pd.DataFrame(ano_qual), 'cible': cible}
+        return {'kpi_perf': prep_kpi_table(PERF_KPIS), 'kpi_qual': prep_kpi_table(QUAL_KPIS), 'class_perf': prep_class_table(PERF_KPIS, "Indicateur de Performance"), 'class_qual': prep_class_table(QUAL_KPIS, "Indicateur de Qualité"), 'ano_perf': prep_ano(pd.DataFrame(ano_perf)), 'ano_qual': prep_ano(pd.DataFrame(ano_qual)), 'df_class': df_class, 'df_processed': df_processed, 'df_ano_perf': pd.DataFrame(ano_perf), 'df_ano_qual': pd.DataFrame(ano_qual), 'cible': cible, 'avis_df_filtered': res['avis_df_filtered']}
 
     # --- LOGIQUE DE COULEUR POUR CHARTS ---
     def get_chart_color(val, kpi):
@@ -204,7 +206,7 @@ def main():
         if k in ["OT préparation 1mois< <3mois", "OT planification 1mois< <3mois", "OT exécution 1mois< <3mois"]: return "#38a169" if v <= 15 else "#e53e3e"
         if k in ["OT préparation >3 mois", "OT planification >3 mois", "OT exécution >3 mois"]: return "#38a169" if v <= 5 else "#e53e3e"
         if k == "TAUX_REALISATION_CORRECTIF/PT": return "#38a169" if v >= 85 else ("#ecc94b" if v >= 80 else "#e53e3e")
-        if k == "appel avis approuvé": return "#38a169" if v >= 95 else ("#ecc94b" if v >= 90 else "#e53e3e")
+        if k == "appel avis approuvé": return "#38a169" if v >= 95 else ("#ecc94b if v >= 90 else "#e53e3e")
         if k in ["OT LANC ESTIME", "Backlog préparation caractérisé", "Backlog planification caractérisé", "OT CONFIME", "OT_COR_EGAL"]: return "#38a169" if v >= 100 else ("#ecc94b" if v >= 95 else "#e53e3e")
         return "#cbd5e0"
 
@@ -255,7 +257,7 @@ def main():
             if use_new_files: df_ot_raw = pd.read_excel(ot_file); avis_df_raw = pd.read_excel(avis_file); date_fichier = datetime.now().strftime("%d/%m/%Y")
             else: df_ot_raw, avis_df_raw = load_raw_data(); date_fichier = datetime.fromtimestamp(os.path.getmtime("ot.xlsx")).strftime("%d/%m/%Y")
             
-            if not all_postes_master_list: all_postes_master_list = sorted(exclure_cresseurs(df_ot_raw)[exclure_cresseurs(df_ot_raw)["Poste travail princ."].astype(str).str.startswith(("SF1", "SF2"), na=False)].dropna().unique().tolist())
+            if not all_postes_master_list: all_postes_master_list = sorted(exclure_cresseurs(df_ot_raw)[exclure_cresseurs(df_ot_raw)]["Poste travail princ."].astype(str).str.startswith(("SF1", "SF2"), na=False)].dropna().unique().tolist())
             if "All" in selected_postes or not selected_postes: selected_postes = all_postes_master_list
             if "All" in selected_ateliers or not selected_ateliers: selected_ateliers = ["All"]
             if "All" in selected_divisions or not selected_divisions: selected_divisions = ["All"]
@@ -269,7 +271,7 @@ def main():
                     if "Sulfurique (PS)" in selected_ateliers and "PS" in p: m = True
                     if "Phosphorique (PP)" in selected_ateliers and "PP" in p: m = True
                     if "Engrais (TSP/REX)" in selected_ateliers and ("TSP" in p or "REX" in p): m = True
-                    if "Feed (MCP/DCP)" in selected_ateliers and ("MCP" in p or "DCP" in p): m = True
+                    if "Feed (MCP/DCP)" in selected_ateliers and ("MCP" in p or "DCP" in p: m = True
                     if not m: return False
                 if "All" not in selected_divisions:
                     m = False

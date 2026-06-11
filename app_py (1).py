@@ -211,12 +211,8 @@ def inject_custom_css():
             border-radius: 8px;
         }
         
-        /* TABLE FULL WIDTH */
-        .stTableContainer {
-            width: 100% !important;
-        }
+        .stTableContainer { width: 100% !important; }
         
-        /* TABLE STYLING */
         .dataframe th {
             background: var(--primary) !important;
             color: white !important;
@@ -242,7 +238,6 @@ def inject_custom_css():
         .dataframe tr:nth-child(even) td { background: #f9fbfd !important; }
         .dataframe tr:nth-child(even):hover td { background: #edf2f7 !important; }
         
-        /* ONGLETS */
         .stTabs [data-baseweb="tab-list"] {
             gap: 4px;
             background: #edf2f7;
@@ -262,7 +257,6 @@ def inject_custom_css():
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         
-        /* BOUTON */
         .stButton > button[kind="primary"] {
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
             border: none;
@@ -612,7 +606,7 @@ def main():
         return "Autre"
 
     # ==================================================
-    # SIDEBAR - TOUS LES FILTRES ICI
+    # SIDEBAR
     # ==================================================
     with st.sidebar:
         st.markdown("""
@@ -665,6 +659,7 @@ def main():
                 df_ot_raw = pd.read_excel("ot.xlsx")
                 avis_df_raw = pd.read_excel("avis.xlsx")
 
+            # Exclure cresseurs sur les fichiers bruts
             df_ot_raw = exclure_cresseurs(df_ot_raw)
             avis_df_raw = exclure_cresseurs(avis_df_raw)
 
@@ -673,9 +668,13 @@ def main():
             for col in ["Créé le", "Début souhaité", "Date de la clôture"]:
                 if col in avis_df_raw.columns: avis_df_raw[col] = pd.to_datetime(avis_df_raw[col], errors="coerce")
 
-            all_postes_master_list = sorted(df_ot_raw[df_ot_raw["Poste travail princ."].astype(str).str.startswith(("SF1", "SF2"), na=False)]["Poste travail princ."].dropna().unique().tolist())
+            # Liste des postes sans cresseurs
+            all_postes_master_list = sorted(
+                df_ot_raw[
+                    df_ot_raw["Poste travail princ."].astype(str).str.startswith(("SF1", "SF2"), na=False)
+                ]["Poste travail princ."].dropna().unique().tolist()
+            )
 
-            # Re-apply sidebar defaults if "All" still selected
             if "All" in selected_postes or len(selected_postes) == 0: selected_postes = all_postes_master_list
             if "All" in selected_ateliers or len(selected_ateliers) == 0: selected_ateliers = ["All"]
             if "All" in selected_divisions or len(selected_divisions) == 0: selected_divisions = ["All"]
@@ -707,8 +706,11 @@ def main():
 
             df = df_ot_raw[(df_ot_raw["Poste travail princ."].isin(valid_postes)) & (df_ot_raw["Date de début planifiée"].between(start_date, end_date))].copy()
             avis_df = avis_df_raw[avis_df_raw["Poste travail princ."].isin(valid_postes)].copy()
+
             df = df[df["Poste travail princ."].astype(str).str.startswith(("SF1", "SF2"), na=False)].drop_duplicates()
             avis_df = avis_df[(avis_df["Ordre"].isna()) | (avis_df["Ordre"].astype(str).str.strip().eq(""))].drop_duplicates()
+
+            # Exclusion cresseurs finale
             df = exclure_cresseurs(df)
             avis_df = exclure_cresseurs(avis_df)
 
@@ -813,7 +815,7 @@ def main():
                 synthese_par_kpi = all_anomalies.groupby(["KPI", "Action Suggérée"])["Nb OT impactés"].sum().reset_index().sort_values("Nb OT impactés", ascending=False).reset_index(drop=True)
             else: synthese_par_kpi = pd.DataFrame()
 
-            # Classification
+            # Classification (sans les colonnes Métier/Atelier/Division dans le tableau affiché)
             qty_kpis = ["TAUX_REALISATION_CORRECTIF/PT", "OT préparation <1 mois", "OT préparation >3 mois", "OT préparation 1mois< <3mois", "OT planification <1 mois", "OT planification >3 mois", "OT planification 1mois< <3mois", "OT exécution <1 mois", "OT exécution >3 mois", "OT exécution 1mois< <3mois"]
             qual_kpis = ["appel avis approuvé", "OT LANC ESTIME", "Backlog préparation caractérisé", "Backlog planification caractérisé", "OT CONFIME", "OT_COR_EGAL"]
 
@@ -826,19 +828,27 @@ def main():
                 p_qual = (s_qual / len(qual_kpis) * 100) if qual_kpis else 0
                 class_results.append({"Poste travail princ.": poste, "Score KPIs Quantité": p_qty, "Score KPIs Qualité": p_qual, "Total performance ": (p_qty+p_qual)/2})
             df_class = pd.DataFrame(class_results)
+
+            # Colonnes Métier/Atelier/Division : uniquement pour les charts, PAS dans le tableau
             df_class["Métier"] = df_class["Poste travail princ."].apply(get_groupe_metier)
             df_class["Atelier"] = df_class["Poste travail princ."].apply(get_groupe_atelier)
             df_class["Division"] = df_class["Poste travail princ."].apply(get_groupe_division)
 
-            # Tables finales
+            # Tableau KPIs final
             total_general_kpi = pd.DataFrame(calculated_kpis_df.mean()).T; total_general_kpi.index = ["Total général"]
             final_kpi = pd.concat([cible, calculated_kpis_df, total_general_kpi]).round(2)
 
-            df_class_display = df_class.copy()
+            # Tableau Classement SANS Métier/Atelier/Division
+            df_class_display = df_class[["Poste travail princ.", "Score KPIs Quantité", "Score KPIs Qualité", "Total performance "]].copy()
             df_class_display["Score KPIs Quantité"] = df_class_display["Score KPIs Quantité"].apply(lambda x: f"{x:.2f} %")
             df_class_display["Score KPIs Qualité"] = df_class_display["Score KPIs Qualité"].apply(lambda x: f"{x:.2f} %")
             df_class_display["Total performance "] = df_class_display["Total performance "].apply(lambda x: f"{x:.2f} %")
-            total_gen_class = pd.DataFrame([{"Poste travail princ.": "Total général", "Score KPIs Quantité": f"{df_class['Score KPIs Quantité'].mean():.2f} %", "Score KPIs Qualité": f"{df_class['Score KPIs Qualité'].mean():.2f} %", "Total performance ": f"{df_class['Total performance '].mean():.2f} %"}])
+            total_gen_class = pd.DataFrame([{
+                "Poste travail princ.": "Total général",
+                "Score KPIs Quantité": f"{df_class['Score KPIs Quantité'].mean():.2f} %",
+                "Score KPIs Qualité": f"{df_class['Score KPIs Qualité'].mean():.2f} %",
+                "Total performance ": f"{df_class['Total performance '].mean():.2f} %"
+            }])
             df_class_display = pd.concat([df_class_display, total_gen_class], ignore_index=True)
 
             # ==================================================
@@ -964,7 +974,7 @@ def main():
                 txt = alt.Chart(df_m).mark_text(align='left', baseline='middle', dx=6, fontSize=13, fontWeight='700').encode(
                     y=alt.Y('Métier:O', sort='-x'), text=alt.Text('Performance:Q', format='.1f')
                 )
-                st.altair_chart((bars + txt).configure_axis(grid=False, ticks=False, domain=False).configure_view(stroke='transparent').properties(height=40 * len(df_m) + 20), use_container_width=True)
+                st.altair_chart((bars + txt).configure_axis(grid=False, ticks=False, domain=False).configure_view(stroke='transparent').properties(height=max(120, 40 * len(df_m) + 20)), use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
 
             with c2:
@@ -983,7 +993,7 @@ def main():
                 txt = alt.Chart(df_a).mark_text(align='left', baseline='middle', dx=6, fontSize=13, fontWeight='700').encode(
                     y=alt.Y('Atelier:O', sort='-x'), text=alt.Text('Performance:Q', format='.1f')
                 )
-                st.altair_chart((bars + txt).configure_axis(grid=False, ticks=False, domain=False).configure_view(stroke='transparent').properties(height=40 * len(df_a) + 20), use_container_width=True)
+                st.altair_chart((bars + txt).configure_axis(grid=False, ticks=False, domain=False).configure_view(stroke='transparent').properties(height=max(120, 40 * len(df_a) + 20)), use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
 
             with c3:
@@ -1002,7 +1012,7 @@ def main():
                 txt = alt.Chart(df_d).mark_text(align='left', baseline='middle', dx=6, fontSize=13, fontWeight='700').encode(
                     y=alt.Y('Division:O', sort='-x'), text=alt.Text('Performance:Q', format='.1f')
                 )
-                st.altair_chart((bars + txt).configure_axis(grid=False, ticks=False, domain=False).configure_view(stroke='transparent').properties(height=40 * len(df_d) + 20), use_container_width=True)
+                st.altair_chart((bars + txt).configure_axis(grid=False, ticks=False, domain=False).configure_view(stroke='transparent').properties(height=max(120, 40 * len(df_d) + 20)), use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
 
             # Graphiques complémentaires
@@ -1018,7 +1028,6 @@ def main():
                 labels = ["0-50%", "50-60%", "60-70%", "70-80%", "80-90%", "90-100%"]
                 df_dist["Tranche"] = pd.cut(df_dist["Score"], bins=bins, labels=labels, right=False)
                 df_hist = df_dist.groupby("Tranche", observed=False).size().reset_index(name="Nb")
-
                 color_map = {"0-50%": "#e53e3e", "50-60%": "#e53e3e", "60-70%": "#ed8936", "70-80%": "#d69e2e", "80-90%": "#ecc94b", "90-100%": "#38a169"}
 
                 bars_h = alt.Chart(df_hist).mark_bar(cornerRadiusTopLeft=4, cornerRadiusTopRight=4).encode(
@@ -1150,7 +1159,6 @@ def main():
                 </div>
                 """, unsafe_allow_html=True)
 
-            # Footer
             st.markdown("""
             <div style="text-align:center; padding:24px 0 8px 0; color:#a0aec0; font-size:11px;">
                 KPI Dashboard MC & FEED • Maintenance Conditionnelle • {date}

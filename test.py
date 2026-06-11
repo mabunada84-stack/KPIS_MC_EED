@@ -85,7 +85,7 @@ def main():
         if k in ["OT préparation >3 mois", "OT planification >3 mois", "OT exécution >3 mois"]: return 1 if a <= 5 else 0
         if k == "TAUX_REALISATION_CORRECTIF/PT": return 1 if a >= 80 else 0
         if k == "appel avis approuvé": return 1 if a >= 90 else 0
-        if k in ["OT LANC ESTIME", "Backlog préparation caractérisé", "Backlog planification caractérisé", "OT CONFIME", "OT_COR_EGAL"]: return 1 if a >= 95 else 0
+        if k in ["OT LANC ESTIME", "Backlog préparation caractérisé", "Backlog planification caractérisé", "OT CONFIME", "OT COR_EGAL"]: return 1 if a >= 95 else 0
         return 0
     
     def get_metier(p): 
@@ -142,7 +142,10 @@ def main():
         df_t["OT CONFIME"] = np.where(df_t["Statut système"].str.contains("CLO", na=False) & df_t["Statut système"].str.contains("CONF", na=False), "OUI", "NON")
         df_t["Contient SOPL"] = df_t["Statut utilisateur"].str.contains("SOPL", na=False).map({True: 1, False: 0})
         df_t["OT LANC ESTIME"] = np.where(df_t["Total coûts budgétés"].fillna(0) == 0, "NON", "OUI")
-        df_t["OT_COR_EGAL"] = np.where((df_t["Total coûts budgétés"].fillna(0) - df_t["Total coûts réels"].fillna(0)) == 0, "OUI", "NON")
+        
+        # CORRECTION ICI : Utilisation d'un ESPACE au lieu de _ pour correspondre à QUAL_KPIS
+        df_t["OT COR_EGAL"] = np.where((df_t["Total coûts budgétés"].fillna(0) - df_t["Total coûts réels"].fillna(0)) == 0, "OUI", "NON")
+        
         res['df_processed'] = df_t
 
         an = creer_pivot(df_t, df_t["Nº appel pl.entret."].fillna(0) == 0, "Statut OT", valid_postes)
@@ -183,6 +186,7 @@ def main():
         for c in ["CARACTERISE", "NON CARACTERISE"]: plc[c] = plc.get(c, 0)
         plc["Total"] = plc["CARACTERISE"] + plc["NON CARACTERISE"]; plc["Backlog planification caractérisé"] = calcul_kpi(plc["CARACTERISE"], plc["Total"])
         
+        # CORRECTION ICI : Uniformisation du nom "OT COR_EGAL"
         for kn, cn in [("OT CONFIME", "OT CONFIME"), ("OT_COR_EGAL", "OT COR_EGAL")]:
             pv = pd.pivot_table(df_t, index="Poste travail princ.", columns=cn, values="Ordre", aggfunc="count", fill_value=0).reindex(valid_postes, fill_value=0)
             for c in ["OUI", "NON"]: pv[c] = pv.get(c, 0)
@@ -193,7 +197,6 @@ def main():
         for c in ["APRQ", "APRV", "APRV AVAU", "REJT"]: tca[c] = tca.get(c, 0)
         tca["Total"] = tca[["APRQ", "APRV", "APRV AVAU", "REJT"]].sum(axis=1); tca["appel avis approuvé"] = calcul_kpi(tca["APRV"], tca["Total"])
         
-        # CORRECTION 1 : Aération de pd.concat pour éviter les erreurs de crochets
         res['calculated_kpis_df'] = pd.concat([
             an[["TAUX_REALISATION_CORRECTIF/PT"]], 
             pr[["OT préparation <1 mois", "OT préparation >3 mois", "OT préparation 1mois< <3mois"]], 
@@ -204,7 +207,7 @@ def main():
             pc[["Backlog préparation caractérisé"]], 
             plc[["Backlog planification caractérisé"]], 
             res['ot_confime'][["OT CONFIME"]], 
-            res['ot_cor_egal'][["OT_COR_EGAL"]]
+            res['ot_cor_egal'][["OT COR_EGAL"]]  # CORRECTION ICI
         ], axis=1)
 
         cible = pd.DataFrame([{k: 85 if k == "TAUX_REALISATION_CORRECTIF/PT" else (80 if "<1 mois" in k else (5 if ">3 mois" in k else (15 if "1mois" in k else (95 if k == "appel avis approuvé" else 100)))) for k in PERF_KPIS + QUAL_KPIS}], index=["CIBLE"])
@@ -223,7 +226,7 @@ def main():
             ("Backlog préparation caractérisé", "Backlog préparation caractérisé", (df_processed["Statut OT"] == "CRÉÉ") & (df_processed["Backlog préparation"] == "NON CARACTERISE"), "Caractériser backlog prépa."), 
             ("Backlog planification caractérisé", "Backlog planification caractérisé", (df_processed["Statut OT"] == "LANC") & (df_processed["Backlog planification"] == "NON CARACTERISE"), "Caractériser backlog planif."), 
             ("OT CONFIME", "OT CONFIME", df_processed["OT CONFIME"] == "NON", "Confirmer les OT terminés."), 
-            ("OT_COR_EGAL", "OT_COR_EGAL", df_processed["OT_COR_EGAL"] == "NON", "Rapprocher les coûts.")
+            ("OT COR_EGAL", "OT COR_EGAL", df_processed["OT COR_EGAL"] == "NON", "Rapprocher les coûts.") # CORRECTION ICI
         ]
         
         for poste in valid_postes:
@@ -283,7 +286,7 @@ def main():
         if kpi in ["OT préparation >3 mois", "OT planification >3 mois", "OT exécution >3 mois"]: return "#38a169" if v <= 5 else "#e53e3e"
         if kpi == "TAUX_REALISATION_CORRECTIF/PT": return "#38a169" if v >= 85 else ("#ecc94b" if v >= 80 else "#e53e3e")
         if kpi == "appel avis approuvé": return "#38a169" if v >= 95 else ("#ecc94b" if v >= 90 else "#e53e3e")
-        if kpi in ["OT LANC ESTIME", "Backlog préparation caractérisé", "Backlog planification caractérisé", "OT CONFIME", "OT_COR_EGAL"]: return "#38a169" if v >= 100 else ("#ecc94b" if v >= 95 else "#e53e3e")
+        if kpi in ["OT LANC ESTIME", "Backlog préparation caractérisé", "Backlog planification caractérisé", "OT CONFIME", "OT COR_EGAL"]: return "#38a169" if v >= 100 else ("#ecc94b" if v >= 95 else "#e53e3e")
         return "#cbd5e0"
 
     def render_kpi_chart(df_class, kpi_list, chart_title):
@@ -318,7 +321,6 @@ def main():
                 try:
                     date_f = datetime.fromtimestamp(os.path.getmtime("ot.xlsx")).strftime("%d/%m/%Y")
                     _tmp = exclure_cresseurs(load_raw_data()[0])
-                    # CORRECTION 2 : Filtrage sécurisé et aéré
                     mask_tmp = _tmp["Poste travail princ."].astype(str).str.startswith(("SF1", "SF2"), na=False)
                     all_postes_master_list = sorted(_tmp[mask_tmp]["Poste travail princ."].dropna().unique().tolist())
                 except: pass
@@ -338,7 +340,6 @@ def main():
             else: 
                 df_ot_raw, avis_df_raw = load_raw_data(); date_fichier = datetime.fromtimestamp(os.path.getmtime("ot.xlsx")).strftime("%d/%m/%Y")
             
-            # CORRECTION 3 : Filtrage sécurisé et aéré (Ligne qui causait l'erreur 262)
             if not all_postes_master_list:
                 _tmp_raw = exclure_cresseurs(df_ot_raw)
                 mask_raw = _tmp_raw["Poste travail princ."].astype(str).str.startswith(("SF1", "SF2"), na=False)
@@ -460,7 +461,7 @@ def main():
                                     if kpi != "appel avis approuvé":
                                         dpf = df_processed[df_processed["Poste travail princ."] == pe].copy()
                                         
-                                        # CORRECTION 4 : Dictionnaire aéré et propre
+                                        # CORRECTION ICI : Nom uniformisé "OT COR_EGAL"
                                         cmap = {
                                             "TAUX_REALISATION_CORRECTIF/PT": (dpf["Nº appel pl.entret."].fillna(0) == 0) & (~dpf["Statut OT"].isin(["CLOT", "TCLO"])), 
                                             "OT préparation <1 mois": (dpf["Statut OT"] == "CRÉÉ") & (dpf["Age préparation"] != "<1 mois"), 
@@ -473,7 +474,7 @@ def main():
                                             "Backlog préparation caractérisé": (dpf["Statut OT"] == "CRÉÉ") & (dpf["Backlog préparation"] == "NON CARACTERISE"), 
                                             "Backlog planification caractérisé": (dpf["Statut OT"] == "LANC") & (dpf["Backlog planification"] == "NON CARACTERISE"), 
                                             "OT CONFIME": dpf["OT CONFIME"] == "NON", 
-                                            "OT_COR_EGAL": dpf["OT_COR_EGAL"] == "NON"
+                                            "OT COR_EGAL": dpf["OT COR_EGAL"] == "NON"
                                         }
                                         
                                         sub = dpf[cmap.get(kpi, pd.Series(False, index=dpf.index))]
@@ -482,7 +483,6 @@ def main():
                                             sub["KPI impacté"] = kpi; sub["Action recommandée"] = f"Corriger l'indicateur {kpi}."; sd = pd.concat([sd, sub])
                                             
                                     if kpi == "appel avis approuvé":
-                                        # CORRECTION 5 : Suppression du double avis_filtered[
                                         sa = avis_filtered[avis_filtered["Poste travail princ."] == pe].copy()
                                         if not sa.empty:
                                             sa = rename_safe(sa, ["Avis", "Désignation texte", "Emplacement technique", "Poste travail princ.", "Statut utilisateur", "Créé le"], ["Avis", "Désignation", "Poste technique", "Poste de travail principal", "Statut", "Date de création"])

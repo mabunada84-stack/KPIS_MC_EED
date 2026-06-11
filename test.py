@@ -47,7 +47,7 @@ def main():
             <div style="font-size:64px; margin-bottom:20px;">🦺</div><h1 style="color:#fff; font-weight:900; font-size:42px; margin:0;">HSE - CONSIGNE DE SÉCURITÉ</h1>
             <div style="background:linear-gradient(135deg, #f6e05e 0%, #ed8936 100%); padding:36px 48px; border-radius:20px; font-size:28px; font-weight:700; text-align:center; margin:40px 0; color:#1a202c; max-width:800px; box-shadow:0 20px 60px rgba(0,0,0,0.3);">⚠️ {c}</div>
             <h2 style="color:#48bb78; font-size:32px; font-weight:900;">Aucun travail n'est plus urgent que la sécurité</h2>
-            <div style="margin-top:40px; width:200px; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden;"><div style="width:100%; height:100%; background:linear-gradient(90deg, #48bb78, #38a169); animation:l 5.5s ease-in-out forwards;"></div></div>
+            <div style="margin-top:40px; width:200px; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden;"><div style="width:100%; height:100%; background:linear-gradient(90deg, #48bb78, #38a169); border-radius:2px; animation:l 5.5s ease-in-out forwards;"></div></div>
             <style>@keyframes l {{ from {{ width: 0%; }} to {{ width: 100%; }} }}</style></div>""", unsafe_allow_html=True)
         time.sleep(6); st.session_state.hse_affiche = True; st.rerun(); st.stop()
 
@@ -55,7 +55,7 @@ def main():
     # DÉFINITION DES DEUX CATÉGORIES D'INDICATEURS
     # ==================================================
     PERF_KPIS = ["TAUX_REALISATION_CORRECTIF/PT", "OT préparation <1 mois", "OT préparation >3 mois", "OT préparation 1mois< <3mois", "OT planification <1 mois", "OT planification >3 mois", "OT planification 1mois< <3mois", "OT exécution <1 mois", "OT exécution >3 mois", "OT exécution 1mois< <3mois"]
-    QUAL_KPIS = ["appel avis approuvé", "OT LANC ESTIME", "Backlog préparation caractérisé", "Backlog planification caractérisé", "OT CONFIME", "OT_COR_EGAL"]
+    QUAL_KPIS = ["appel avis approuvé", "OT LANC ESTIME", "Backlog préparation caractérisé", "Backlog planification caractérisé", "OT CONFIME", "OT COR_EGAL"]
 
     # ==================================================
     # UTILITAIRES & CACHE
@@ -124,7 +124,7 @@ def main():
         for c in ["<1 mois", ">3 mois", "1 mois < <3 mois"]: pr[c] = pr.get(c, 0)
         pr["Total"] = pr[["<1 mois", "1 mois < <3 mois", ">3 mois"]].sum(axis=1); pr["OT préparation <1 mois"] = calcul_kpi(pr["<1 mois"], pr["Total"]); pr["OT préparation >3 mois"] = calcul_kpi(pr[">3 mois"], pr["Total"], 0); pr["OT préparation 1mois< <3mois"] = calcul_kpi(pr["1 mois < <3 mois"], pr["Total"], 0)
         pl = creer_pivot(df_t, (df_t["Statut OT"] == "LANC") & (df_t["Contient SOPL"] == 0), "Age planification", valid_postes)
-        for c in ["<1 mois", ">3 mois", "1 mois < <3 mois"]: pl[c] = plt.get(c, 0)
+        for c in ["<1 mois", ">3 mois", "1 mois < <3 mois"]: pl[c] = pl.get(c, 0)
         pl["Total"] = pl[["<1 mois", "1 mois < <3 mois", ">3 mois"]].sum(axis=1); pl["OT planification <1 mois"] = calcul_kpi(pl["<1 mois"], pl["Total"]); pl["OT planification >3 mois"] = calcul_kpi(pl[">3 mois"], pl["Total"], 0); pl["OT planification 1mois< <3mois"] = calcul_kpi(pl["1 mois < <3 mois"], pl["Total"], 0)
         ex = creer_pivot(df_t, (df_t["Statut OT"] == "LANC") & (df_t["Contient SOPL"] == 1), "Age exécution", valid_postes)
         for c in ["<1 mois", ">3 mois", "1 mois < <3 mois"]: ex[c] = ex.get(c, 0)
@@ -138,7 +138,7 @@ def main():
         plc = pd.pivot_table(df_t[df_t["Statut OT"] == "LANC"], index="Poste travail princ.", columns="Backlog planification", values="Ordre", aggfunc="count", fill_value=0).reindex(valid_postes, fill_value=0)
         for c in ["CARACTERISE", "NON CARACTERISE"]: plc[c] = plc.get(c, 0)
         plc["Total"] = plc["CARACTERISE"] + plc["NON CARACTERISE"]; plc["Backlog planification caractérisé"] = calcul_kpi(plc["CARACTERISE"], plc["Total"])
-        for kn, cn in [("OT CONFIME", "OT CONFIME"), ("OT_COR_EGAL", "OT_COR_EGAL")]:
+        for kn, cn in [("OT CONFIME", "OT CONFIME"), ("OT_COR_EGAL", "OT COR_EGAL")]:
             pv = pd.pivot_table(df_t, index="Poste travail princ.", columns=cn, values="Ordre", aggfunc="count", fill_value=0).reindex(valid_postes, fill_value=0)
             for c in ["OUI", "NON"]: pv[c] = pv.get(c, 0)
             pv["Total"] = pv["OUI"] + pv["NON"]; pv[cn] = calcul_kpi(pv["OUI"], pv["Total"]); res[kn.lower().replace(" ", "_")] = pv
@@ -146,7 +146,7 @@ def main():
         tca = pd.pivot_table(avf, index="Poste travail princ.", columns="Statut utilisateur", values="Avis", aggfunc="count", fill_value=0).reindex(valid_postes, fill_value=0)
         for c in ["APRQ", "APRV", "APRV AVAU", "REJT"]: tca[c] = tca.get(c, 0)
         tca["Total"] = tca[["APRQ", "APRV", "APRV AVAU", "REJT"]].sum(axis=1); tca["appel avis approuvé"] = calcul_kpi(tca["APRV"], tca["Total"])
-        res['calculated_kpis_df'] = pd.concat([an[["TAUX_REALISATION_CORRECTIF/PT"]], pr[["OT préparation <1 mois", "OT préparation >3 mois", "OT préparation 1mois< <3mois"]], pl[["OT planification <1 mois", "OT planification >3 mois", "OT planification 1mois< <3mois"]], ex[["OT exécution <1 mois", "OT exécution >3 mois", "OT exécution 1mois< <3mois"]], tca[["appel avis approuvé"]], la[["OT LANC ESTIME"]], pc[["Backlog préparation caractérisé"]], plc[["Backlog planification caractérisé"]], res['ot_confime'][["OT CONFIME"]], res['ot_cor_egal'][["OT_COR_EGAL"]]], axis=1)
+        res['calculated_kpis_df'] = pd.concat([an[["TAUX_REALISATION_CORRECTIF/PT"]], pr[["OT préparation <1 mois", "OT préparation >3 mois", "OT préparation 1mois< <3mois"], pl[["OT planification <1 mois", "OT planification >3 mois", "OT planification 1mois< <3mois"]], ex[["OT exécution <1 mois", "OT exécution >3 mois", "OT exécution 1mois< <3mois"]], tca[["appel avis approuvé"]], la[["OT LANC ESTIME"]], pc[["Backlog préparation caractérisé"]], plc[["Backlog planification caractérisé"]], res['ot_confime'][["OT CONFIME"]], res['ot_cor_egal'][["OT_COR_EGAL"]]], axis=1)
 
         cible = pd.DataFrame([{k: 85 if k == "TAUX_REALISATION_CORRECTIF/PT" else (80 if "<1 mois" in k else (5 if ">3 mois" in k else (15 if "1mois" in k else (95 if k == "appel avis approuvé" else 100)))) for k in PERF_KPIS + QUAL_KPIS}], index=["CIBLE"])
         calculated_kpis_df = res['calculated_kpis_df']; df_processed = res['df_processed']
@@ -165,7 +165,7 @@ def main():
                         target_list = ano_perf if kn in PERF_KPIS else ano_qual
                         target_list.append({"Poste travail princ.": poste, "KPI": kn, "Nb OT impactés": cnt, "Action Suggérée": act})
             va = calculated_kpis_df.loc[poste, "appel avis approuvé"] if poste in calculated_kpis_df.index else 100
-            if pd.notna(va) and va < cible.loc['CIBLE', "appel avis approuvé"]:
+            if pd.notna(va) and va < cible.loc['CIBLE', "appel avis approuvé']:
                 cnt = len(res['avis_df_filtered'][res['avis_df_filtered']["Poste travail princ."] == poste])
                 if cnt > 0: ano_qual.append({"Poste travail princ.": poste, "KPI": "appel avis approuvé", "Nb OT impactés": cnt, "Action Suggérée": "Créer un OT pour les avis sans ordre."})
 
@@ -179,14 +179,14 @@ def main():
 
         def prep_kpi_table(kpi_list):
             tg = pd.DataFrame(calculated_kpis_df[kpi_list].mean()).T; tg.index = ["Total général"]
-            final = pd.concat([cible[kpi_list], calculated_kpi_list, tg]).round(2).rename_axis("Poste de travail").reset_index()
+            final = pd.concat([cible[kpi_list], calculated_kpis_df[kpi_list], tg]).round(2).rename_axis("Poste de travail").reset_index()
             return final
 
         def prep_class_table(kpi_list, col_name):
-            class_r = [{"Poste travail princ.": p, col_name: (sum(get_kpi_score(k, calculated_kpi_df.loc[p, k], cible.loc['Cible', k]) for k in kpi_list if k in calculated_kpi_df.columns) / len(kpi_list) * 100)} for p in calculated_kpis_df.index]
+            class_r = [{"Poste travail princ.": p, col_name: (sum(get_kpi_score(k, calculated_kpis_df.loc[p, k], cible.loc['CIBLE', k]) for k in kpi_list if k in calculated_kpis_df.columns) / len(kpi_list) * 100)} for p in calculated_kpis_df.index]
             df_cl = pd.DataFrame(class_r)
             
-            # CORRECTION : Calculer la moyenne AVANT de convertir en texte
+            # CORRECTION BUG : Calcul de la moyenne AVANT la conversion en texte
             mean_val = df_cl[col_name].mean()
             
             df_cl[col_name] = df_cl[col_name].apply(lambda x: f"{x:.2f} %")
@@ -206,7 +206,7 @@ def main():
         if k in ["OT préparation 1mois< <3mois", "OT planification 1mois< <3mois", "OT exécution 1mois< <3mois"]: return "#38a169" if v <= 15 else "#e53e3e"
         if k in ["OT préparation >3 mois", "OT planification >3 mois", "OT exécution >3 mois"]: return "#38a169" if v <= 5 else "#e53e3e"
         if k == "TAUX_REALISATION_CORRECTIF/PT": return "#38a169" if v >= 85 else ("#ecc94b" if v >= 80 else "#e53e3e")
-        if k == "appel avis approuvé": return "#38a169" if v >= 95 else ("#ecc94b if v >= 90 else "#e53e3e")
+        if k == "appel avis approuvé": return "#38a169" if v >= 95 else ("#ecc94b" if v >= 90 else "#e53e3e")
         if k in ["OT LANC ESTIME", "Backlog préparation caractérisé", "Backlog planification caractérisé", "OT CONFIME", "OT_COR_EGAL"]: return "#38a169" if v >= 100 else ("#ecc94b" if v >= 95 else "#e53e3e")
         return "#cbd5e0"
 
@@ -241,7 +241,7 @@ def main():
                 try:
                     date_f = datetime.fromtimestamp(os.path.getmtime("ot.xlsx")).strftime("%d/%m/%Y")
                     _tmp = exclure_cresseurs(load_raw_data()[0])
-                    all_postes_master_list = sorted(_tmp[_tmp["Poste travail princ."].astype(str).str.startswith(("SF1", "SF2"), na=False)]["Poste travail princ."].dropna().unique().tolist())
+                    all_postes_master_list = sorted(_tmp[_tmp["Poste travail princ."].astype(str).str.startswith(("SF1", "SF2"), na=False)].dropna().unique().tolist())
                 except: pass
             st.markdown(f"""<div style="background:rgba(255,255,255,0.1); padding:10px 14px; border-radius:8px; border:1px solid rgba(255,255,255,0.15);"><div style="font-size:10px; color:rgba(255,255,255,0.5); text-transform:uppercase;">Données</div><div style="font-size:13px; color:white; font-weight:600; margin-top:2px;">📅 {date_f}</div></div>""", unsafe_allow_html=True)
 
@@ -257,7 +257,7 @@ def main():
             if use_new_files: df_ot_raw = pd.read_excel(ot_file); avis_df_raw = pd.read_excel(avis_file); date_fichier = datetime.now().strftime("%d/%m/%Y")
             else: df_ot_raw, avis_df_raw = load_raw_data(); date_fichier = datetime.fromtimestamp(os.path.getmtime("ot.xlsx")).strftime("%d/%m/%Y")
             
-            if not all_postes_master_list: all_postes_master_list = sorted(exclure_cresseurs(df_ot_raw)[exclure_cresseurs(df_ot_raw)]["Poste travail princ."].astype(str).str.startswith(("SF1", "SF2"), na=False)].dropna().unique().tolist())
+            if not all_postes_master_list: all_postes_master_list = sorted(exclure_cresseurs(df_ot_raw)["Poste travail princ."].astype(str).str.startswith(("SF1", "SF2"), na=False)].dropna().unique().tolist())
             if "All" in selected_postes or not selected_postes: selected_postes = all_postes_master_list
             if "All" in selected_ateliers or not selected_ateliers: selected_ateliers = ["All"]
             if "All" in selected_divisions or not selected_divisions: selected_divisions = ["All"]
@@ -352,7 +352,7 @@ def main():
             st.markdown("<hr style='border: 2px solid #e2e8f0; margin: 30px 0;'>", unsafe_allow_html=True)
             st.markdown('<p class="section-title">💾 Export des Plans d\'Action</p>', unsafe_allow_html=True)
             
-            all_postes_ano = list(set(data['ano_perf'][data['ano_perf']['Poste de travail'] != 'Total général']['Poste de travail'].tolist() + data['ano_qual'][data['ano_qual']['Poste de travail'] != 'Total général']['Poste de travail'].tolist()))
+            all_postes_ano = list(set(data['ano_perf'][data['ano_perf']['Poste de travail'] != 'Total général']['Poste de travail'].tolist() + data['ano_qual'][data['ano_qual']['Poste de travail'] != 'Total général']['Poste de travail'].tolist()])
             
             if all_postes_ano:
                 ce1, ce2 = st.columns([1, 1])
@@ -367,18 +367,18 @@ def main():
                             df_processed = data['df_processed']; df_ano_perf = data['df_ano_perf']; df_ano_qual = data['df_ano_qual']
                             avis_filtered = data['avis_df_filtered']
                             for pe in (all_postes_ano if sel_exp == "📌 Tous les postes" else [sel_exp]):
-                                kds = list(set(df_ano_perf[df_ano_perf["Poste travail princ."] == pe]["KPI"].tolist() + df_ano_qual[df_ano_qual["Poste travail princ."] == pe]["KPI"].tolist()))
+                                kds = list(set(df_ano_perf[df_ano_perf["Poste travail princ."] == pe]["KPI"].tolist() + df_ano_qual[df_ano_qual["Poste travail princ."] == pe]["KPI"].tolist())
                                 for kpi in kds:
                                     sd = pd.DataFrame()
                                     if kpi != "appel avis approuvé":
                                         dpf = df_processed[df_processed["Poste travail princ."] == pe].copy()
-                                        cmap = {"TAUX_REALISATION_CORRECTIF/PT": (dpf["Nº appel pl.entret."].fillna(0) == 0) & (~dpf["Statut OT"].isin(["CLOT", "TCLO"])), "OT préparation <1 mois": (dpf["Statut OT"] == "CRÉÉ") & (dpf["Age préparation"] != "<1 mois"), "OT préparation >3 mois": (dpf["Statut OT"] == "CRÉÉ") & (dpf["Age préparation"] == ">3 mois"), "OT planification <1 mois": (dpf["Statut OT"] == "LANC") & (dpf["Contient SOPL"] == 0) & (dpf["Age planification"] != "<1 mois"), "OT planification >3 mois": (dpf["Statut OT"] == "LANC") & (dpf["Contient SOPL"] == 0) & (dpf["Age planification"] == ">3 mois"), "OT exécution <1 mois": (dpf["Statut OT"] == "LANC") & (dpf["Contient SOPL"] == 1) & (dpf["Age exécution"] != "<1 mois"), "OT exécution >3 mois": (dpf["Statut OT"] == "LANC") & (dpf["Contient SOPL"] == 1) & (dpf["Age exécution"] == ">3 mois"), "OT LANC ESTIME": (dpf["Statut OT"] == "LANC") & (dpf["OT LANC ESTIME"] == "NON"), "Backlog préparation caractérisé": (dpf["Statut OT"] == "CRÉÉ") & (dpf["Backlog préparation"] == "NON CARACTERISE"), "Backlog planification caractérisé": (dpf["Statut OT"] == "LANC") & (dpf["Backlog planification"] == "NON CARACTERISE"), "OT CONFIME": dpf["OT CONFIME"] == "NON", "OT_COR_EGAL": dpf["OT_COR_EGAL"] == "NON"}
+                                        cmap = {"TAUX_REALISATION_CORRECTIF/PT": (dpf["Nº appel pl.entret."].fillna(0) == 0) & (~dpf["Statut OT"].isin(["CLOT", "TCLO"])), "OT préparation <1 mois": (dpf["Statut OT"] == "CRÉÉ") & (dpf["Age préparation"] != "<1 mois"), "OT préparation >3 mois": (dpf["Statut OT"] == "CRÉÉ") & (dpf["Age préparation"] == ">3 mois"), "OT planification <1 mois": (dpf["Statut OT"] == "LANC") & (dpf["Contient SOPL"] == 0) & (dpf["Age planification"] != "<1 mois"), "OT planification >3 mois": (dpf["Statut OT"] == "LANC") & (dpf["Contient SOPL"] == 0) & (dpf["Age planification"] == ">3 mois"), "OT exécution <1 mois": (dpf["Statut OT"] == "LANC") & (dpf["Contient SOPL"] == 1) & (dpf["Age exécution"] != "<1 mois"), "OT exécution >3 mois": (dpf["Statut OT"] == "LANC") & (dpf["Contient SOPL"] == 1) & (dpf["Age exécution"] == ">3 mois"), "OT LANC ESTIME": (dpf["Statut OT"] == "LANC") & (dpf["OT LANC ESTIME"] == "NON"), "Backlog préparation caractérisé": (dpf["Statut OT"] == "CRÉÉ") & (dpf["Backlog préparation"] == "NON CARACTERISE"), "Backlog planification caractérisé": (dpf["Statut OT"] == "LANC") & (dpf["Backlog planification"] == "NON CARACTERISE"), "OT CONFIME": dpf["OT CONFIME"] == "NON", "Confirmer les OT terminés."), ("OT_COR_EGAL": dpf["OT_COR_EGAL"] == "NON", "Rapprocher les coûts.")}
                                         sub = dpf[cmap.get(kpi, pd.Series(False, index=dpf.index))]
                                         if not sub.empty:
                                             sub = rename_safe(sub, ["Ordre", "Désignation", "Emplacement technique", "Poste travail princ.", "Statut système", "Statut utilisateur", "Date de début planifiée", "Type d'ordre", "Backlog préparation", "Backlog planification"], ["Ordre de travail", "Désignation", "Poste technique", "Poste de travail principal", "Statut système", "Statut utilisateur", "Date de début planifiée", "Type d'ordre", "Caractérisation backlog Préparation", "Caractérisation backlog Planification"])
                                             sub["KPI impacté"] = kpi; sub["Action recommandée"] = f"Corriger l'indicateur {kpi}."; sd = pd.concat([sd, sub])
                                     if kpi == "appel avis approuvé":
-                                        sa = avis_filtered[avis_filtered["Poste travail princ."] == pe].copy()
+                                        sa = avis_filtered[avis_filtered[avis_filtered["Poste travail princ."] == pe].copy()
                                         if not sa.empty:
                                             sa = rename_safe(sa, ["Avis", "Désignation texte", "Emplacement technique", "Poste travail princ.", "Statut utilisateur", "Créé le"], ["Avis", "Désignation", "Poste technique", "Poste de travail principal", "Statut", "Date de création"])
                                             sa["KPI impacté"] = kpi; sa["Action recommandée"] = "Créer un OT pour cet Avis."; sd = pd.concat([sd, sa])

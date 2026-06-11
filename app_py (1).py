@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 """app.py"""
 
+# LA LIGNE MAGIQUE : Elle doit être absolument la PREMIERE commande Streamlit exécutée.
+# Elle force le mode "Plein Écran" (Wide) au lieu du mode centré par défaut.
 import streamlit as st
+st.set_page_config(page_title="KPI Dashboard MC et FEED", layout="wide", initial_sidebar_state="expanded")
+
 import pandas as pd
 import numpy as np
 import io
@@ -341,7 +345,6 @@ def main():
             for col in ["Créé le", "Début souhaité", "Date de la clôture"]:
                 if col in avis_df_raw.columns: avis_df_raw[col] = pd.to_datetime(avis_df_raw[col], errors="coerce")
 
-            # Exclusion stricte des cresseurs dès le départ
             df_ot_raw_no_cresseur = df_ot_raw[~df_ot_raw["Poste travail princ."].astype(str).str.contains("cresseur", case=False, na=False)]
             all_postes_master_list = sorted(df_ot_raw_no_cresseur[df_ot_raw_no_cresseur["Poste travail princ."].astype(str).str.startswith(("SF1", "SF2"), na=False)]["Poste travail princ."].dropna().unique().tolist())
 
@@ -392,7 +395,6 @@ def main():
 
             valid_postes = [p for p in all_postes_master_list if match_filters(p) and p in selected_postes]
 
-            # Exclusion de tout ce qui contient 'cresseur' dans les dataframes finaux
             df = df_ot_raw[(df_ot_raw["Poste travail princ."].isin(valid_postes)) & (df_ot_raw["Date de début planifiée"].between(start_date, end_date)) & (~df_ot_raw["Poste travail princ."].astype(str).str.contains("cresseur", case=False, na=False))].copy()
             avis_df = avis_df_raw[(avis_df_raw["Poste travail princ."].isin(valid_postes)) & (~avis_df_raw["Poste travail princ."].astype(str).str.contains("cresseur", case=False, na=False))].copy()
 
@@ -513,63 +515,70 @@ def main():
             df_class = pd.DataFrame(class_results)
 
             # ==================================================
-            # AFFICHAGE DIRECT DES DEUX TABLEAUX (Sans Radio)
+            # PRESENTATION HORIZONTALE ET LARGE (WIDE MODE)
             # ==================================================
             
-            # --- 1. TABLEAU DE BORD DES KPIs ---
+            # --- 1. TABLEAU DE BORD DES KPIs (Pleine Largeur avec Barre de défilement intégrée) ---
             total_general_kpi = pd.DataFrame(calculated_kpis_df.mean()).T; total_general_kpi.index = ["Total général"]
             final_kpi = pd.concat([cible, calculated_kpis_df, total_general_kpi]).round(2)
 
             st.markdown('<div class="header-kpi">TABLEAU DE BORD DES KPIs</div>', unsafe_allow_html=True)
-            st.table(final_kpi.style.apply(highlight_kpis, axis=1).format("{:.2f}"))
+            # Utilisation de st.dataframe au lieu de st.table pour l'étirement pleine largeur
+            st.dataframe(final_kpi.style.apply(highlight_kpis, axis=1).format("{:.2f}"), use_container_width=True, height=500)
+
+            # --- 2. SYNTHESE ET CLASSEMENT COTE A COTE ---
+            col_synthese, col_classement = st.columns([1, 2]) # 1 tiers pour la synthèse, 2 tiers pour le classement
+            
+            with col_synthese:
+                st.subheader("Synthèse des Actions")
+                if not df_anomalies_ot.empty:
+                    display_actions = df_anomalies_ot.copy()
+                    if len(selected_postes) == len(all_postes_master_list):
+                        display_actions = display_actions[["KPI", "Nb OT impactés", "Action Suggérée"]]
+                    st.dataframe(display_actions, use_container_width=True, height=400)
+                else: 
+                    st.info("Tous les KPIs sont bons.")
+
+            with col_classement:
+                st.subheader("Classement des Postes de Travail")
+                df_class_display = df_class.copy()
+                df_class_display["Score KPIs Quantité"] = df_class_display["Score KPIs Quantité"].apply(lambda x: f"{x:.2f} %")
+                df_class_display["Score KPIs Qualité"] = df_class_display["Score KPIs Qualité"].apply(lambda x: f"{x:.2f} %")
+                df_class_display["Total performance "] = df_class_display["Total performance "].apply(lambda x: f"{x:.2f} %")
+
+                total_gen_class = pd.DataFrame([{
+                    "Poste travail princ.": "Total général",
+                    "Score KPIs Quantité": f"{df_class['Score KPIs Quantité'].mean():.2f} %",
+                    "Score KPIs Qualité": f"{df_class['Score KPIs Qualité'].mean():.2f} %",
+                    "Total performance ": f"{df_class['Total performance '].mean():.2f} %"
+                }])
+
+                df_class_display = pd.concat([df_class_display, total_gen_class], ignore_index=True)
+                st.dataframe(df_class_display.style.apply(highlight_classification_table_kpis, axis=1), use_container_width=True, height=400)
 
             st.markdown("---")
-            st.subheader("Synthèse des Actions KPI par Poste de Travail")
-            if not df_anomalies_ot.empty:
-                display_actions = df_anomalies_ot.copy()
-                if len(selected_postes) == len(all_postes_master_list):
-                    display_actions = display_actions[["KPI", "Nb OT impactés", "Action Suggérée"]]
-                st.dataframe(display_actions, use_container_width=True)
-            else: 
-                st.info("Tous les KPIs atteignent leurs cibles. Aucune action immédiate requise.")
-
-            st.markdown("---")
-            st.subheader("Classement des Postes de Travail par Qualité des KPIs")
-
-            df_class_display = df_class.copy()
-            df_class_display["Score KPIs Quantité"] = df_class_display["Score KPIs Quantité"].apply(lambda x: f"{x:.2f} %")
-            df_class_display["Score KPIs Qualité"] = df_class_display["Score KPIs Qualité"].apply(lambda x: f"{x:.2f} %")
-            df_class_display["Total performance "] = df_class_display["Total performance "].apply(lambda x: f"{x:.2f} %")
-
-            total_gen_class = pd.DataFrame([{
-                "Poste travail princ.": "Total général",
-                "Score KPIs Quantité": f"{df_class['Score KPIs Quantité'].mean():.2f} %",
-                "Score KPIs Qualité": f"{df_class['Score KPIs Qualité'].mean():.2f} %",
-                "Total performance ": f"{df_class['Total performance '].mean():.2f} %"
-            }])
-
-            df_class_display = pd.concat([df_class_display, total_gen_class], ignore_index=True)
-            st.table(df_class_display.style.apply(highlight_classification_table_kpis, axis=1))
-
-            st.markdown("---")
+            
+            # --- 3. TOP 5 (Déjà côte à côte) ---
             col_top1, col_top2, col_top3 = st.columns(3)
             with col_top1:
-                st.markdown("#### Top 5 Postes Impactant la Quantité")
+                st.markdown("#### Top 5 Impactant la Quantité")
                 top5 = df_class.nsmallest(5, "Score KPIs Quantité")[["Poste travail princ.", "Score KPIs Quantité"]]
                 top5["Score KPIs Quantité"] = top5["Score KPIs Quantité"].round(2)
-                st.dataframe(top5.set_index("Poste travail princ."))
+                st.dataframe(top5.set_index("Poste travail princ."), use_container_width=True)
             with col_top2:
-                st.markdown("#### Top 5 Postes Impactant la Qualité")
+                st.markdown("#### Top 5 Impactant la Qualité")
                 top5 = df_class.nsmallest(5, "Score KPIs Qualité")[["Poste travail princ.", "Score KPIs Qualité"]]
                 top5["Score KPIs Qualité"] = top5["Score KPIs Qualité"].round(2)
-                st.dataframe(top5.set_index("Poste travail princ."))
+                st.dataframe(top5.set_index("Poste travail princ."), use_container_width=True)
             with col_top3:
-                st.markdown("#### Top 5 Postes Impactant la Performance Globale")
+                st.markdown("#### Top 5 Impactant la Performance")
                 top5 = df_class.nsmallest(5, "Total performance ")[["Poste travail princ.", "Total performance "]]
                 top5["Total performance "] = top5["Total performance "].round(2)
-                st.dataframe(top5.set_index("Poste travail princ."))
+                st.dataframe(top5.set_index("Poste travail princ."), use_container_width=True)
 
             st.markdown("---")
+            
+            # --- 4. GRAPHIQUES (Déjà côte à côte) ---
             df_class["Métier"] = df_class["Poste travail princ."].apply(get_groupe_metier)
             df_class["Atelier"] = df_class["Poste travail princ."].apply(get_groupe_atelier)
             df_class["Division"] = df_class["Poste travail princ."].apply(get_groupe_division)
@@ -594,86 +603,91 @@ def main():
                 text_d = chart_d.mark_text(align='center', baseline='bottom', dy=-10, fontSize=16).encode(text=alt.Text('Total performance :Q', format='.1f'))
                 st.altair_chart((chart_d + text_d).configure_axisY(labels=False, ticks=False, grid=False, domain=False).configure_view(stroke='transparent').properties(height=250), use_container_width=True)
 
-            # --- 2. TABLEAU DE BORD DES ANOMALIES ---
+            # --- 5. TABLEAU DE BORD DES ANOMALIES (Pleine Largeur) ---
             st.markdown("---")
             st.markdown('<div class="header-anomalie">TABLEAU DE BORD DES ANOMALIES</div>', unsafe_allow_html=True)
             if not anomalies_dashboard.empty: 
-                st.dataframe(anomalies_dashboard, use_container_width=True)
+                st.dataframe(anomalies_dashboard, use_container_width=True, height=300)
             else: 
                 st.info("Aucune anomalie détectée.")
 
-            # --- 3. EXPORT ---
+            # --- 6. EXPORT ---
             st.markdown("---")
-            st.subheader("Exporter les plans d'action détaillés")
-            postes_avec_anomalies = anomalies_dashboard[anomalies_dashboard.index != "Total général"].index.tolist()
+            col_export1, col_export2, col_export3 = st.columns([2,1,2])
+            with col_export1:
+                st.subheader("Exporter les plans d'action détaillés")
+            with col_export2:
+                postes_avec_anomalies = anomalies_dashboard[anomalies_dashboard.index != "Total général"].index.tolist()
+                selected_poste_export = None
+                if postes_avec_anomalies:
+                    selected_poste_export = st.selectbox("Poste pour export :", options=["All"] + postes_avec_anomalies)
+            with col_export3:
+                if postes_avec_anomalies:
+                    if st.button("📥 Générer et télécharger le fichier Excel", type="primary", use_container_width=True):
+                        with st.spinner("Génération du fichier en cours..."):
+                            output = io.BytesIO()
+                            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                                postes_a_traiter = postes_avec_anomalies if selected_poste_export == "All" else [selected_poste_export]
 
-            if postes_avec_anomalies:
-                selected_poste_export = st.selectbox("Sélectionnez le poste de travail pour générer le fichier Excel :", options=["All"] + postes_avec_anomalies)
+                                for poste_export in postes_a_traiter:
+                                    kpis_en_defaut = df_anomalies_ot[df_anomalies_ot["Poste travail princ."] == poste_export]["KPI"].unique().tolist()
+                                    if "appel avis approuvé" in pivot_avis.columns and poste_export in pivot_avis.index and pivot_avis.loc[poste_export, "Nb Avis sans ordre"] > 0:
+                                        kpis_en_defaut.append("appel avis approuvé")
 
-                if st.button("📥 Générer et télécharger le fichier Excel", type="primary"):
-                    with st.spinner("Génération du fichier en cours..."):
-                        output = io.BytesIO()
-                        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                            postes_a_traiter = postes_avec_anomalies if selected_poste_export == "All" else [selected_poste_export]
+                                    for kpi in kpis_en_defaut:
+                                        sheet_data = pd.DataFrame()
 
-                            for poste_export in postes_a_traiter:
-                                kpis_en_defaut = df_anomalies_ot[df_anomalies_ot["Poste travail princ."] == poste_export]["KPI"].unique().tolist()
-                                if "appel avis approuvé" in pivot_avis.columns and poste_export in pivot_avis.index and pivot_avis.loc[poste_export, "Nb Avis sans ordre"] > 0:
-                                    kpis_en_defaut.append("appel avis approuvé")
+                                        if kpi != "appel avis approuvé":
+                                            df_poste_filtered = df_processed[df_processed["Poste travail princ."] == poste_export].copy()
+                                            if kpi == "TAUX_REALISATION_CORRECTIF/PT": subset_ot = df_poste_filtered[(df_poste_filtered["Nº appel pl.entret."].fillna(0) == 0) & (~df_poste_filtered["Statut OT"].isin(["CLOT", "TCLO"]))]
+                                            elif kpi == "OT préparation <1 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "CRÉÉ") & (df_poste_filtered["Age préparation"] != "<1 mois")]
+                                            elif kpi == "OT préparation >3 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "CRÉÉ") & (df_poste_filtered["Age préparation"] == ">3 mois")]
+                                            elif kpi == "OT planification <1 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 0) & (df_poste_filtered["Age planification"] != "<1 mois")]
+                                            elif kpi == "OT planification >3 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 0) & (df_poste_filtered["Age planification"] == ">3 mois")]
+                                            elif kpi == "OT exécution <1 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 1) & (df_poste_filtered["Age exécution"] != "<1 mois")]
+                                            elif kpi == "OT exécution >3 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 1) & (df_poste_filtered["Age exécution"] == ">3 mois")]
+                                            elif kpi == "OT LANC ESTIME": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["OT LANC ESTIME"] == "NON")]
+                                            elif kpi == "Backlog préparation caractérisé": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "CRÉÉ") & (df_poste_filtered["Backlog préparation"] == "NON CARACTERISE")]
+                                            elif kpi == "Backlog planification caractérisé": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Backlog planification"] == "NON CARACTERISE")]
+                                            elif kpi == "OT CONFIME": subset_ot = df_poste_filtered[df_poste_filtered["OT CONFIME"] == "NON"]
+                                            elif kpi == "OT_COR_EGAL": subset_ot = df_poste_filtered[df_poste_filtered["OT_COR_EGAL"] == "NON"]
+                                            else: subset_ot = pd.DataFrame()
 
-                                for kpi in kpis_en_defaut:
-                                    sheet_data = pd.DataFrame()
+                                            if not subset_ot.empty:
+                                                old_cols = ["Ordre", "Désignation", "Emplacement technique", "Poste travail princ.", "Statut système", "Statut utilisateur", "Date de début planifiée", "Type d'ordre", "Backlog préparation", "Backlog planification"]
+                                                new_cols = ["Ordre de travail", "Désignation", "Poste technique", "Poste de travail principal", "Statut système", "Statut utilisateur", "Date de début planifiée", "Type d'ordre", "Caractérisation backlog Préparation", "Caractérisation backlog Planification"]
+                                                subset_ot = rename_safe(subset_ot, old_cols, new_cols)
+                                                subset_ot["KPI impacté"] = kpi
+                                                subset_ot["Action recommandée"] = f"Corriger l'indicateur {kpi}."
+                                                sheet_data = pd.concat([sheet_data, subset_ot])
 
-                                    if kpi != "appel avis approuvé":
-                                        df_poste_filtered = df_processed[df_processed["Poste travail princ."] == poste_export].copy()
-                                        if kpi == "TAUX_REALISATION_CORRECTIF/PT": subset_ot = df_poste_filtered[(df_poste_filtered["Nº appel pl.entret."].fillna(0) == 0) & (~df_poste_filtered["Statut OT"].isin(["CLOT", "TCLO"]))]
-                                        elif kpi == "OT préparation <1 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "CRÉÉ") & (df_poste_filtered["Age préparation"] != "<1 mois")]
-                                        elif kpi == "OT préparation >3 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "CRÉÉ") & (df_poste_filtered["Age préparation"] == ">3 mois")]
-                                        elif kpi == "OT planification <1 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 0) & (df_poste_filtered["Age planification"] != "<1 mois")]
-                                        elif kpi == "OT planification >3 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 0) & (df_poste_filtered["Age planification"] == ">3 mois")]
-                                        elif kpi == "OT exécution <1 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 1) & (df_poste_filtered["Age exécution"] != "<1 mois")]
-                                        elif kpi == "OT exécution >3 mois": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Contient SOPL"] == 1) & (df_poste_filtered["Age exécution"] == ">3 mois")]
-                                        elif kpi == "OT LANC ESTIME": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["OT LANC ESTIME"] == "NON")]
-                                        elif kpi == "Backlog préparation caractérisé": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "CRÉÉ") & (df_poste_filtered["Backlog préparation"] == "NON CARACTERISE")]
-                                        elif kpi == "Backlog planification caractérisé": subset_ot = df_poste_filtered[(df_poste_filtered["Statut OT"] == "LANC") & (df_poste_filtered["Backlog planification"] == "NON CARACTERISE")]
-                                        elif kpi == "OT CONFIME": subset_ot = df_poste_filtered[df_poste_filtered["OT CONFIME"] == "NON"]
-                                        elif kpi == "OT_COR_EGAL": subset_ot = df_poste_filtered[df_poste_filtered["OT_COR_EGAL"] == "NON"]
-                                        else: subset_ot = pd.DataFrame()
+                                        if kpi == "appel avis approuvé":
+                                            subset_avis = results['avis_df_filtered'][results['avis_df_filtered']["Poste travail princ."] == poste_export].copy()
+                                            if not subset_avis.empty:
+                                                old_cols_avis = ["Avis", "Désignation texte", "Emplacement technique", "Poste travail princ.", "Statut utilisateur", "Créé le"]
+                                                new_cols_avis = ["Avis", "Désignation", "Poste technique", "Poste de travail principal", "Statut", "Date de création"]
+                                                subset_avis = rename_safe(subset_avis, old_cols_avis, new_cols_avis)
+                                                subset_avis["KPI impacté"] = kpi
+                                                subset_avis["Action recommandée"] = "Créer un Ordre de Travail pour cet Avis ou clarifier son statut."
+                                                sheet_data = pd.concat([sheet_data, subset_avis])
 
-                                        if not subset_ot.empty:
-                                            old_cols = ["Ordre", "Désignation", "Emplacement technique", "Poste travail princ.", "Statut système", "Statut utilisateur", "Date de début planifiée", "Type d'ordre", "Backlog préparation", "Backlog planification"]
-                                            new_cols = ["Ordre de travail", "Désignation", "Poste technique", "Poste de travail principal", "Statut système", "Statut utilisateur", "Date de début planifiée", "Type d'ordre", "Caractérisation backlog Préparation", "Caractérisation backlog Planification"]
-                                            subset_ot = rename_safe(subset_ot, old_cols, new_cols)
-                                            subset_ot["KPI impacté"] = kpi
-                                            subset_ot["Action recommandée"] = f"Corriger l'indicateur {kpi}."
-                                            sheet_data = pd.concat([sheet_data, subset_ot])
+                                        if not sheet_data.empty:
+                                            base_name = poste_export.replace(" ", "_").replace("/", "_")[:20]
+                                            kpi_name = kpi.replace("/", "_").replace(" ", "_")[:10]
+                                            sheet_name = f"{base_name}_{kpi_name}"[:31]
+                                            sheet_data.to_excel(writer, sheet_name=sheet_name, index=False)
 
-                                    if kpi == "appel avis approuvé":
-                                        subset_avis = results['avis_df_filtered'][results['avis_df_filtered']["Poste travail princ."] == poste_export].copy()
-                                        if not subset_avis.empty:
-                                            old_cols_avis = ["Avis", "Désignation texte", "Emplacement technique", "Poste travail princ.", "Statut utilisateur", "Créé le"]
-                                            new_cols_avis = ["Avis", "Désignation", "Poste technique", "Poste de travail principal", "Statut", "Date de création"]
-                                            subset_avis = rename_safe(subset_avis, old_cols_avis, new_cols_avis)
-                                            subset_avis["KPI impacté"] = kpi
-                                            subset_avis["Action recommandée"] = "Créer un Ordre de Travail pour cet Avis ou clarifier son statut."
-                                            sheet_data = pd.concat([sheet_data, subset_avis])
-
-                                    if not sheet_data.empty:
-                                        base_name = poste_export.replace(" ", "_").replace("/", "_")[:20]
-                                        kpi_name = kpi.replace("/", "_").replace(" ", "_")[:10]
-                                        sheet_name = f"{base_name}_{kpi_name}"[:31]
-                                        sheet_data.to_excel(writer, sheet_name=sheet_name, index=False)
-
-                        output.seek(0)
-                        nom_fichier = "Plan_Action_Tous_Postes.xlsx" if selected_poste_export == "All" else f"Plan_Action_{selected_poste_export.replace(' ', '_')}.xlsx"
-                        st.download_button(
-                            label="✅ Cliquez ici pour télécharger le fichier",
-                            data=output.getvalue(),
-                            file_name=nom_fichier,
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        )
-            else:
-                st.info("Aucune anomalie n'a été détectée. L'export est désactivé.")
+                            output.seek(0)
+                            nom_fichier = "Plan_Action_Tous_Postes.xlsx" if selected_poste_export == "All" else f"Plan_Action_{selected_poste_export.replace(' ', '_')}.xlsx"
+                            st.download_button(
+                                label="✅ Cliquez ici pour télécharger",
+                                data=output.getvalue(),
+                                file_name=nom_fichier,
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                use_container_width=True
+                            )
+                else:
+                    st.info("Aucune anomalie n'a été détectée. L'export est désactivé.")
 
         except Exception as e:
             st.error(f"Une erreur est survenue lors du traitement des fichiers : {e}")

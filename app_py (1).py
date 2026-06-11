@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
 """app.py"""
 
+# ==================================================
+# CONFIGURATION DE LA PAGE (DOIT ÊTRE LA PREMIÈRE COMMANDE STREAMLIT)
+# ==================================================
 import streamlit as st
+st.set_page_config(layout="wide", page_title="KPI Dashboard MC et FEED", page_icon="📊", initial_sidebar_state="collapsed")
+
 import pandas as pd
 import numpy as np
 import io
@@ -12,12 +17,12 @@ from datetime import datetime
 import os
 
 # ==================================================
-# CSS STYLES
+# CSS STYLES PLEIN ÉCRAN
 # ==================================================
 def inject_css():
     st.markdown("""
     <style>
-        /* Page entière sans scroll */
+        /* Forcer le plein écran */
         .main .block-container {
             padding-top: 1rem;
             padding-bottom: 1rem;
@@ -26,23 +31,29 @@ def inject_css():
             padding-right: 2rem;
         }
         
-        /* Masquer scrollbar */
-        ::-webkit-scrollbar { display: none; }
+        /* Masquer scrollbar vertical et horizontal pour une vue propre */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
         
-        /* Tableaux compacts */
-        .dataframe th, .dataframe td {
-            padding: 4px 8px !important;
+        /* Tableaux compacts et lisibles */
+        .dataframe th { 
+            background-color: #f8f9fa; 
+            border-bottom: 2px solid #dee2e6;
             font-size: 11px !important;
+            padding: 6px 8px !important;
+            text-align: left;
             white-space: nowrap;
         }
-        
-        /* Boutons toggle stylisés */
-        .stButton > button {
-            width: 100%;
-            transition: all 0.3s ease;
+        .dataframe td { 
+            padding: 4px 8px !important; 
+            font-size: 11px !important; 
+            white-space: nowrap; 
+            border-bottom: 1px solid #e9ecef;
         }
         
-        /* Headers */
+        /* En-têtes de section */
         .header-kpi {
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             padding: 12px 20px;
@@ -51,7 +62,8 @@ def inject_css():
             font-size: 18px;
             font-weight: bold;
             text-align: center;
-            margin: 10px 0;
+            margin: 10px 0 15px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         .header-anomalie {
             background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
@@ -61,7 +73,19 @@ def inject_css():
             font-size: 18px;
             font-weight: bold;
             text-align: center;
-            margin: 10px 0;
+            margin: 10px 0 15px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header-charts {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            margin: 10px 0 15px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         
         /* Splash screen */
@@ -73,42 +97,29 @@ def inject_css():
             height: 90vh;
         }
         
-        /* Réduire espacement */
-        .stMarkdown, .stAlert, .stDataFrame {
-            margin-top: 0.2rem;
-            margin-bottom: 0.2rem;
+        /* Réduire espacement entre les éléments */
+        div[data-testid="stVerticalBlock"] > div[style="flex-direction: column;"] > div > div > div {
+            margin-bottom: 0.5rem;
         }
         
-        /* Metric cards */
+        /* Metric cards stylisées */
         [data-testid="stMetric"] {
-            background-color: #f8f9fa;
-            padding: 10px;
-            border-radius: 8px;
+            background-color: #ffffff;
+            padding: 15px;
+            border-radius: 10px;
             border: 1px solid #e9ecef;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            text-align: center;
         }
-        
-        /* Boutons radio personnalisés */
-        .tab-button {
-            display: inline-block;
-            padding: 10px 30px;
-            margin: 0 5px;
-            border-radius: 8px 8px 0 0;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 14px;
-            transition: all 0.3s;
-        }
-        .tab-active-kpi {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: white;
-        }
-        .tab-active-anomalie {
-            background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
-            color: white;
-        }
-        .tab-inactive {
-            background: #e9ecef;
+        [data-testid="stMetricLabel"] {
+            font-size: 13px;
             color: #6c757d;
+            font-weight: 600;
+        }
+        [data-testid="stMetricValue"] {
+            font-size: 24px;
+            font-weight: bold;
+            color: #0f172a;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -210,6 +221,9 @@ ACTIONS_KPI = {
     "appel avis approuvé": "Créer un OT pour les avis sans ordre.",
 }
 
+# Mots exclus de TOUTES les listes et tableaux
+MOTS_EXCLUS = "cresseur|vercilat|horizon"
+
 # ==================================================
 # FONCTIONS UTILITAIRES
 # ==================================================
@@ -297,14 +311,11 @@ def process_dataframe(df_temp, now_timestamp):
 
 def calculate_kpis(df_temp, avis_df_temp, all_postes_list):
     results = {}
-    
-    # Analyse Correctif
     analyse = creer_pivot(df_temp, df_temp["Nº appel pl.entret."].fillna(0) == 0, "Statut OT", all_postes_list)
     for col in ["CLOT", "CRÉÉ", "LANC", "TCLO"]: analyse[col] = analyse.get(col, 0)
     analyse["Total"] = analyse[["CLOT", "CRÉÉ", "LANC", "TCLO"]].sum(axis=1)
     analyse["TAUX_REALISATION_CORRECTIF/PT"] = calcul_kpi(analyse["TCLO"], analyse["Total"])
 
-    # Préparation
     prep = creer_pivot(df_temp, df_temp["Statut OT"] == "CRÉÉ", "Age préparation", all_postes_list)
     for col in ["<1 mois", ">3 mois", "1 mois < <3 mois"]: prep[col] = prep.get(col, 0)
     prep["Total"] = prep[["<1 mois", "1 mois < <3 mois", ">3 mois"]].sum(axis=1)
@@ -312,7 +323,6 @@ def calculate_kpis(df_temp, avis_df_temp, all_postes_list):
     prep["OT préparation >3 mois"] = calcul_kpi(prep[">3 mois"], prep["Total"], 0)
     prep["OT préparation 1mois< <3mois"] = calcul_kpi(prep["1 mois < <3 mois"], prep["Total"], 0)
 
-    # Planification
     planif = creer_pivot(df_temp, (df_temp["Statut OT"] == "LANC") & (df_temp["Contient SOPL"] == 0), "Age planification", all_postes_list)
     for col in ["<1 mois", ">3 mois", "1 mois < <3 mois"]: planif[col] = planif.get(col, 0)
     planif["Total"] = planif[["<1 mois", "1 mois < <3 mois", ">3 mois"]].sum(axis=1)
@@ -320,7 +330,6 @@ def calculate_kpis(df_temp, avis_df_temp, all_postes_list):
     planif["OT planification >3 mois"] = calcul_kpi(planif[">3 mois"], planif["Total"], 0)
     planif["OT planification 1mois< <3mois"] = calcul_kpi(planif["1 mois < <3 mois"], planif["Total"], 0)
 
-    # Exécution
     execu = creer_pivot(df_temp, (df_temp["Statut OT"] == "LANC") & (df_temp["Contient SOPL"] == 1), "Age exécution", all_postes_list)
     for col in ["<1 mois", ">3 mois", "1 mois < <3 mois"]: execu[col] = execu.get(col, 0)
     execu["Total"] = execu[["<1 mois", "1 mois < <3 mois", ">3 mois"]].sum(axis=1)
@@ -328,25 +337,21 @@ def calculate_kpis(df_temp, avis_df_temp, all_postes_list):
     execu["OT exécution >3 mois"] = calcul_kpi(execu[">3 mois"], execu["Total"], 0)
     execu["OT exécution 1mois< <3mois"] = calcul_kpi(execu["1 mois < <3 mois"], execu["Total"], 0)
 
-    # OT LANC ESTIME
     lanc = pd.pivot_table(df_temp[df_temp["Statut OT"] == "LANC"], index="Poste travail princ.", columns="OT LANC ESTIME", values="Ordre", aggfunc="count", fill_value=0).reindex(all_postes_list, fill_value=0)
     for col in ["OUI", "NON"]: lanc[col] = lanc.get(col, 0)
     lanc["Total"] = lanc["OUI"] + lanc["NON"]
     lanc["OT LANC ESTIME"] = calcul_kpi(lanc["OUI"], lanc["Total"])
 
-    # Backlog préparation caractérisé
     prep_carac = pd.pivot_table(df_temp[df_temp["Statut OT"] == "CRÉÉ"], index="Poste travail princ.", columns="Backlog préparation", values="Ordre", aggfunc="count", fill_value=0).reindex(all_postes_list, fill_value=0)
     for col in ["CARACTERISE", "NON CARACTERISE"]: prep_carac[col] = prep_carac.get(col, 0)
     prep_carac["Total"] = prep_carac["CARACTERISE"] + prep_carac["NON CARACTERISE"]
     prep_carac["Backlog préparation caractérisé"] = calcul_kpi(prep_carac["CARACTERISE"], prep_carac["Total"])
 
-    # Backlog planification caractérisé
     planif_carac = pd.pivot_table(df_temp[df_temp["Statut OT"] == "LANC"], index="Poste travail princ.", columns="Backlog planification", values="Ordre", aggfunc="count", fill_value=0).reindex(all_postes_list, fill_value=0)
     for col in ["CARACTERISE", "NON CARACTERISE"]: planif_carac[col] = planif_carac.get(col, 0)
     planif_carac["Total"] = planif_carac["CARACTERISE"] + planif_carac["NON CARACTERISE"]
     planif_carac["Backlog planification caractérisé"] = calcul_kpi(planif_carac["CARACTERISE"], planif_carac["Total"])
 
-    # OT CONFIME et OT_COR_EGAL
     for kpi_name, col_name in [("OT CONFIME", "OT CONFIME"), ("OT_COR_EGAL", "OT_COR_EGAL")]:
         df_pivot = pd.pivot_table(df_temp, index="Poste travail princ.", columns=col_name, values="Ordre", aggfunc="count", fill_value=0).reindex(all_postes_list, fill_value=0)
         for c in ["OUI", "NON"]: df_pivot[c] = df_pivot.get(c, 0)
@@ -354,7 +359,6 @@ def calculate_kpis(df_temp, avis_df_temp, all_postes_list):
         df_pivot[col_name] = calcul_kpi(df_pivot["OUI"], df_pivot["Total"])
         results[kpi_name.lower().replace(" ", "_")] = df_pivot
 
-    # Avis
     avis_df_filtered = avis_df_temp[(avis_df_temp["Ordre"].isna()) | (avis_df_temp["Ordre"].astype(str).str.strip() == "")].copy()
     results['avis_df_filtered'] = avis_df_filtered
 
@@ -363,7 +367,6 @@ def calculate_kpis(df_temp, avis_df_temp, all_postes_list):
     tableau_avis["Total"] = tableau_avis[["APRQ", "APRV", "APRV AVAU", "REJT"]].sum(axis=1)
     tableau_avis["appel avis approuvé"] = calcul_kpi(tableau_avis["APRV"], tableau_avis["Total"])
 
-    # Concaténation finale
     calculated_kpis_df = pd.concat([
         analyse[["TAUX_REALISATION_CORRECTIF/PT"]], 
         prep[["OT préparation <1 mois", "OT préparation >3 mois", "OT préparation 1mois< <3mois"]],
@@ -385,10 +388,8 @@ def calculate_kpis(df_temp, avis_df_temp, all_postes_list):
 # ==================================================
 def highlight_kpis(row):
     styles = []
-    if row.name == 'CIBLE': 
-        return ['padding: 6px; background-color: #d6eaf8; color: #1a5276; font-weight: bold; font-size: 11px;'] * len(row)
-    if row.name == 'Total général': 
-        return ['padding: 6px; background-color: #f5f5f5; font-weight: bold; font-size: 11px;'] * len(row)
+    if row.name == 'CIBLE': return ['padding: 6px; background-color: #d6eaf8; color: #1a5276; font-weight: bold; font-size: 11px;'] * len(row)
+    if row.name == 'Total général': return ['padding: 6px; background-color: #f5f5f5; font-weight: bold; font-size: 11px;'] * len(row)
     for col in row.index:
         s = 'padding: 6px; font-size: 11px;'
         try: value = float(row[col])
@@ -447,40 +448,35 @@ def get_kpi_score(kpi_name, actual_value, target_value):
 def detect_anomalies(df_processed, calculated_kpis_df, results, valid_postes, cible):
     anomalies_ot_records = []
     anomalies_avis_records = []
+    kpi_conditions = {
+        "TAUX_REALISATION_CORRECTIF/PT": (df_processed["Nº appel pl.entret."].fillna(0) == 0) & (~df_processed["Statut OT"].isin(["CLOT", "TCLO"])),
+        "OT préparation <1 mois": (df_processed["Statut OT"] == "CRÉÉ") & (df_processed["Age préparation"] != "<1 mois"),
+        "OT préparation >3 mois": (df_processed["Statut OT"] == "CRÉÉ") & (df_processed["Age préparation"] == ">3 mois"),
+        "OT préparation 1mois< <3mois": (df_processed["Statut OT"] == "CRÉÉ") & (df_processed["Age préparation"] == "1 mois < <3 mois"),
+        "OT planification <1 mois": (df_processed["Statut OT"] == "LANC") & (df_processed["Contient SOPL"] == 0) & (df_processed["Age planification"] != "<1 mois"),
+        "OT planification >3 mois": (df_processed["Statut OT"] == "LANC") & (df_processed["Contient SOPL"] == 0) & (df_processed["Age planification"] == ">3 mois"),
+        "OT planification 1mois< <3mois": (df_processed["Statut OT"] == "LANC") & (df_processed["Contient SOPL"] == 0) & (df_processed["Age planification"] == "1 mois < <3 mois"),
+        "OT exécution <1 mois": (df_processed["Statut OT"] == "LANC") & (df_processed["Contient SOPL"] == 1) & (df_processed["Age exécution"] != "<1 mois"),
+        "OT exécution >3 mois": (df_processed["Statut OT"] == "LANC") & (df_processed["Contient SOPL"] == 1) & (df_processed["Age exécution"] == ">3 mois"),
+        "OT exécution 1mois< <3mois": (df_processed["Statut OT"] == "LANC") & (df_processed["Contient SOPL"] == 1) & (df_processed["Age exécution"] == "1 mois < <3 mois"),
+        "OT LANC ESTIME": (df_processed["Statut OT"] == "LANC") & (df_processed["OT LANC ESTIME"] == "NON"),
+        "Backlog préparation caractérisé": (df_processed["Statut OT"] == "CRÉÉ") & (df_processed["Backlog préparation"] == "NON CARACTERISE"),
+        "Backlog planification caractérisé": (df_processed["Statut OT"] == "LANC") & (df_processed["Backlog planification"] == "NON CARACTERISE"),
+        "OT CONFIME": df_processed["OT CONFIME"] == "NON",
+        "OT_COR_EGAL": df_processed["OT_COR_EGAL"] == "NON",
+    }
 
     for poste in valid_postes:
         if poste not in df_processed["Poste travail princ."].values: continue
         df_poste = df_processed[df_processed["Poste travail princ."] == poste]
         avis_poste = results['avis_df_filtered'][results['avis_df_filtered']["Poste travail princ."] == poste]
 
-        # KPIs avec conditions spécifiques
-        kpi_conditions = {
-            "TAUX_REALISATION_CORRECTIF/PT": (df_poste["Nº appel pl.entret."].fillna(0) == 0) & (~df_poste["Statut OT"].isin(["CLOT", "TCLO"])),
-            "OT préparation <1 mois": (df_poste["Statut OT"] == "CRÉÉ") & (df_poste["Age préparation"] != "<1 mois"),
-            "OT préparation >3 mois": (df_poste["Statut OT"] == "CRÉÉ") & (df_poste["Age préparation"] == ">3 mois"),
-            "OT préparation 1mois< <3mois": (df_poste["Statut OT"] == "CRÉÉ") & (df_poste["Age préparation"] == "1 mois < <3 mois"),
-            "OT planification <1 mois": (df_poste["Statut OT"] == "LANC") & (df_poste["Contient SOPL"] == 0) & (df_poste["Age planification"] != "<1 mois"),
-            "OT planification >3 mois": (df_poste["Statut OT"] == "LANC") & (df_poste["Contient SOPL"] == 0) & (df_poste["Age planification"] == ">3 mois"),
-            "OT planification 1mois< <3mois": (df_poste["Statut OT"] == "LANC") & (df_poste["Contient SOPL"] == 0) & (df_poste["Age planification"] == "1 mois < <3 mois"),
-            "OT exécution <1 mois": (df_poste["Statut OT"] == "LANC") & (df_poste["Contient SOPL"] == 1) & (df_poste["Age exécution"] != "<1 mois"),
-            "OT exécution >3 mois": (df_poste["Statut OT"] == "LANC") & (df_poste["Contient SOPL"] == 1) & (df_poste["Age exécution"] == ">3 mois"),
-            "OT exécution 1mois< <3mois": (df_poste["Statut OT"] == "LANC") & (df_poste["Contient SOPL"] == 1) & (df_poste["Age exécution"] == "1 mois < <3 mois"),
-            "OT LANC ESTIME": (df_poste["Statut OT"] == "LANC") & (df_poste["OT LANC ESTIME"] == "NON"),
-            "Backlog préparation caractérisé": (df_poste["Statut OT"] == "CRÉÉ") & (df_poste["Backlog préparation"] == "NON CARACTERISE"),
-            "Backlog planification caractérisé": (df_poste["Statut OT"] == "LANC") & (df_poste["Backlog planification"] == "NON CARACTERISE"),
-            "OT CONFIME": df_poste["OT CONFIME"] == "NON",
-            "OT_COR_EGAL": df_poste["OT_COR_EGAL"] == "NON",
-        }
-
         for kpi_name, condition in kpi_conditions.items():
             if poste not in calculated_kpis_df.index: continue
             val_kpi = calculated_kpis_df.loc[poste, kpi_name]
             
-            # Logique de comparaison selon le KPI
             is_anomaly = False
-            if kpi_name in ["OT préparation >3 mois", "OT planification >3 mois", "OT exécution >3 mois"]:
-                is_anomaly = pd.notna(val_kpi) and val_kpi > cible[kpi_name]
-            elif kpi_name in ["OT préparation 1mois< <3mois", "OT planification 1mois< <3mois", "OT exécution 1mois< <3mois"]:
+            if kpi_name in ["OT préparation >3 mois", "OT planification >3 mois", "OT exécution >3 mois", "OT préparation 1mois< <3mois", "OT planification 1mois< <3mois", "OT exécution 1mois< <3mois"]:
                 is_anomaly = pd.notna(val_kpi) and val_kpi > cible[kpi_name]
             else:
                 is_anomaly = pd.notna(val_kpi) and val_kpi < cible[kpi_name]
@@ -488,25 +484,14 @@ def detect_anomalies(df_processed, calculated_kpis_df, results, valid_postes, ci
             if is_anomaly:
                 count_anom = len(df_poste[condition])
                 if count_anom > 0:
-                    anomalies_ot_records.append({
-                        "Poste travail princ.": poste, 
-                        "KPI": kpi_name, 
-                        "Nb OT impactés": count_anom, 
-                        "Action Suggérée": ACTIONS_KPI.get(kpi_name, "")
-                    })
+                    anomalies_ot_records.append({"Poste travail princ.": poste, "KPI": kpi_name, "Nb OT impactés": count_anom, "Action Suggérée": ACTIONS_KPI.get(kpi_name, "")})
 
-        # Anomalies Avis
         if poste in calculated_kpis_df.index:
             val_avis = calculated_kpis_df.loc[poste, "appel avis approuvé"]
             if pd.notna(val_avis) and val_avis < cible["appel avis approuvé"]:
                 count_avis = len(avis_poste)
                 if count_avis > 0:
-                    anomalies_avis_records.append({
-                        "Poste travail princ.": poste, 
-                        "KPI": "appel avis approuvé", 
-                        "Nb Avis impactés": count_avis, 
-                        "Action Suggérée": ACTIONS_KPI["appel avis approuvé"]
-                    })
+                    anomalies_avis_records.append({"Poste travail princ.": poste, "KPI": "appel avis approuvé", "Nb Avis impactés": count_avis, "Action Suggérée": ACTIONS_KPI["appel avis approuvé"]})
 
     return pd.DataFrame(anomalies_ot_records), pd.DataFrame(anomalies_avis_records)
 
@@ -515,7 +500,6 @@ def detect_anomalies(df_processed, calculated_kpis_df, results, valid_postes, ci
 # ==================================================
 def show_hse_splash():
     consigne = random.choice(CONSIGNES_HSE)
-    
     st.markdown("""
     <div class="splash-container">
         <h1 style="text-align:center; font-size:48px; color:#0f172a; margin-bottom:10px;">
@@ -545,7 +529,6 @@ def show_hse_splash():
 def main():
     inject_css()
     
-    # Splash HSE
     if "hse_affiche" not in st.session_state:
         st.session_state.hse_affiche = False
     
@@ -553,9 +536,6 @@ def main():
         show_hse_splash()
         st.stop()
 
-    # ==================================================
-    # TITRE ET CHARGEMENT
-    # ==================================================
     st.markdown("# 📊 KPI Dashboard MC et FEED")
     
     use_new_files = st.toggle("Charger de nouveaux fichiers OT et AVIS", value=False)
@@ -586,55 +566,54 @@ def main():
             for col in ["Créé le", "Début souhaité", "Date de la clôture"]:
                 if col in avis_df_raw.columns: avis_df_raw[col] = pd.to_datetime(avis_df_raw[col], errors="coerce")
 
-            # Exclusion cresseurs
-            cresseur_mask = df_ot_raw["Poste travail princ."].astype(str).str.contains("cresseur|vercilat|horizon", case=False, na=False)
-            df_ot_clean = df_ot_raw[~cresseur_mask].copy()
-            cresseur_mask_avis = avis_df_raw["Poste travail princ."].astype(str).str.contains("cresseur|vercilat|horizon", case=False, na=False)
-            avis_df_clean = avis_df_raw[~cresseur_mask_avis].copy()
+            # ==================================================
+            # EXCLUSION STRICTE ET GLOBALE (CRESSEURS, VERCILAT, HORIZON)
+            # ==================================================
+            exclude_mask_ot = df_ot_raw["Poste travail princ."].astype(str).str.contains(MOTS_EXCLUS, case=False, na=False)
+            df_ot_clean = df_ot_raw[~exclude_mask_ot].copy()
+            exclude_mask_avis = avis_df_raw["Poste travail princ."].astype(str).str.contains(MOTS_EXCLUS, case=False, na=False)
+            avis_df_clean = avis_df_raw[~exclude_mask_avis].copy()
 
-            # Liste postes valides (SF1/SF2 uniquement, sans cresseurs)
+            # Liste postes valides (Propre)
             all_postes_master_list = sorted(df_ot_clean[df_ot_clean["Poste travail princ."].astype(str).str.startswith(("SF1", "SF2"), na=False)]["Poste travail princ."].dropna().unique().tolist())
 
             # ==================================================
-            # FILTRES DATE (appliqué globalement)
+            # FILTRES DATE
             # ==================================================
-            default_start = datetime(2025, 1, 1).date()
-            default_end = datetime.today().date()
-            date_range = st.date_input("📅 Filtre Date de début planifiée", value=(default_start, default_end), format="DD/MM/YYYY")
-            start_date = pd.to_datetime(date_range[0]) if len(date_range) == 2 else pd.to_datetime(default_start)
-            end_date = pd.to_datetime(date_range[1]) if len(date_range) == 2 else pd.to_datetime(default_end)
+            col_date, col_toggle = st.columns([3, 1])
+            with col_date:
+                default_start = datetime(2025, 1, 1).date()
+                default_end = datetime.today().date()
+                date_range = st.date_input("📅 Période d'analyse", value=(default_start, default_end), format="DD/MM/YYYY")
+                start_date = pd.to_datetime(date_range[0]) if len(date_range) == 2 else pd.to_datetime(default_start)
+                end_date = pd.to_datetime(date_range[1]) if len(date_range) == 2 else pd.to_datetime(default_end)
 
-            # Données globales filtrées par date
             df_global = df_ot_clean[(df_ot_clean["Poste travail princ."].isin(all_postes_master_list)) & 
                                     (df_ot_clean["Date de début planifiée"].between(start_date, end_date))].copy()
             avis_global = avis_df_clean[avis_df_clean["Poste travail princ."].isin(all_postes_master_list)].copy()
             df_global = df_global[df_global["Poste travail princ."].astype(str).str.startswith(("SF1", "SF2"), na=False)].drop_duplicates()
             avis_global = avis_global[(avis_global["Ordre"].isna()) | (avis_global["Ordre"].astype(str).str.strip().eq(""))].drop_duplicates()
+            
             if "Statut système" in df_global.columns:
                 df_global["Statut OT"] = df_global["Statut système"].fillna("").astype(str).str.strip().str.split().str[0]
 
-            # Traitement et KPIs globaux
             now = pd.Timestamp.now()
             df_processed_global = process_dataframe(df_global, now)
             results_global = calculate_kpis(df_processed_global, avis_global, all_postes_master_list)
 
             # ==================================================
-            # RÉSUMÉ EXÉCUTIF (sans filtres poste/atelier/division)
+            # RÉSUMÉ EXÉCUTIF
             # ==================================================
-            st.markdown("---")
             col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-            with col_m1:
-                st.metric("Total OT", f"{len(df_global):,}")
+            with col_m1: st.metric("Total OT", f"{len(df_global):,}")
             with col_m2:
                 taux = results_global['calculated_kpis_df']["TAUX_REALISATION_CORRECTIF/PT"].mean()
                 st.metric("Taux Réalisation", f"{taux:.1f}%", delta=f"{taux - CIBLES['TAUX_REALISATION_CORRECTIF/PT']:.1f}% vs cible")
-            with col_m3:
-                st.metric("Total Postes", len(all_postes_master_list))
-            with col_m4:
-                st.metric("Période", f"{start_date.strftime('%d/%m')} - {end_date.strftime('%d/%m/%Y')}")
+            with col_m3: st.metric("Total Postes", len(all_postes_master_list))
+            with col_m4: st.metric("Période", f"{start_date.strftime('%d/%m')} - {end_date.strftime('%d/%m/%Y')}")
 
             # ==================================================
-            # FILTRES POSTE/ATELIER/DIVISION (pour KPIs et Anomalies)
+            # FILTRES AVANCÉS
             # ==================================================
             st.markdown("---")
             col_f1, col_f2, col_f3 = st.columns(3)
@@ -647,129 +626,21 @@ def main():
                 divisions_options = ["All", "SF1", "SF2"]
                 selected_divisions = st.multiselect("Division", divisions_options, ["All"], key="division")
 
-            # Postes filtrés
-            if "All" in selected_postes or len(selected_postes) == 0:
-                selected_postes_filtred = all_postes_master_list
-            else:
-                selected_postes_filtred = selected_postes
+            if "All" in selected_postes or len(selected_postes) == 0: selected_postes_filtred = all_postes_master_list
+            else: selected_postes_filtred = selected_postes
 
             valid_postes = [p for p in selected_postes_filtred if match_filters(p, selected_ateliers, selected_divisions)]
 
-            # Recalcul KPIs filtrés
             df_filtered = df_processed_global[df_processed_global["Poste travail princ."].isin(valid_postes)].copy()
             avis_filtered = avis_global[avis_global["Poste travail princ."].isin(valid_postes)].copy()
             results_filtered = calculate_kpis(df_filtered, avis_filtered, valid_postes)
             calculated_kpis_df = results_filtered['calculated_kpis_df']
             df_processed = df_filtered
-
-            # Cible
             cible = pd.DataFrame([CIBLES], index=["CIBLE"])
 
-            # Détection anomalies
-            df_anomalies_ot, df_anomalies_avis = detect_anomalies(df_processed, calculated_kpis_df, results_filtered, valid_postes, CIBLES)
-
-            # Construction tableau anomalies
-            if not df_anomalies_ot.empty:
-                pivot_ot = df_anomalies_ot.pivot_table(index="Poste travail princ.", columns="KPI", values="Nb OT impactés", aggfunc="sum", fill_value=0)
-            else:
-                pivot_ot = pd.DataFrame()
-            if not df_anomalies_avis.empty:
-                pivot_avis = df_anomalies_avis.pivot_table(index="Poste travail princ.", columns="KPI", values="Nb Avis impactés", aggfunc="sum", fill_value=0)
-                if "appel avis approuvé" in pivot_avis.columns:
-                    pivot_avis = pivot_avis.rename(columns={"appel avis approuvé": "Nb Avis sans ordre"})
-            else:
-                pivot_avis = pd.DataFrame()
-
-            anomalies_dashboard = pivot_ot.join(pivot_avis, how='outer').fillna(0).astype(int)
-            if not anomalies_dashboard.empty:
-                anomalies_dashboard["Total éléments impactés"] = anomalies_dashboard.sum(axis=1)
-                total_row = pd.DataFrame(anomalies_dashboard.sum()).T
-                total_row.index = ["Total général"]
-                anomalies_dashboard = pd.concat([anomalies_dashboard, total_row])
-
             # ==================================================
-            # BOUTONS TOGGLE KPI / ANOMALIES
+            # CALCUL DU CLASSEMENT (Déplacé ici pour les graphiques)
             # ==================================================
-            st.markdown("---")
-            
-            if "view_mode" not in st.session_state:
-                st.session_state.view_mode = "kpi"
-            
-            col_btn1, col_btn2 = st.columns(2)
-            with col_btn1:
-                if st.button("📊 TABLEAU DE BORD DES KPIs", 
-                           type="primary" if st.session_state.view_mode == "kpi" else "secondary",
-                           use_container_width=True):
-                    st.session_state.view_mode = "kpi"
-            with col_btn2:
-                if st.button("⚠️ TABLEAU DE BORD DES ANOMALIES", 
-                           type="primary" if st.session_state.view_mode == "anomalie" else "secondary",
-                           use_container_width=True):
-                    st.session_state.view_mode = "anomalie"
-
-            # ==================================================
-            # AFFICHAGE CONDITIONNEL
-            # ==================================================
-            if st.session_state.view_mode == "kpi":
-                st.markdown('<div class="header-kpi">TABLEAU DE BORD DES KPIs</div>', unsafe_allow_html=True)
-                
-                total_general_kpi = pd.DataFrame(calculated_kpis_df.mean()).T
-                total_general_kpi.index = ["Total général"]
-                final_kpi = pd.concat([cible, calculated_kpis_df, total_general_kpi]).round(2)
-                st.table(final_kpi.style.apply(highlight_kpis, axis=1).format("{:.2f}"))
-
-            else:  # anomalie
-                st.markdown('<div class="header-anomalie">TABLEAU DE BORD DES ANOMALIES</div>', unsafe_allow_html=True)
-                if not anomalies_dashboard.empty:
-                    st.dataframe(anomalies_dashboard, use_container_width=True)
-                else:
-                    st.info("✅ Aucune anomalie détectée.")
-
-            # ==================================================
-            # SYNTHÈSE DES ACTIONS (par KPI quand ALL sélectionné)
-            # ==================================================
-            st.markdown("---")
-            st.markdown("## 📋 Synthèse des Actions KPI")
-            
-            is_all_postes = "All" in selected_postes or len(selected_postes) == 0
-
-            if is_all_postes:
-                # Regroupement par KPI avec somme des OT impactés
-                if not df_anomalies_ot.empty:
-                    synthese = df_anomalies_ot.groupby("KPI").agg(
-                        Nb_OT_impactés=("Nb OT impactés", "sum"),
-                        Action_Suggérée=("Action Suggérée", "first")
-                    ).reset_index()
-                    synthese.columns = ["KPI", "Nombre OT impactés", "Action Suggérée"]
-                    synthese = synthese.sort_values("Nombre OT impactés", ascending=False)
-                    st.dataframe(synthese, use_container_width=True, hide_index=True)
-                else:
-                    st.info("✅ Tous les KPIs atteignent leurs cibles. Aucune action requise.")
-                
-                # Ajouter les avis si anomalie
-                if not df_anomalies_avis.empty:
-                    st.markdown("### Avis sans ordre")
-                    synthese_avis = df_anomalies_avis.groupby("KPI").agg(
-                        Nb_Avis_impactés=("Nb Avis impactés", "sum"),
-                        Action_Suggérée=("Action Suggérée", "first")
-                    ).reset_index()
-                    synthese_avis.columns = ["KPI", "Nombre Avis impactés", "Action Suggérée"]
-                    st.dataframe(synthese_avis, use_container_width=True, hide_index=True)
-            else:
-                # Affichage par poste
-                if not df_anomalies_ot.empty:
-                    display_actions = df_anomalies_ot[["KPI", "Nb OT impactés", "Action Suggérée"]].copy()
-                    display_actions.columns = ["KPI", "Nombre OT impactés", "Action Suggérée"]
-                    st.dataframe(display_actions, use_container_width=True, hide_index=True)
-                else:
-                    st.info("✅ Tous les KPIs atteignent leurs cibles. Aucune action requise.")
-
-            # ==================================================
-            # CLASSEMENT POSTES
-            # ==================================================
-            st.markdown("---")
-            st.markdown("## 🏆 Classement des Postes par Performance")
-
             qty_kpis = ["TAUX_REALISATION_CORRECTIF/PT", "OT préparation <1 mois", "OT préparation >3 mois", "OT préparation 1mois< <3mois", 
                        "OT planification <1 mois", "OT planification >3 mois", "OT planification 1mois< <3mois", 
                        "OT exécution <1 mois", "OT exécution >3 mois", "OT exécution 1mois< <3mois"]
@@ -789,21 +660,106 @@ def main():
                     "Total performance ": (p_qty + p_qual) / 2
                 })
             df_class = pd.DataFrame(class_results)
+            df_class["Métier"] = df_class["Poste travail princ."].apply(get_groupe_metier)
+            df_class["Atelier"] = df_class["Poste travail princ."].apply(get_groupe_atelier)
+            df_class["Division"] = df_class["Poste travail princ."].apply(get_groupe_division)
+
+            # ==================================================
+            # GRAPHIQUES HAUT DE PAGE (PROFESSIONNELS ET CLAIRS)
+            # ==================================================
+            st.markdown('<div class="header-charts">📈 PERFORMANCE GLOBALE PAR CATÉGORIE</div>', unsafe_allow_html=True)
+            
+            c1, c2, c3 = st.columns(3)
+            
+            with c1:
+                df_m = df_class.groupby("Métier")["Total performance "].mean().reset_index()
+                df_m["Valeur %"] = df_m["Total performance "].apply(lambda x: f"{x:.1f} %")
+                chart_m = alt.Chart(df_m).mark_bar(color='#3498db', cornerRadiusTopLeft=4, cornerRadiusTopRight=4).encode(
+                    x=alt.X('Métier:O', axis=alt.Axis(labelAngle=0, labelFontSize=12)), 
+                    y=alt.Y('Total performance :Q', scale=alt.Scale(domain=[0, 100]), axis=None)
+                )
+                text_m = chart_m.mark_text(align='center', baseline='bottom', dy=-10, fontSize=16, fontWeight='bold', color='#2c3e50').encode(text='Valeur %:T')
+                st.altair_chart((chart_m + text_m).properties(height=350, width=None).configure_view(stroke='transparent'), use_container_width=True)
+
+            with c2:
+                df_a = df_class.groupby("Atelier")["Total performance "].mean().reset_index()
+                df_a["Valeur %"] = df_a["Total performance "].apply(lambda x: f"{x:.1f} %")
+                chart_a = alt.Chart(df_a).mark_bar(color='#e74c3c', cornerRadiusTopLeft=4, cornerRadiusTopRight=4).encode(
+                    x=alt.X('Atelier:O', axis=alt.Axis(labelAngle=0, labelFontSize=12)), 
+                    y=alt.Y('Total performance :Q', scale=alt.Scale(domain=[0, 100]), axis=None)
+                )
+                text_a = chart_a.mark_text(align='center', baseline='bottom', dy=-10, fontSize=16, fontWeight='bold', color='#2c3e50').encode(text='Valeur %:T')
+                st.altair_chart((chart_a + text_a).properties(height=350, width=None).configure_view(stroke='transparent'), use_container_width=True)
+
+            with c3:
+                df_d = df_class.groupby("Division")["Total performance "].mean().reset_index()
+                df_d["Valeur %"] = df_d["Total performance "].apply(lambda x: f"{x:.1f} %")
+                chart_d = alt.Chart(df_d).mark_bar(color='#2ecc71', cornerRadiusTopLeft=4, cornerRadiusTopRight=4).encode(
+                    x=alt.X('Division:O', axis=alt.Axis(labelAngle=0, labelFontSize=12)), 
+                    y=alt.Y('Total performance :Q', scale=alt.Scale(domain=[0, 100]), axis=None)
+                )
+                text_d = chart_d.mark_text(align='center', baseline='bottom', dy=-10, fontSize=16, fontWeight='bold', color='#2c3e50').encode(text='Valeur %:T')
+                st.altair_chart((chart_d + text_d).properties(height=350, width=None).configure_view(stroke='transparent'), use_container_width=True)
+
+            # ==================================================
+            # ANOMALIES CALCUL
+            # ==================================================
+            df_anomalies_ot, df_anomalies_avis = detect_anomalies(df_processed, calculated_kpis_df, results_filtered, valid_postes, CIBLES)
+
+            if not df_anomalies_ot.empty:
+                pivot_ot = df_anomalies_ot.pivot_table(index="Poste travail princ.", columns="KPI", values="Nb OT impactés", aggfunc="sum", fill_value=0)
+            else: pivot_ot = pd.DataFrame()
+            if not df_anomalies_avis.empty:
+                pivot_avis = df_anomalies_avis.pivot_table(index="Poste travail princ.", columns="KPI", values="Nb Avis impactés", aggfunc="sum", fill_value=0)
+                if "appel avis approuvé" in pivot_avis.columns: pivot_avis = pivot_avis.rename(columns={"appel avis approuvé": "Nb Avis sans ordre"})
+            else: pivot_avis = pd.DataFrame()
+
+            anomalies_dashboard = pivot_ot.join(pivot_avis, how='outer').fillna(0).astype(int)
+            if not anomalies_dashboard.empty:
+                anomalies_dashboard["Total éléments impactés"] = anomalies_dashboard.sum(axis=1)
+                total_row = pd.DataFrame(anomalies_dashboard.sum()).T; total_row.index = ["Total général"]
+                anomalies_dashboard = pd.concat([anomalies_dashboard, total_row])
+
+            # ==================================================
+            # BOUTONS TOGGLE KPI / ANOMALIES
+            # ==================================================
+            st.markdown("---")
+            if "view_mode" not in st.session_state: st.session_state.view_mode = "kpi"
+            
+            col_btn1, col_btn2 = st.columns(2)
+            with col_btn1:
+                if st.button("📊 TABLEAU DE BORD DES KPIs", type="primary" if st.session_state.view_mode == "kpi" else "secondary", use_container_width=True):
+                    st.session_state.view_mode = "kpi"
+            with col_btn2:
+                if st.button("⚠️ TABLEAU DE BORD DES ANOMALIES", type="primary" if st.session_state.view_mode == "anomalie" else "secondary", use_container_width=True):
+                    st.session_state.view_mode = "anomalie"
+
+            # ==================================================
+            # AFFICHAGE TABLEAUX
+            # ==================================================
+            if st.session_state.view_mode == "kpi":
+                st.markdown('<div class="header-kpi">TABLEAU DE BORD DES KPIs</div>', unsafe_allow_html=True)
+                total_general_kpi = pd.DataFrame(calculated_kpis_df.mean()).T; total_general_kpi.index = ["Total général"]
+                final_kpi = pd.concat([cible, calculated_kpis_df, total_general_kpi]).round(2)
+                st.table(final_kpi.style.apply(highlight_kpis, axis=1).format("{:.2f}"))
+            else:
+                st.markdown('<div class="header-anomalie">TABLEAU DE BORD DES ANOMALIES</div>', unsafe_allow_html=True)
+                if not anomalies_dashboard.empty: st.dataframe(anomalies_dashboard, use_container_width=True)
+                else: st.info("✅ Aucune anomalie détectée.")
+
+            # ==================================================
+            # CLASSEMENT POSTES
+            # ==================================================
+            st.markdown("---")
+            st.markdown("## 🏆 Classement des Postes par Performance")
 
             df_class_display = df_class.copy()
             for col in ["Score KPIs Quantité", "Score KPIs Qualité", "Total performance "]:
                 df_class_display[col] = df_class_display[col].apply(lambda x: f"{x:.2f} %")
-
-            total_gen_class = pd.DataFrame([{
-                "Poste travail princ.": "Total général",
-                "Score KPIs Quantité": f"{df_class['Score KPIs Quantité'].mean():.2f} %",
-                "Score KPIs Qualité": f"{df_class['Score KPIs Qualité'].mean():.2f} %",
-                "Total performance ": f"{df_class['Total performance '].mean():.2f} %"
-            }])
+            total_gen_class = pd.DataFrame([{"Poste travail princ.": "Total général", "Score KPIs Quantité": f"{df_class['Score KPIs Quantité'].mean():.2f} %", "Score KPIs Qualité": f"{df_class['Score KPIs Qualité'].mean():.2f} %", "Total performance ": f"{df_class['Total performance '].mean():.2f} %"}])
             df_class_display = pd.concat([df_class_display, total_gen_class], ignore_index=True)
             st.table(df_class_display.style.apply(highlight_classification, axis=1))
 
-            # Top 5
             col_t1, col_t2, col_t3 = st.columns(3)
             with col_t1:
                 st.markdown("#### ⬇️ Top 5 Quantité")
@@ -818,29 +774,6 @@ def main():
                 top5 = df_class.nsmallest(5, "Total performance ")[["Poste travail princ.", "Total performance "]].round(2)
                 st.dataframe(top5.set_index("Poste travail princ."), use_container_width=True)
 
-            # Graphiques
-            st.markdown("---")
-            df_class["Métier"] = df_class["Poste travail princ."].apply(get_groupe_metier)
-            df_class["Atelier"] = df_class["Poste travail princ."].apply(get_groupe_atelier)
-            df_class["Division"] = df_class["Poste travail princ."].apply(get_groupe_division)
-
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                df_m = df_class.groupby("Métier")["Total performance "].mean().reset_index()
-                chart = alt.Chart(df_m).mark_bar(color='#3498db').encode(x='Métier:O', y='Total performance :Q')
-                text = chart.mark_text(align='center', baseline='bottom', dy=-10, fontSize=14).encode(text=alt.Text('Total performance :Q', format='.1f'))
-                st.altair_chart((chart + text).configure_axisY(labels=False, ticks=False, grid=False, domain=False).configure_view(stroke='transparent').properties(height=200), use_container_width=True)
-            with c2:
-                df_a = df_class.groupby("Atelier")["Total performance "].mean().reset_index()
-                chart = alt.Chart(df_a).mark_bar(color='#e74c3c').encode(x='Atelier:O', y='Total performance :Q')
-                text = chart.mark_text(align='center', baseline='bottom', dy=-10, fontSize=14).encode(text=alt.Text('Total performance :Q', format='.1f'))
-                st.altair_chart((chart + text).configure_axisY(labels=False, ticks=False, grid=False, domain=False).configure_view(stroke='transparent').properties(height=200), use_container_width=True)
-            with c3:
-                df_d = df_class.groupby("Division")["Total performance "].mean().reset_index()
-                chart = alt.Chart(df_d).mark_bar(color='#2ecc71').encode(x='Division:O', y='Total performance :Q')
-                text = chart.mark_text(align='center', baseline='bottom', dy=-10, fontSize=14).encode(text=alt.Text('Total performance :Q', format='.1f'))
-                st.altair_chart((chart + text).configure_axisY(labels=False, ticks=False, grid=False, domain=False).configure_view(stroke='transparent').properties(height=200), use_container_width=True)
-
             # ==================================================
             # EXPORT
             # ==================================================
@@ -850,21 +783,16 @@ def main():
 
             if postes_avec_anomalies:
                 selected_poste_export = st.selectbox("Poste à exporter :", options=["All"] + postes_avec_anomalies, key="export")
-                
                 if st.button("📥 Générer le fichier Excel", type="primary", use_container_width=True):
                     with st.spinner("Génération en cours..."):
                         output = io.BytesIO()
                         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                             postes_a_traiter = postes_avec_anomalies if selected_poste_export == "All" else [selected_poste_export]
-
                             for poste_export in postes_a_traiter:
                                 kpis_en_defaut = df_anomalies_ot[df_anomalies_ot["Poste travail princ."] == poste_export]["KPI"].unique().tolist()
-                                if not df_anomalies_avis.empty and poste_export in df_anomalies_avis["Poste travail princ."].values:
-                                    kpis_en_defaut.append("appel avis approuvé")
-
+                                if not df_anomalies_avis.empty and poste_export in df_anomalies_avis["Poste travail princ."].values: kpis_en_defaut.append("appel avis approuvé")
                                 for kpi in kpis_en_defaut:
                                     sheet_data = pd.DataFrame()
-
                                     if kpi != "appel avis approuvé":
                                         df_poste_exp = df_processed[df_processed["Poste travail princ."] == poste_export].copy()
                                         conditions_map = {
@@ -893,7 +821,6 @@ def main():
                                                 subset_ot["KPI impacté"] = kpi
                                                 subset_ot["Action recommandée"] = ACTIONS_KPI.get(kpi, "")
                                                 sheet_data = pd.concat([sheet_data, subset_ot])
-
                                     if kpi == "appel avis approuvé":
                                         subset_avis = results_filtered['avis_df_filtered'][results_filtered['avis_df_filtered']["Poste travail princ."] == poste_export].copy()
                                         if not subset_avis.empty:
@@ -903,22 +830,14 @@ def main():
                                             subset_avis["KPI impacté"] = kpi
                                             subset_avis["Action recommandée"] = "Créer un OT pour cet Avis ou clarifier son statut."
                                             sheet_data = pd.concat([sheet_data, subset_avis])
-
                                     if not sheet_data.empty:
                                         base_name = poste_export.replace(" ", "_").replace("/", "_")[:20]
                                         kpi_name = kpi.replace("/", "_").replace(" ", "_")[:10]
                                         sheet_name = f"{base_name}_{kpi_name}"[:31]
                                         sheet_data.to_excel(writer, sheet_name=sheet_name, index=False)
-
                         output.seek(0)
                         nom_fichier = "Plan_Action_Tous_Postes.xlsx" if selected_poste_export == "All" else f"Plan_Action_{selected_poste_export.replace(' ', '_')}.xlsx"
-                        st.download_button(
-                            label="✅ Télécharger le fichier",
-                            data=output.getvalue(),
-                            file_name=nom_fichier,
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            use_container_width=True
-                        )
+                        st.download_button(label="✅ Télécharger le fichier", data=output.getvalue(), file_name=nom_fichier, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
             else:
                 st.info("✅ Aucune anomalie détectée. Export désactivé.")
 
@@ -937,11 +856,8 @@ def main():
 # EXECUTION
 # ==================================================
 if __name__ == "__main__":
-    try:
-        locale.setlocale(locale.LC_ALL, 'fr_FR.UTF-8')
+    try: locale.setlocale(locale.LC_ALL, 'fr_FR.UTF-8')
     except:
-        try:
-            locale.setlocale(locale.LC_ALL, 'fr_FR')
-        except:
-            pass
+        try: locale.setlocale(locale.LC_ALL, 'fr_FR')
+        except: pass
     main()

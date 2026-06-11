@@ -13,6 +13,8 @@ import numpy as np
 import io
 import locale
 import altair as alt
+import random
+import time
 from datetime import datetime
 import os
 
@@ -396,24 +398,22 @@ def main():
                 if "All" in selected_divisions or len(selected_divisions) == 0: selected_divisions = ["All"]
 
             # Filtre Date automatique : 01/01/2025 à aujourd'hui, calendrier forcé en français
-           # ==========================================
+            # ==========================================
+            default_start = datetime(2025, 1, 1).date()
+            default_end = datetime.today().date()
 
+            date_range = st.date_input(
+                "📅 Filtre Date de début planifiée (Du - Au)",
+                value=(default_start, default_end),
+                format="DD/MM/YYYY"
+            )
 
-default_start = datetime(2025, 1, 1).date()
-default_end = datetime.today().date()
-
-date_range = st.date_input(
-    "📅 Filtre Date de début planifiée (Du - Au)",
-    value=(default_start, default_end),
-    format="DD/MM/YYYY"
-)
-
-if len(date_range) == 2:
-    start_date = pd.to_datetime(date_range[0])
-    end_date = pd.to_datetime(date_range[1])
-else:
-    start_date = pd.to_datetime(default_start)
-    end_date = pd.to_datetime(default_end)
+            if len(date_range) == 2:
+                start_date = pd.to_datetime(date_range[0])
+                end_date = pd.to_datetime(date_range[1])
+            else:
+                start_date = pd.to_datetime(default_start)
+                end_date = pd.to_datetime(default_end)
 
             def match_filters(poste):
                 p = str(poste).upper()
@@ -473,8 +473,7 @@ else:
                     count_anom = len(df_poste[(df_poste["Statut OT"] == "CRÉÉ") & (df_poste["Age préparation"] != "<1 mois")])
                     if count_anom > 0: anomalies_ot_records.append({"Poste travail princ.": poste, "KPI": "OT préparation <1 mois", "Nb OT impactés": count_anom, "Action Suggérée": "Réduire l'âge de préparation des OT."})
 
-                val_prep_sup3 = calculated_kpis_df.loc[poste, "OT préparation >3 mois"```python
-# Suite du code pour éviter de couper la logique en plein milieu
+                val_prep_sup3 = calculated_kpis_df.loc[poste, "OT préparation >3 mois"] if poste in calculated_kpis_df.index else 0
 
                 if pd.notna(val_prep_sup3) and val_prep_sup3 > cible.loc['CIBLE', "OT préparation >3 mois"]:
                     count_anom = len(df_poste[(df_poste["Statut OT"] == "CRÉÉ") & (df_poste["Age préparation"] == ">3 mois")])

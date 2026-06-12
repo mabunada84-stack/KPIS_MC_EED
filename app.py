@@ -31,84 +31,55 @@ def save_current_kpis(ckdf, qk, pk, pscores, qscores, pa, qa):
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     MAX_H = 20
     def add_entry(key, val):
-        if val is None or (isinstance(val, float) and np.isnan(val)):
-            return
+        if val is None or (isinstance(val, float) and np.isnan(val)): return
         fv = round(float(val), 2)
-        if key not in history:
-            history[key] = []
-        if len(history[key]) > 0 and history[key][-1]["date"][:16] == now_str[:16] and abs(history[key][-1]["value"] - fv) < 0.01:
-            return
+        if key not in history: history[key] = []
+        if len(history[key]) > 0 and history[key][-1]["date"][:16] == now_str[:16] and abs(history[key][-1]["value"] - fv) < 0.01: return
         history[key].append({"date": now_str, "value": fv})
-        if len(history[key]) > MAX_H:
-            history[key] = history[key][-MAX_H:]
+        if len(history[key]) > MAX_H: history[key] = history[key][-MAX_H:]
     for poste in ckdf.index:
         for k in qk + pk:
             if k in ckdf.columns:
                 v = ckdf.loc[poste, k]
-                if pd.notna(v):
-                    add_entry(f"{poste}__{k}", v)
-        if poste in pscores:
-            add_entry(f"{poste}__Score Performance", pscores[poste])
-        if poste in qscores:
-            add_entry(f"{poste}__Score Qualite", qscores[poste])
-    for k in qk:
-        add_entry(f"__total__{k}", pa.get(k))
-    for k in pk:
-        add_entry(f"__total__{k}", qa.get(k))
+                if pd.notna(v): add_entry(f"{poste}__{k}", v)
+        if poste in pscores: add_entry(f"{poste}__Score Performance", pscores[poste])
+        if poste in qscores: add_entry(f"{poste}__Score Qualite", qscores[poste])
+    for k in qk: add_entry(f"__total__{k}", pa.get(k))
+    for k in pk: add_entry(f"__total__{k}", qa.get(k))
     add_entry("__total__Score Performance", float(np.mean(list(pscores.values()))) if pscores else 0.0)
     add_entry("__total__Score Qualite", float(np.mean(list(qscores.values()))) if qscores else 0.0)
     save_kpi_history(history)
     return history
 
 def generate_sparkline(values):
-    if not values or len(values) < 2:
-        return ""
+    if not values or len(values) < 2: return ""
     blocks = ['\u2581', '\u2582', '\u2583', '\u2584', '\u2585', '\u2586', '\u2587', '\u2588']
     vals = [float(v) for v in values if v is not None]
-    if len(vals) < 2:
-        return ""
-    dv = vals[-8:]
-    mn, mx = min(dv), max(dv)
-    if mx == mn:
-        return '\u2584' * len(dv)
+    if len(vals) < 2: return ""
+    dv = vals[-8:]; mn, mx = min(dv), max(dv)
+    if mx == mn: return '\u2584' * len(dv)
     norm = [(v - mn) / (mx - mn) * 7 for v in dv]
     return ''.join(blocks[min(7, max(0, int(round(n))))] for n in norm)
 
 def get_trend_info(values, lower_better=False):
-    if len(values) < 2:
-        return "", ""
+    if len(values) < 2: return "", ""
     prev, curr = float(values[-2]), float(values[-1])
     diff = curr - prev
-    if abs(diff) < 0.5:
-        return "\u27a1\ufe0f", "stable"
-    if lower_better:
-        return ("\U0001f4c8", "amelioration") if diff < 0 else ("\U0001f4c9", "degradation")
-    else:
-        return ("\U0001f4c8", "amelioration") if diff > 0 else ("\U0001f4c9", "degradation")
+    if abs(diff) < 0.5: return "\u27a1\ufe0f", "stable"
+    if lower_better: return ("\U0001f4c8", "amelioration") if diff < 0 else ("\U0001f4c9", "degradation")
+    else: return ("\U0001f4c8", "amelioration") if diff > 0 else ("\U0001f4c9", "degradation")
 
 def build_kpi_cell(value_str, hist_entries, lower_better=False):
-    if not hist_entries or len(hist_entries) < 2:
-        return value_str
+    if not hist_entries or len(hist_entries) < 2: return value_str
     values = [h["value"] for h in hist_entries if h.get("value") is not None]
-    if len(values) < 2:
-        return value_str
+    if len(values) < 2: return value_str
     spark = generate_sparkline(values)
     trend_icon, trend_label = get_trend_info(values, lower_better)
     curr, prev = hist_entries[-1], hist_entries[-2]
     cv, pv = curr.get("value", "N/A"), prev.get("value", "N/A")
-    try:
-        diff = float(cv) - float(pv)
-    except:
-        diff = 0
-    lines = [
-        "Valeur actuelle : %s" % cv,
-        "Valeur precedente : %s" % pv,
-        "Ecart : %+.2f" % diff,
-        "Date actuelle : %s" % curr.get('date', 'N/A'),
-        "Date precedente : %s" % prev.get('date', 'N/A'),
-        "Tendance : %s" % trend_label,
-        "Historique : %s point(s)" % len(hist_entries)
-    ]
+    try: diff = float(cv) - float(pv)
+    except: diff = 0
+    lines = ["Valeur actuelle : %s" % cv, "Valeur precedente : %s" % pv, "Ecart : %+.2f" % diff, "Tendance : %s" % trend_label, "Historique : %s point(s)" % len(hist_entries)]
     tooltip = "&#10;".join(lines)
     return '<span title="%s" class="kc"><span class="kt">%s</span><span class="ks">%s</span><span class="kv">%s</span></span>' % (tooltip, trend_icon, spark, value_str)
 
@@ -212,25 +183,7 @@ def inject_custom_css():
     </style>""", unsafe_allow_html=True)
 
 def get_kpi_rec(kpi, poste, val, target, delta, worsening):
-    msgs = {
-        "TAUX_REALISATION_CORRECTIF/PT": "Identifier les OT correctifs anciens, eliminer les blocages et accelerer les clotures.",
-        "OT préparation <1 mois": "Renforcer l'equipe de preparation, prioriser les OT recemment crees.",
-        "OT préparation >3 mois": "Organiser des sessions de rattrapage. Revoir l'affectation des prepareurs.",
-        "OT planification <1 mois": "Ameliorer la reactivite de la planification et la disponibilite des ressources.",
-        "OT planification >3 mois": "Revoir le processus de planification et les delais d'approvisionnement.",
-        "OT exécution <1 mois": "Optimiser l'affectation des equipes d'execution et lever les obstacles terrain.",
-        "OT exécution >3 mois": "Identifier les OT bloques, resoudre les problemes d'approvisionnement ou de permis.",
-        "OT préparation 1mois< <3mois": "Reducer cette tranche en accelerant le traitement.",
-        "OT planification 1mois< <3mois": "Accelerer la planification de ces OT.",
-        "OT exécution 1mois< <3mois": "Suivre et accelerer ces OT en cours.",
-        "appel avis approuvé": "Creer des OT pour les avis sans ordre associe.",
-        "OT LANC ESTIME": "Exiger l'estimation des couts budgetes avant tout lancement.",
-        "Backlog préparation caractérisé": "Caracteriser immediatement tous les OT en attente.",
-        "Backlog planification caractérisé": "Caracteriser tous les OT avant planification.",
-        "OT CONFIME": "Confirmer systematiquement les OT termines dans le systeme SAP.",
-        "OT_COR_EGAL": "Rapprocher les couts et corriger les ecarts significatifs."
-    }
-    base = msgs.get(kpi, "Analyser et corriger.")
+    base = "Analyser et corriger ce KPI."
     trend_txt = " Tendance a la degradation (Delta=%+.1f)." % delta if worsening else ""
     return "Au poste %s, %s est a %.1f%% (cible %s%%).%s %s" % (poste, kpi, val, target, trend_txt, base)
 
@@ -322,8 +275,7 @@ def html_evolution_table(rows):
         if r["Delta"] != "N/A":
             d, dc = r["Delta"], "#38a169" if ((r["Delta"] > 0.5 and not r["LB"]) or (r["Delta"] < -0.5 and r["LB"])) else ("#e53e3e" if ((r["Delta"] < -0.5 and not r["LB"]) or (r["Delta"] > 0.5 and r["LB"])) else "#718096")
             ds = "%+.1f" % d
-        else:
-            ds, dc = "N/A", "#a0aec0"
+        else: ds, dc = "N/A", "#a0aec0"
         stat_s, stat_c = ("ATTEINT", "#c6efce") if r["Atteint"] else ("NON ATTEINT", "#ffc7ce")
         h += '<tr><td>%s</td><td>%s</td><td style="font-weight:700">%s</td><td>%s</td><td style="color:%s;font-weight:700">%s</td><td style="color:%s;font-weight:600">%s</td><td>%s</td><td style="background:%s;color:#1a202c;font-weight:700;text-align:center">%s</td></tr>' % (r["Poste de Travail"], r["KPI"], r["Valeur Actuelle"], r["Valeur Precedente"], dc, ds, r["Tendance_Color"], r["Tendance"], r["Cible"], stat_c, stat_s)
     return h + '</tbody></table>'
@@ -334,7 +286,7 @@ def html_rec_cards(recs):
     for r in recs:
         cc = cls_map[r["Priorite_Sort"]]
         cat_bg, cat_fg = ("#ebf8ff", "#2b6cb0") if r["Categorie"] == "Performance" else ("#f0fff4", "#276749")
-        h += '<div class="rec-card %s"><div class="rec-hdr"><span class="rec-badge" style="background:%s">%s</span><span class="rec-badge" style="background:%s;color:%s">%s</span><span class="rec-poste">%s</span><span class="rec-kpi">%s</span></div><div class="rec-msg">%s</div><div class="rec-meta">Actuel: %s | Cible: %s | Ecart: %s | Delta: %s</div></div>' % (cc, r["Priorite_Color"], r["Priorite"], cat_bg, cat_fg, r["Categorie"], r["Poste"], r["KPI"], r["Recommandation"], r["Actuel"], r["Cible"], r["Ecart"], r["Delta"])
+        h += '<div class="rec-card %s"><div class="rec-hdr"><span class="rec-badge" style="background:%s">%s</span><span class="rec-badge" style="background:%s;color:%s">%s</span><span class="rec-poste">%s</span><span class="rec-kpi">%s</span></div><div class="rec-msg">%s</div><div class="rec-meta">Actuel: %s | Cible: %s | Ecart: %s</div></div>' % (cc, r["Priorite_Color"], r["Priorite"], cat_bg, cat_fg, r["Categorie"], r["Poste"], r["KPI"], r["Recommandation"], r["Actuel"], r["Cible"], r["Ecart"])
     return h
 
 def html_findings(findings):
@@ -348,9 +300,6 @@ def html_findings(findings):
 def create_analyse_excel(prep_tbl, plan_tbl, exec_tbl, evol_df, recs_df, findings_df):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        if not prep_tbl.empty: prep_tbl.to_excel(writer, sheet_name='Backlog Preparation', index=False)
-        if not plan_tbl.empty: plan_tbl.to_excel(writer, sheet_name='Backlog Planification', index=False)
-        if not exec_tbl.empty: exec_tbl.to_excel(writer, sheet_name='Backlog Execution', index=False)
         if evol_df is not None and not evol_df.empty: evol_df.to_excel(writer, sheet_name='Analyse Evolutive', index=False)
         if recs_df is not None and not recs_df.empty: recs_df.to_excel(writer, sheet_name='Recommandations', index=False)
         if findings_df is not None and not findings_df.empty: findings_df.to_excel(writer, sheet_name='Analyse Backlog', index=False)
@@ -527,13 +476,13 @@ def main():
 
     if "hse_affiche" not in st.session_state: st.session_state.hse_affiche = False
     if not st.session_state.hse_affiche:
-        c = random.choice(["Port obligatoire des EPI avant toute intervention.", "Ne jamais intervenir sur un equipement en marche.", "Baliser et securiser la zone de travail.", "Aucun travail n'est plus urgent que la securite."])
+        c = random.choice(["Port obligatoire des EPI avant toute intervention.", "Ne jamais intervenir sur un equipement en marche.", "Baliser et securiser la zone de travail."])
         st.markdown("""<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a365d,#2d3748,#1a365d);padding:40px">
         <div style="font-size:64px;margin-bottom:20px">🦺</div>
         <h1 style="text-align:center;font-size:42px;color:#fff;font-weight:900;margin:0">HSE - CONSIGNE DE SECURITE</h1>
         <p style="text-align:center;color:rgba(255,255,255,.6);font-size:18px;margin-top:8px;letter-spacing:3px;text-transform:uppercase">Securite - Sante - Environnement</p>
         <div style="background:linear-gradient(135deg,#f6e05e,#ed8936);padding:36px 48px;border-radius:20px;font-size:28px;font-weight:700;text-align:center;margin:40px 0;color:#1a202c;max-width:800px;box-shadow:0 20px 60px rgba(0,0,0,.3)">⚠️ %s</div>
-        <h2 style="text-align:center;color:#48bb78;font-size:32px;font-weight:900">Aucun travail n\\'est plus urgent que la securite</h2>
+        <h2 style="text-align:center;color:#48bb78;font-size:32px;font-weight:900">La securite avant tout</h2>
         </div>""" % c, unsafe_allow_html=True)
         time.sleep(6)
         st.session_state.hse_affiche = True
@@ -586,6 +535,30 @@ def main():
             raw_ot, raw_av = pd.read_excel("ot.xlsx"), pd.read_excel("avis.xlsx")
             
         raw_ot, raw_av = excr(raw_ot), excr(raw_av)
+        
+        # ==========================================
+        # SÉCURITÉ : Vérification des colonnes
+        # ==========================================
+        colonnes_obligatoires_ot = ["Poste travail princ.", "Statut OT", "Statut système", "Statut utilisateur", "Ordre"]
+        colonnes_manquantes_ot = [c for c in colonnes_obligatoires_ot if c not in raw_ot.columns]
+        
+        if colonnes_manquantes_ot:
+            st.error("❌ Erreur de format dans le fichier OT !")
+            st.markdown("**Les colonnes suivantes sont manquantes :** `%s`" % "`, `".join(colonnes_manquantes_ot))
+            with st.expander("📋 Voir les colonnes détectées dans votre fichier OT"):
+                st.code("\n".join(raw_ot.columns.tolist()))
+            st.stop()
+            
+        colonnes_obligatoires_av = ["Ordre", "Avis", "Statut utilisateur", "Poste travail princ."]
+        colonnes_manquantes_av = [c for c in colonnes_obligatoires_av if c not in raw_av.columns]
+        if colonnes_manquantes_av:
+            st.error("❌ Erreur de format dans le fichier AVIS !")
+            st.markdown("**Les colonnes suivantes sont manquantes :** `%s`" % "`, `".join(colonnes_manquantes_av))
+            with st.expander("📋 Voir les colonnes détectées dans votre fichier AVIS"):
+                st.code("\n".join(raw_av.columns.tolist()))
+            st.stop()
+        # ==========================================
+
         for c in ["Créé le", "Date de début planifiée", "Date de clôture", "Début réel", "Fin réelle"]:
             if c in raw_ot.columns: raw_ot[c] = pd.to_datetime(raw_ot[c], errors="coerce")
         for c in ["Créé le", "Début souhaité", "Date de la clôture"]:
@@ -655,9 +628,9 @@ def main():
         
         with tab1:
             st.markdown('<div class="stl p">INDICATEURS PERFORMANCE</div>', unsafe_allow_html=True)
-            st.markdown(html_synth(pk, pa, cible, {"TAUX_REALISATION_CORRECTIF/PT": "Taux insuffisant", "OT préparation >3 mois": "Trop d'OT anciens"}, "#2b6cb0"), unsafe_allow_html=True)
+            st.markdown(html_synth(pk, pa, cible, {"TAUX_REALISATION_CORRECTIF/PT": "Taux insuffisant"}, "#2b6cb0"), unsafe_allow_html=True)
             st.markdown('<div class="stl q">INDICATEURS QUALITÉ</div>', unsafe_allow_html=True)
-            st.markdown(html_synth(qk, qa, cible, {"appel avis approuvé": "Avis sans OT", "OT LANC ESTIME": "OT sans estimation"}, "#276749"), unsafe_allow_html=True)
+            st.markdown(html_synth(qk, qa, cible, {"appel avis approuvé": "Avis sans OT"}, "#276749"), unsafe_allow_html=True)
             st.markdown('<div class="stl c">CLASSEMENT COMBINÉ</div>', unsafe_allow_html=True)
             st.markdown(html_classement({p: round((pscores.get(p, 0) + qscores.get(p, 0)) / 2, 2) for p in vp}, "#805ad5"), unsafe_allow_html=True)
             st.markdown('<div class="stl ev">PERFORMANCE vs QUALITÉ</div>', unsafe_allow_html=True)
@@ -666,22 +639,10 @@ def main():
         with tab2:
             st.markdown('<div class="stl p">PROGRESSION PERFORMANCE</div>', unsafe_allow_html=True)
             st.markdown(html_kpi_bars(pk, pa, cible, "Taux de réalisation Performance", "#3182ce", "#e53e3e", kpi_history), unsafe_allow_html=True)
-            if pa:
-                fig_p = go.Figure()
-                fig_p.add_trace(go.Bar(x=pk, y=[pa.get(k, 0) for k in pk], marker_color=['#3182ce' if ((not is_lb(k) and pa.get(k, 0) >= cible.get(k, 100)) or (is_lb(k) and pa.get(k, 0) <= cible.get(k, 100))) else '#e53e3e' for k in pk]))
-                fig_p.add_trace(go.Scatter(x=pk, y=[cible.get(k, 100) for k in pk], mode='lines+markers', name='Cible', line=dict(color='#e53e3e', dash='dash')))
-                fig_p.update_layout(height=400, margin=dict(l=200, r=20, t=40, b=80), xaxis_tickangle=-45, showlegend=False)
-                st.plotly_chart(fig_p, use_container_width=True)
 
         with tab3:
             st.markdown('<div class="stl q">PROGRESSION QUALITÉ</div>', unsafe_allow_html=True)
             st.markdown(html_kpi_bars(qk, qa, cible, "Taux de réalisation Qualité", "#38a169", "#e53e3e", kpi_history), unsafe_allow_html=True)
-            if qa:
-                fig_q = go.Figure()
-                fig_q.add_trace(go.Bar(x=qk, y=[qa.get(k, 0) for k in qk], marker_color=['#38a169' if ((not is_lb(k) and qa.get(k, 0) >= cible.get(k, 100)) or (is_lb(k) and qa.get(k, 0) <= cible.get(k, 100))) else '#e53e3e' for k in qk]))
-                fig_q.add_trace(go.Scatter(x=qk, y=[cible.get(k, 100) for k in qk], mode='lines+markers', name='Cible', line=dict(color='#e53e3e', dash='dash')))
-                fig_q.update_layout(height=400, margin=dict(l=200, r=20, t=40, b=80), xaxis_tickangle=-45, showlegend=False)
-                st.plotly_chart(fig_q, use_container_width=True)
 
         with tab4:
             st.markdown('<div class="stl ev">ANALYSE AUTOMATIQUE</div>', unsafe_allow_html=True)
@@ -694,7 +655,6 @@ def main():
             st.markdown(html_evolution_table(evol_rows), unsafe_allow_html=True)
             if evol_rows:
                 evol_df = pd.DataFrame([{k: v for k, v in r.items() if k not in ["Tendance_Color", "Delta_Raw", "LB"]} for r in evol_rows])
-                # CORRECTION APPLIQUEE ICI : file_name= et mime=
                 st.download_button("📥 Exporter Évolution", data=evol_df.to_csv(index=False).encode(), file_name="evolution_kpi.csv", mime="text/csv")
 
         with tab6:
@@ -703,7 +663,6 @@ def main():
             st.markdown(html_rec_cards(recs), unsafe_allow_html=True)
             if recs:
                 recs_df = pd.DataFrame([{k: v for k, v in r.items() if k not in ["Priorite_Color", "Priorite_Sort"]} for r in recs])
-                # CORRECTION APPLIQUEE ICI : file_name= et mime=
                 st.download_button("📥 Exporter Recommandations", data=recs_df.to_csv(index=False).encode(), file_name="recommandations.csv", mime="text/csv")
 
         st.markdown("---")

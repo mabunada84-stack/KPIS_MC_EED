@@ -315,7 +315,10 @@ def process_data(_unused, valid_postes_tuple, start_str, end_str):
         for kn, cc, cond, act in checks:
             vk = calculated_kpis_df.loc[poste, kn] if poste in calculated_kpis_df.index else 100
             if pd.notna(vk) and vk < cible.loc['CIBLE', cc]:
-                cnt = int(dp[cond].sum())
+                # CORRECTION : cond.sum() compte les True de la Series booléenne
+                # au lieu de dp[cond].sum() qui essayait de sommer toutes les colonnes
+                # y compris les colonnes datetime
+                cnt = int(cond.sum())
                 if cnt > 0:
                     (ano_perf if kn in PERF_KPIS else ano_qual).append({"Poste travail princ.": poste, "KPI": kn, "Nb OT impactés": cnt, "Action Suggérée": act})
         va = calculated_kpis_df.loc[poste, "appel avis approuvé"] if poste in calculated_kpis_df.index else 100

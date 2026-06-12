@@ -25,7 +25,7 @@ def inject_custom_css():
     .cc.c3{border-top:3px solid #805ad5}.cc.c3 .cv{color:#6b46c1}
     .cc.c4{border-top:3px solid #e53e3e}.cc.c4 .cv{color:#c53030}
     .stl{font-size:11px;font-weight:700;color:var(--p);margin:4px 0 1px 0;padding-left:8px;border-left:3px solid var(--pl)}
-    .stl.q{border-left-color:#3182ce}.stl.p{border-left-color:#38a169}.stl.a{border-left-color:#e53e3e}.stl.c{border-left-color:#805ad5}.stl.d{border-left-color:#e53e3e}
+    .stl.q{border-left-color:#3182ce}.stl.p{border-left-color:#38a169}.stl.a{border-left-color:#e53e3e}.stl.c{border-left-color:#805ad5}
     .tw{width:100%;border-collapse:collapse;font-family:'Inter',sans-serif;font-size:8px;display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0}
     .tw thead th{background:var(--p);color:#fff;font-weight:700;font-size:7px;text-transform:uppercase;letter-spacing:.3px;padding:3px;border:none;white-space:nowrap;position:sticky;top:0;z-index:10}
     .tw.qt thead th{background:linear-gradient(135deg,#2b6cb0,#3182ce)}
@@ -66,7 +66,6 @@ def inject_custom_css():
     .tkc .tkl{font-size:6px;color:#718096;font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .tkc .tkv{font-size:13px;font-weight:900;line-height:1.2}
     .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
-    @media(max-width:768px){.cr{grid-template-columns:repeat(2,1fr)}.mh h1{font-size:13px}.mh .db{float:none;display:block;margin-top:2px}.cg,.dgrid{grid-template-columns:1fr}.car .cal{width:100px}.tkc{min-width:70px}}
     .stButton>button[kind="primary"]{background:linear-gradient(135deg,var(--p),var(--pl));border:none;border-radius:6px;padding:6px 12px;font-weight:700;font-size:11px;width:100%}
     ::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:#f1f1f1}::-webkit-scrollbar-thumb{background:#cbd5e0;border-radius:2px}
     div[data-testid="stSidebar"]{background:linear-gradient(180deg,var(--p),#0f2744)}
@@ -75,6 +74,7 @@ def inject_custom_css():
     div[data-testid="stSidebar"] div[data-testid="stWidget"]{background:rgba(255,255,255,.08);border-radius:6px;padding:2px 6px;margin-bottom:2px;border:1px solid rgba(255,255,255,.1)}
     div[data-testid="stSidebar"] .stSelectbox>div>div,div[data-testid="stSidebar"] .stMultiSelect>div>div,div[data-testid="stSidebar"] .stDateInput>div>div{background:rgba(255,255,255,.95)!important;border-radius:5px}
     .es{text-align:center;padding:10px;color:#718096;font-size:10px}
+    @media(max-width:768px){.cr{grid-template-columns:repeat(2,1fr)}.mh h1{font-size:13px}.mh .db{float:none;display:block;margin-top:2px}.cg,.dgrid{grid-template-columns:1fr}.car .cal{width:100px}.tkc{min-width:70px}}
     </style>""", unsafe_allow_html=True)
 
 def main():
@@ -185,7 +185,7 @@ def main():
         if c in ["OT préparation 1mois< <3mois","OT planification 1mois< <3mois","OT exécution 1mois< <3mois"]:
             return "background:#c6efce;color:#006100;font-weight:600" if val<=15 else "background:#ffc7ce;color:#9c0006;font-weight:600"
         if c in ["OT préparation >3 mois","OT planification >3 mois","OT exécution >3 mois"]:
-            return "background:#c6efce;color:#006100;font-weight:600" if val<=5 else "background:#ffc7ce;color:#9c0006;font-weight:600")
+            return "background:#c6efce;color:#006100;font-weight:600" if val<=5 else "background:#ffc7ce;color:#9c0006;font-weight:600"
         if c == "TAUX_REALISATION_CORRECTIF/PT":
             return "background:#c6efce;color:#006100;font-weight:600" if val>=85 else ("background:#ffeb9c;color:#9c6500;font-weight:600" if val>=80 else "background:#ffc7ce;color:#9c0006;font-weight:600")
         if c == "appel avis approuvé":
@@ -452,7 +452,7 @@ def main():
             pcols, prows = build_kpi(qk, pscores, "Score Performance")
             qcols, qrows = build_kpi(pk, qscores, "Score Qualité")
 
-            # ============ DASHBOARD DATA ============
+            # DASHBOARD DATA
             df_sc = pd.DataFrame([{"Poste":p,"Perf":pscores[p],"Qual":qscores[p],"Métier":get_metier(p),"Atelier":get_atelier(p)} for p in vp if p in pscores])
             by_at = df_sc.groupby("Atelier")[["Perf","Qual"]].mean().round(1) if not df_sc.empty else pd.DataFrame()
             by_mt = df_sc.groupby("Métier")[["Perf","Qual"]].mean().round(1) if not df_sc.empty else pd.DataFrame()
@@ -460,7 +460,7 @@ def main():
             total_ot = len(df); avg_p = np.mean(list(pscores.values())) if pscores else 0
             avg_q = np.mean(list(qscores.values())) if qscores else 0; total_ano = sum(a["Nb"] for a in all_ano)
 
-            # ============ RENDER ============
+            # RENDER
             st.markdown('<div class="mh"><h1>📊 KPI Dashboard MC & FEED</h1><div class="db">📅 %s</div></div>' % df_dt, unsafe_allow_html=True)
             st.markdown("""<div class="cr">
             <div class="cc c1"><div class="cv">%s</div><div class="cl">Total OT Analysés</div></div>
@@ -473,32 +473,27 @@ def main():
 
             # ==================== DASHBOARD ====================
             with tab0:
-                # Total Général KPIs avec couleurs des cellules
                 st.markdown('<p class="stl q">Total Général — Indicateurs de Performance</p>', unsafe_allow_html=True)
                 st.markdown(html_total_kpis(qk, pa, "Tous les KPIs Performance — Total Général", "#2b6cb0"), unsafe_allow_html=True)
 
                 st.markdown('<p class="stl p">Total Général — Indicateurs Qualité</p>', unsafe_allow_html=True)
                 st.markdown(html_total_kpis(pk, qa, "Tous les KPIs Qualité — Total Général", "#276749"), unsafe_allow_html=True)
 
-                # Bar charts par Atelier
                 st.markdown('<p class="stl c">Performance & Qualité par Atelier</p>', unsafe_allow_html=True)
                 if not by_at.empty:
                     st.markdown('<div class="dgrid">' + 
                         html_bars(list(zip(by_at.index, by_at["Perf"])), "Performance par Atelier", "linear-gradient(90deg,#2b6cb0,#4299e1)") +
                         html_bars(list(zip(by_at.index, by_at["Qual"])), "Qualité par Atelier", "linear-gradient(90deg,#276749,#48bb78)") +
                         '</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown('<div class="es">Aucune donnée</div>', unsafe_allow_html=True)
+                else: st.markdown('<div class="es">Aucune donnée</div>', unsafe_allow_html=True)
 
-                # Bar charts par Métier
                 st.markdown('<p class="stl c">Performance & Qualité par Métier</p>', unsafe_allow_html=True)
                 if not by_mt.empty:
                     st.markdown('<div class="dgrid">' +
                         html_bars(list(zip(by_mt.index, by_mt["Perf"])), "Performance par Métier", "linear-gradient(90deg,#2b6cb0,#4299e1)") +
                         html_bars(list(zip(by_mt.index, by_mt["Qual"])), "Qualité par Métier", "linear-gradient(90deg,#276749,#48bb78)") +
                         '</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown('<div class="es">Aucune donnée</div>', unsafe_allow_html=True)
+                else: st.markdown('<div class="es">Aucune donnée</div>', unsafe_allow_html=True)
 
             # ==================== PERFORMANCE ====================
             with tab1:

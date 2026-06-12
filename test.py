@@ -85,7 +85,9 @@ def inject_custom_css():
     :root{--p:#1e3a5f;--pl:#2c5282;--b:#e2e8f0;--r:10px}
     *{box-sizing:border-box;margin:0;padding:0}
     .stApp{background:#edf2f7;font-family:'Inter',sans-serif}
-    .main .block-container{padding-top:.6rem;padding-bottom:.6rem;max-width:100%!important;padding-left:.2rem;padding-right:.2rem}
+    .main .block-container{max-width:100%!important;padding-left:0rem!important;padding-right:0rem!important;padding-top:0rem!important;padding-bottom:0rem!important}
+    section.main > div{padding-left:0rem!important;padding-right:0rem!important}
+    .mh,.cr,.ca,.tw{width:100%!important;margin-left:0!important;margin-right:0!important}
     .stTabs,.stTabs>div,.stTabs [data-baseweb="tab-list"]{width:100%!important;max-width:100%!important}
     .mh{background:linear-gradient(135deg,var(--p),var(--pl));padding:10px 16px;border-radius:var(--r);margin-bottom:4px;box-shadow:0 6px 20px rgba(0,0,0,.1);overflow:hidden}
     .mh h1{color:#fff;font-size:16px;font-weight:800;margin:0;display:inline}
@@ -100,7 +102,7 @@ def inject_custom_css():
     .cc.c4{border-top:3px solid #e53e3e}.cc.c4 .cv{color:#c53030}
     .stl{font-size:11px;font-weight:700;color:var(--p);margin:4px 0 1px 0;padding-left:8px;border-left:3px solid var(--pl)}
     .stl.q{border-left-color:#3182ce}.stl.p{border-left-color:#38a169}.stl.a{border-left-color:#e53e3e}.stl.c{border-left-color:#805ad5}
-    .tw{width:100%;border-collapse:collapse;font-family:'Inter',sans-serif;font-size:8px;display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0}
+    .tw{border-collapse:collapse;font-family:'Inter',sans-serif;font-size:8px;display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0}
     .tw thead th{background:var(--p);color:#fff;font-weight:700;font-size:7px;text-transform:uppercase;letter-spacing:.3px;padding:3px;border:none;white-space:nowrap;position:sticky;top:0;z-index:10}
     .tw.qt thead th{background:linear-gradient(135deg,#2b6cb0,#3182ce)}
     .tw.pt thead th{background:linear-gradient(135deg,#276749,#38a169)}
@@ -160,9 +162,12 @@ def inject_custom_css():
     div[data-testid="stSidebar"] div[data-testid="stWidget"]{background:rgba(255,255,255,.08);border-radius:6px;padding:2px 6px;margin-bottom:2px;border:1px solid rgba(255,255,255,.1)}
     div[data-testid="stSidebar"] .stSelectbox>div>div,div[data-testid="stSidebar"] .stMultiSelect>div>div,div[data-testid="stSidebar"] .stDateInput>div>div{background:rgba(255,255,255,.95)!important;border-radius:5px}
     .es{text-align:center;padding:10px;color:#718096;font-size:10px}
-    .rh{display:flex;align-items:center;justify-content:space-between;margin-bottom:0}
-    .rh .stl{margin:0}
-    @media(max-width:768px){.cr{grid-template-columns:repeat(2,1fr)}.mh h1{font-size:13px}.mh .db{float:none;display:block;margin-top:2px}.cg,.dgrid{grid-template-columns:1fr}.car .cal{width:100px}.gbr-l{width:90px}}
+    .hdr{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 4px;margin-bottom:2px}
+    .hdr .stl{margin:0;flex:1}
+    .hdr [data-testid="stRadio"]{margin:0;padding:0}
+    .hdr [data-testid="stRadio"] > div{gap:0}
+    .hdr [data-testid="stRadio"] label{padding:4px 8px;font-size:8px;font-weight:700}
+    @media(max-width:768px){.cr{grid-template-columns:repeat(2,1fr)}.mh h1{font-size:13px}.mh .db{float:none;display:block;margin-top:2px}.cg,.dgrid{grid-template-columns:1fr}.car .cal{width:100px}.gbr-l{width:90px}.hdr{flex-direction:column;align-items:flex-start}}
     </style>""", unsafe_allow_html=True)
 
 def main():
@@ -362,11 +367,11 @@ def main():
         sp = sorted(scores.items(), key=lambda x: x[1], reverse=True)
         met_p, not_p = [(p,s) for p,s in sp if s>=80], [(p,s) for p,s in sp if s<80]
         t5, b5 = met_p[:5], not_p[-5:] if len(not_p)>5 else not_p
-        h = '<div class="cg"><div><div class="ct" style="color:#38a169">Top 5 — Objectif Atteint</div>'
+        h = '<div class="cg"><div><div class="ct" style="color:#38a169">Top 5 - Objectif Atteint</div>'
         if t5:
             for i,(p,s) in enumerate(t5): h += '<div class="cgr"><span class="rk" style="color:%s">%s</span><span class="pn">%s</span><span class="ps" style="%s">%.2f%%</span></div>' % (accent,i+1,p,cs("%.2f"%s),s)
         else: h += '<div style="padding:4px;font-size:8px;color:#718096">Aucun poste</div>'
-        h += '</div><div><div class="ct" style="color:#e53e3e">Bottom 5 — Non Atteint</div>'
+        h += '</div><div><div class="ct" style="color:#e53e3e">Bottom 5 - Non Atteint</div>'
         if b5:
             for i,(p,s) in enumerate(reversed(b5)): h += '<div class="cgr"><span class="rk" style="color:#e53e3e">%s</span><span class="pn">%s</span><span class="ps" style="%s">%.2f%%</span></div>' % (len(b5)-i,p,cs("%.2f"%s),s)
         else: h += '<div style="padding:4px;font-size:8px;color:#38a169">Tous atteints</div>'
@@ -466,26 +471,18 @@ def main():
                 return True
 
             vp = [p for p in apm if mf(p) and p in sp]
-            
-            # === Donnees AVEC filtre date (pour tableaux detailles) ===
             df = raw_ot[(raw_ot["Poste travail princ."].isin(vp)) & (raw_ot["Date de début planifiée"].between(sdt, edt))].copy()
             avdf = raw_av[raw_av["Poste travail princ."].isin(vp)].copy()
             df = excr(df[df["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"), na=False)].drop_duplicates())
             avdf = excr(avdf[(avdf["Ordre"].isna())|(avdf["Ordre"].astype(str).str.strip().eq(""))].drop_duplicates())
             if "Statut système" in df.columns: df["Statut OT"] = df["Statut système"].fillna("").astype(str).str.strip().str.split().str[0]
-
-            # === Donnees SANS filtre date (pour chart tableau de bord) ===
             df_dash = raw_ot[raw_ot["Poste travail princ."].isin(vp)].copy()
             df_dash = excr(df_dash[df_dash["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"), na=False)].drop_duplicates())
             if "Statut système" in df_dash.columns: df_dash["Statut OT"] = df_dash["Statut système"].fillna("").astype(str).str.strip().str.split().str[0]
 
             now = pd.Timestamp.now()
-
-            # KPIs avec date (detail)
             res = calc_kpis(df, avdf, now, vp)
             ckdf = res['ckdf']; dfp = res['dfp']
-
-            # KPIs sans date (dashboard)
             res_d = calc_kpis(df_dash, avdf, now, vp)
             ckdf_d = res_d['ckdf']
 
@@ -494,7 +491,6 @@ def main():
             cible = {"TAUX_REALISATION_CORRECTIF/PT":85,"OT préparation <1 mois":80,"OT préparation >3 mois":5,"OT préparation 1mois< <3mois":15,"OT planification <1 mois":80,"OT planification >3 mois":5,"OT planification 1mois< <3mois":15,"OT exécution <1 mois":80,"OT exécution >3 mois":5,"OT exécution 1mois< <3mois":15,"appel avis approuvé":95,"OT LANC ESTIME":100,"Backlog préparation caractérisé":100,"Backlog planification caractérisé":100,"OT CONFIME":100,"OT_COR_EGAL":100}
             act_map = {"TAUX_REALISATION_CORRECTIF/PT":"Ameliorer le taux de realisation des OT.","OT préparation <1 mois":"Reduire l'age de preparation des OT (< 1 mois).","OT préparation >3 mois":"Traiter les OT avec preparation > 3 mois.","OT planification <1 mois":"Reduire l'age de planification des OT (< 1 mois).","OT planification >3 mois":"Traiter les OT avec planification > 3 mois.","OT exécution <1 mois":"Reduire l'age d'execution des OT (< 1 mois).","OT exécution >3 mois":"Traiter les OT avec execution > 3 mois.","OT LANC ESTIME":"Estimer les couts des OT lances.","Backlog préparation caractérisé":"Caracteriser le backlog de preparation.","Backlog planification caractérisé":"Caracteriser le backlog de planification.","OT CONFIME":"Confirmer les OT termines.","OT_COR_EGAL":"Rapprocher les couts reels et budgetes.","appel avis approuvé":"Creer un OT pour les avis sans ordre."}
 
-            # Scores avec date
             pscores = {}; qscores = {}
             for poste in ckdf.index:
                 r = ckdf.loc[poste]
@@ -502,8 +498,6 @@ def main():
                 qscores[poste] = (sum(gscore(k,r[k],cible[k]) for k in pk if k in r.index)/len(pk)*100) if pk else 0
             pa = {k: round(ckdf[k].mean(),2) for k in qk}
             qa = {k: round(ckdf[k].mean(),2) for k in pk}
-
-            # Scores sans date (dashboard)
             pscores_d = {}; qscores_d = {}
             for poste in ckdf_d.index:
                 r = ckdf_d.loc[poste]
@@ -514,7 +508,6 @@ def main():
 
             kpi_history = save_current_kpis(ckdf, qk, pk, pscores, qscores, pa, qa)
 
-            # ANOMALIES (avec date)
             all_ano = []
             sub_p = {"TAUX_REALISATION_CORRECTIF/PT":lambda d:d[(d["Nº appel pl.entret."].fillna(0)==0)&(~d["Statut OT"].isin(["CLOT","TCLO"]))],"OT préparation <1 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]!="<1 mois")],"OT préparation >3 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]==">3 mois")],"OT planification <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]!="<1 mois")],"OT planification >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]==">3 mois")],"OT exécution <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]!="<1 mois")],"OT exécution >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]==">3 mois")]}
             sub_q = {"OT LANC ESTIME":lambda d:d[(d["Statut OT"]=="LANC")&(d["OT LANC ESTIME"]=="NON")],"Backlog préparation caractérisé":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["Backlog preparation"]=="NON CARACTERISE")],"Backlog planification caractérisé":lambda d:d[(d["Statut OT"]=="LANC")&(d["Backlog planification"]=="NON CARACTERISE")],"OT CONFIME":lambda d:d[d["OT CONFIME"]=="NON"],"OT_COR_EGAL":lambda d:d[d["OT_COR_EGAL"]=="NON"]}
@@ -573,7 +566,6 @@ def main():
             kpi_cols_p = set(qk + ["Score Performance"]); lb_map_p = {k: is_lb(k) for k in qk}; lb_map_p["Score Performance"] = False
             kpi_cols_q = set(pk + ["Score Qualite"]); lb_map_q = {k: is_lb(k) for k in pk}; lb_map_q["Score Qualite"] = False
 
-            # Donnees dashboard
             df_sc_d = pd.DataFrame([{"Poste":p,"Perf":pscores_d[p],"Qual":qscores_d[p],"Metier":get_metier(p),"Atelier":get_atelier(p),"Division":get_division(p)} for p in vp if p in pscores_d])
             by_at = df_sc_d.groupby("Atelier")[["Perf","Qual"]].mean().round(1) if not df_sc_d.empty else pd.DataFrame()
             by_mt = df_sc_d.groupby("Metier")[["Perf","Qual"]].mean().round(1) if not df_sc_d.empty else pd.DataFrame()
@@ -584,7 +576,6 @@ def main():
             total_ot = len(df); avg_p = np.mean(list(pscores.values())) if pscores else 0
             avg_q = np.mean(list(qscores.values())) if qscores else 0; total_ano = sum(a["Nb"] for a in all_ano)
 
-            # RENDER
             st.markdown('<div class="mh"><h1>📊 KPI Dashboard MC & FEED</h1><div class="db">📅 %s</div></div>' % df_dt, unsafe_allow_html=True)
             st.markdown("""<div class="cr">
             <div class="cc c1"><div class="cv">%s</div><div class="cl">Total OT Analyses</div></div>
@@ -595,42 +586,37 @@ def main():
 
             tab0, tab1, tab2 = st.tabs(["📊 TABLEAU DE BORD", "📈 INDICATEURS DE PERFORMANCE", "✅ INDICATEUR QUALITE"])
 
-            # ==================== DASHBOARD ====================
             with tab0:
                 st.markdown('<p class="stl q">Total General — Indicateurs de Performance</p>', unsafe_allow_html=True)
                 st.markdown(html_kpi_bars(qk, pa_d, cible, "Tous les KPIs Performance — Total General", "linear-gradient(90deg,#2b6cb0,#4299e1)", "linear-gradient(90deg,#e53e3e,#fc8181)", kpi_history=kpi_history), unsafe_allow_html=True)
                 st.markdown('<p class="stl p">Total General — Indicateurs Qualite</p>', unsafe_allow_html=True)
                 st.markdown(html_kpi_bars(pk, qa_d, cible, "Tous les KPIs Qualite — Total General", "linear-gradient(90deg,#276749,#48bb78)", "linear-gradient(90deg,#e53e3e,#fc8181)", kpi_history=kpi_history), unsafe_allow_html=True)
-
                 st.markdown('<p class="stl c">Performance & Qualite par Division</p>', unsafe_allow_html=True)
                 if not by_div.empty:
                     st.markdown('<div class="dgrid">' + html_bars(list(zip(by_div.index, by_div["Perf"])), "Performance par Division", "linear-gradient(90deg,#2b6cb0,#4299e1)") + html_bars(list(zip(by_div.index, by_div["Qual"])), "Qualite par Division", "linear-gradient(90deg,#276749,#48bb78)") + '</div>', unsafe_allow_html=True)
                 else: st.markdown('<div class="es">Aucune donnee</div>', unsafe_allow_html=True)
-
                 st.markdown('<p class="stl c">Performance & Qualite par Atelier</p>', unsafe_allow_html=True)
                 if not by_at.empty:
                     st.markdown('<div class="dgrid">' + html_bars(list(zip(by_at.index, by_at["Perf"])), "Performance par Atelier", "linear-gradient(90deg,#2b6cb0,#4299e1)") + html_bars(list(zip(by_at.index, by_at["Qual"])), "Qualite par Atelier", "linear-gradient(90deg,#276749,#48bb78)") + '</div>', unsafe_allow_html=True)
                 else: st.markdown('<div class="es">Aucune donnee</div>', unsafe_allow_html=True)
-
                 st.markdown('<p class="stl c">Performance & Qualite par Metier</p>', unsafe_allow_html=True)
                 if not by_mt.empty:
                     st.markdown('<div class="dgrid">' + html_bars(list(zip(by_mt.index, by_mt["Perf"])), "Performance par Metier", "linear-gradient(90deg,#2b6cb0,#4299e1)") + html_bars(list(zip(by_mt.index, by_mt["Qual"])), "Qualite par Metier", "linear-gradient(90deg,#276749,#48bb78)") + '</div>', unsafe_allow_html=True)
                 else: st.markdown('<div class="es">Aucune donnee</div>', unsafe_allow_html=True)
-
                 st.markdown('<p class="stl q">Performance & Qualite par Poste — SF1</p>', unsafe_allow_html=True)
-                if sf1_p:
-                    st.markdown(html_grouped_bars(sf1_p, pscores_d, qscores_d, "Postes SF1 — Performance & Qualite"), unsafe_allow_html=True)
+                if sf1_p: st.markdown(html_grouped_bars(sf1_p, pscores_d, qscores_d, "Postes SF1 — Performance & Qualite"), unsafe_allow_html=True)
                 else: st.markdown('<div class="es">Aucun poste SF1</div>', unsafe_allow_html=True)
-
                 st.markdown('<p class="stl p">Performance & Qualite par Poste — SF2</p>', unsafe_allow_html=True)
-                if sf2_p:
-                    st.markdown(html_grouped_bars(sf2_p, pscores_d, qscores_d, "Postes SF2 — Performance & Qualite"), unsafe_allow_html=True)
+                if sf2_p: st.markdown(html_grouped_bars(sf2_p, pscores_d, qscores_d, "Postes SF2 — Performance & Qualite"), unsafe_allow_html=True)
                 else: st.markdown('<div class="es">Aucun poste SF2</div>', unsafe_allow_html=True)
 
             # ==================== PERFORMANCE ====================
             with tab1:
-                st.markdown('<div class="rh"><p class="stl q">Indicateurs de Performance par Poste de Travail</p><div style="min-width:170px">'); vw1 = st.radio("", ["Tableau KPI","Anomalies"], horizontal=True, key="vp", label_visibility="collapsed")
-                st.markdown('</div></div>', unsafe_allow_html=True)
+                col_t, col_r = st.columns([5, 1])
+                with col_t:
+                    st.markdown('<p class="stl q">Indicateurs de Performance par Poste de Travail</p>', unsafe_allow_html=True)
+                with col_r:
+                    vw1 = st.radio("", ["Tableau KPI", "Anomalies"], horizontal=True, key="vp", label_visibility="collapsed")
                 if vw1 == "Tableau KPI":
                     st.markdown(html_table(prows, pcols, "qt", sc_col=["Score Performance"], kpi_history=kpi_history, kpi_cols_set=kpi_cols_p, lb_map=lb_map_p), unsafe_allow_html=True)
                 else:
@@ -645,8 +631,11 @@ def main():
 
             # ==================== QUALITE ====================
             with tab2:
-                st.markdown('<div class="rh"><p class="stl p">Indicateur Qualite par Poste de Travail</p><div style="min-width:170px">'); vw2 = st.radio("", ["Tableau KPI","Anomalies"], horizontal=True, key="vq", label_visibility="collapsed")
-                st.markdown('</div></div>', unsafe_allow_html=True)
+                col_t2, col_r2 = st.columns([5, 1])
+                with col_t2:
+                    st.markdown('<p class="stl p">Indicateur Qualite par Poste de Travail</p>', unsafe_allow_html=True)
+                with col_r2:
+                    vw2 = st.radio("", ["Tableau KPI", "Anomalies"], horizontal=True, key="vq", label_visibility="collapsed")
                 if vw2 == "Tableau KPI":
                     st.markdown(html_table(qrows, qcols, "pt", sc_col=["Score Qualite"], kpi_history=kpi_history, kpi_cols_set=kpi_cols_q, lb_map=lb_map_q), unsafe_allow_html=True)
                 else:

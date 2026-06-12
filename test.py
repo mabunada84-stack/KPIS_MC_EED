@@ -11,7 +11,7 @@ def inject_custom_css():
     :root{--p:#1e3a5f;--pl:#2c5282;--b:#e2e8f0;--r:10px}
     *{box-sizing:border-box;margin:0;padding:0}
     .stApp{background:#edf2f7;font-family:'Inter',sans-serif}
-    .main .block-container{padding-top:.6rem;padding-bottom:.6rem;max-width:100%!important;padding-left:.8rem;padding-right:.8rem}
+    .main .block-container{padding-top:.6rem;padding-bottom:.6rem;max-width:100%!important;padding-left:.2rem;padding-right:.2rem}
     .stTabs,.stTabs>div,.stTabs [data-baseweb="tab-list"]{width:100%!important;max-width:100%!important}
     .mh{background:linear-gradient(135deg,var(--p),var(--pl));padding:10px 16px;border-radius:var(--r);margin-bottom:4px;box-shadow:0 6px 20px rgba(0,0,0,.1);overflow:hidden}
     .mh h1{color:#fff;font-size:16px;font-weight:800;margin:0;display:inline}
@@ -572,3 +572,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+F

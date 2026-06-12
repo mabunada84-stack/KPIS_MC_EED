@@ -318,16 +318,6 @@ def cpiv(df, f, c, p): return pd.pivot_table(df[f], index="Poste travail princ."
 def excr(df): return df[~df["Poste travail princ."].astype(str).str.contains("cresseur", case=False, na=False)].copy() if "Poste travail princ." in df.columns else df
 def is_lb(k): return k in ["OT préparation >3 mois", "OT planification >3 mois", "OT exécution >3 mois", "OT préparation 1mois< <3mois", "OT planification 1mois< <3mois", "OT exécution 1mois< <3mois"]
 
-def ks(v, c):
-    try: val = float(v)
-    except: return ""
-    if c in ["OT préparation <1 mois", "OT planification <1 mois", "OT exécution <1 mois"]: return "background:#c6efce;color:#006100;font-weight:600" if val >= 80 else ("background:#ffeb9c;color:#9c6500;font-weight:600" if val >= 75 else "background:#ffc7ce;color:#9c0006;font-weight:600")
-    if c in ["OT préparation 1mois< <3mois", "OT planification 1mois< <3mois", "OT exécution 1mois< <3mois"]: return "background:#c6efce;color:#006100;font-weight:600" if val <= 15 else "background:#ffc7ce;color:#9c0006;font-weight:600"
-    if c in ["OT préparation >3 mois", "OT planification >3 mois", "OT exécution >3 mois"]: return "background:#c6efce;color:#006100;font-weight:600" if val <= 5 else "background:#ffc7ce;color:#9c0006;font-weight:600"
-    if c == "TAUX_REALISATION_CORRECTIF/PT": return "background:#c6efce;color:#006100;font-weight:600" if val >= 85 else ("background:#ffeb9c;color:#9c6500;font-weight:600" if val >= 80 else "background:#ffc7ce;color:#9c0006;font-weight:600")
-    if c in ["OT LANC ESTIME", "Backlog préparation caractérisé", "Backlog planification caractérisé", "OT CONFIME", "OT_COR_EGAL", "appel avis approuvé"]: return "background:#c6efce;color:#006100;font-weight:600" if val >= 95 else "background:#ffc7ce;color:#9c0006;font-weight:600"
-    return ""
-
 def cs(v):
     try: val = float(str(v).replace(' %', '').strip())
     except: return ""
@@ -537,8 +527,50 @@ def main():
         raw_ot, raw_av = excr(raw_ot), excr(raw_av)
         
         # ==========================================
-        # SÉCURITÉ : Vérification des colonnes
+        # MAPPING INTELLIGENT DES COLONNES
         # ==========================================
+        ot_rename = {}
+        for col in raw_ot.columns:
+            cl = str(col).strip().lower()
+            if "statut ot" in cl or "statut de l'ot" in cl or (cl == "statut" and "Statut OT" not in raw_ot.columns):
+                ot_rename[col] = "Statut OT"
+            if "poste travail" in cl and "Poste travail princ." not in raw_ot.columns:
+                ot_rename[col] = "Poste travail princ."
+            if cl in ["ordre", "n° ordre", "numero ordre", "nº ordre"] and "Ordre" not in raw_ot.columns:
+                ot_rename[col] = "Ordre"
+            if "statut système" in cl or "statut syst" in cl:
+                ot_rename[col] = "Statut système"
+            if "statut utilisateur" in cl and "Statut utilisateur" not in raw_ot.columns:
+                ot_rename[col] = "Statut utilisateur"
+            if "couts budg" in cl and "Total coûts budgétés" not in raw_ot.columns:
+                ot_rename[col] = "Total coûts budgétés"
+            if "couts re" in cl and "Total coûts réels" not in raw_ot.columns:
+                ot_rename[col] = "Total coûts réels"
+            if "appel" in cl and "entretien" in cl and "Nº appel pl.entret." not in raw_ot.columns:
+                ot_rename[col] = "Nº appel pl.entret."
+            if "créé le" in cl and "Créé le" not in raw_ot.columns:
+                ot_rename[col] = "Créé le"
+            if "date de début planifiée" in cl and "Date de début planifiée" not in raw_ot.columns:
+                ot_rename[col] = "Date de début planifiée"
+        if ot_rename:
+            raw_ot = raw_ot.rename(columns=ot_rename)
+            
+        av_rename = {}
+        for col in raw_av.columns:
+            cl = str(col).strip().lower()
+            if "poste travail" in cl and "Poste travail princ." not in raw_av.columns:
+                av_rename[col] = "Poste travail princ."
+            if cl in ["ordre", "n° ordre", "numero ordre", "nº ordre"] and "Ordre" not in raw_av.columns:
+                av_rename[col] = "Ordre"
+            if cl in ["avis", "n° avis", "numero avis", "nº avis"] and "Avis" not in raw_av.columns:
+                av_rename[col] = "Avis"
+            if "statut utilisateur" in cl and "Statut utilisateur" not in raw_av.columns:
+                av_rename[col] = "Statut utilisateur"
+        if av_rename:
+            raw_av = raw_av.rename(columns=av_rename)
+        # ==========================================
+
+        # Vérification de sécurité
         colonnes_obligatoires_ot = ["Poste travail princ.", "Statut OT", "Statut système", "Statut utilisateur", "Ordre"]
         colonnes_manquantes_ot = [c for c in colonnes_obligatoires_ot if c not in raw_ot.columns]
         
@@ -548,16 +580,6 @@ def main():
             with st.expander("📋 Voir les colonnes détectées dans votre fichier OT"):
                 st.code("\n".join(raw_ot.columns.tolist()))
             st.stop()
-            
-        colonnes_obligatoires_av = ["Ordre", "Avis", "Statut utilisateur", "Poste travail princ."]
-        colonnes_manquantes_av = [c for c in colonnes_obligatoires_av if c not in raw_av.columns]
-        if colonnes_manquantes_av:
-            st.error("❌ Erreur de format dans le fichier AVIS !")
-            st.markdown("**Les colonnes suivantes sont manquantes :** `%s`" % "`, `".join(colonnes_manquantes_av))
-            with st.expander("📋 Voir les colonnes détectées dans votre fichier AVIS"):
-                st.code("\n".join(raw_av.columns.tolist()))
-            st.stop()
-        # ==========================================
 
         for c in ["Créé le", "Date de début planifiée", "Date de clôture", "Début réel", "Fin réelle"]:
             if c in raw_ot.columns: raw_ot[c] = pd.to_datetime(raw_ot[c], errors="coerce")

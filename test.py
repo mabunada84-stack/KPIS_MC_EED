@@ -6,6 +6,20 @@ import io, locale, random, time, os, json
 from datetime import datetime
 
 HISTORY_FILE = "kpi_history.json"
+DATE_FILE = "date.txt"
+
+def get_date_from_file():
+    """Lire la date depuis le fichier date.txt"""
+    if os.path.exists(DATE_FILE):
+        try:
+            with open(DATE_FILE, 'r', encoding='utf-8') as f:
+                contenu = f.read().strip()
+                if contenu:
+                    return contenu
+        except:
+            pass
+    # Fallback : date actuelle
+    return datetime.now().strftime("%d/%m/%Y")
 
 def load_kpi_history():
     if os.path.exists(HISTORY_FILE):
@@ -27,13 +41,36 @@ def save_current_kpis(ckdf, qk, pk, pscores, qscores, pa, qa):
     history = load_kpi_history()
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     MAX_H = 20
+    
+    # Créer une signature unique pour cette extraction
+    def get_extraction_signature():
+        vals = []
+        for k in qk + pk:
+            if k in ckdf.columns:
+                vals.append(round(float(ckdf[k].mean()), 2))
+        vals.append(round(float(np.mean(list(pscores.values()))) if pscores else 0.0, 2))
+        vals.append(round(float(np.mean(list(qscores.values()))) if qscores else 0.0, 2))
+        return tuple(vals)
+    
+    current_sig = get_extraction_signature()
+    sig_key = "__extraction_signature__"
+    
+    # Vérifier si c'est un re-run (même données)
+    if sig_key in history and history[sig_key]:
+        last_sig = tuple(history[sig_key][-1].get("value", []))
+        if last_sig == current_sig:
+            return history
+    
     def add_entry(key, val):
         if val is None or (isinstance(val, float) and np.isnan(val)): return
         fv = round(float(val), 2)
         if key not in history: history[key] = []
-        if (history[key] and history[key][-1]["date"][:16] == now_str[:16] and abs(history[key][-1]["value"] - fv) < 0.01): return
         history[key].append({"date": now_str, "value": fv})
         if len(history[key]) > MAX_H: history[key] = history[key][-MAX_H:]
+    
+    # Sauvegarder la signature
+    history[sig_key] = [{"date": now_str, "value": list(current_sig)}]
+    
     for poste in ckdf.index:
         for k in qk + pk:
             if k in ckdf.columns:
@@ -172,7 +209,10 @@ def main():
         except: pass
     inject_custom_css()
 
-    consignes = ["Port obligatoire des EPI avant toute intervention.","Port obligatoire du casque de securite.","Port obligatoire des lunettes de protection.","Port obligatoire des gants adaptes au travail.","Utiliser les protections auditives dans les zones bruyantes.","Verifier l'absence de tension avant toute intervention electrique.","Respecter la procedure de consignation et deconsignation.","Ne jamais intervenir sur un equipement en marche.","Baliser et securiser la zone de travail.","Maintenir le poste de travail propre et ordonne.","Verifier l'etat des outils avant utilisation.","Utiliser uniquement du materiel homologue.","Respecter les permis de travail en vigueur.","Identifier les risques avant de commencer une tache.","Signaler immediatement toute situation dangereuse.","Signaler tout incident ou presque accident.","Ne jamais neutraliser un dispositif de securite.","Verifier les detecteurs de gaz avant utilisation.","Verifier la bonne ventilation des zones de travail.","Respecter les regles des espaces confines.","Controler l'atmosphere avant d'entrer dans un espace confine.","Utiliser les points d'ancrage pour les travaux en hauteur.","Verifier l'etat des echafaudages avant utilisation.","Securiser les outils lors des travaux en hauteur.","Ne pas travailler seul lors d'operations a risque.","Controler les elingues avant chaque levage.","Respecter les limites de charge des equipements.","Verifier l'etat des appareils de levage.","Maintenir les voies de circulation degagees.","Respecter la signalisation de securite.","Verifier les extincteurs a proximite du chantier.","Connaitre les issues de secours les plus proches.","Respecter les procedures d'arret d'urgence.","Verifier les flexibles et raccords avant mise en service.","Controler les fuites avant demarrage d'un equipement.","Respecter les distances de securite.","Ne jamais contourner une procedure HSE.","Porter les EPI adaptes au risque identifie.","Prevenir son responsable avant toute intervention particuliere.","Analyser les risques avant chaque demarrage de chantier.","Verifier la stabilite des equipements.","Utiliser les bons outils pour la bonne tache.","Respecter les consignes specifiques du chantier.","Ne jamais prendre de raccourci au detriment de la securite.","Arreter immediatement les travaux en cas de danger.","Proteger l'environnement lors des interventions.","Collecter et trier correctement les dechets.","Eviter toute pollution accidentelle.","Respecter les consignes de stockage des produits dangereux.","Lire les fiches de securite avant manipulation.","Verifier les equipements avant chaque prise de poste.","S'assurer de la disponibilite des moyens de secours.","Communiquer clairement avec l'equipe avant intervention.","Respecter les regles de circulation des engins.","Garder une vigilance permanente sur son environnement.","Prendre le temps d'effectuer le travail en securite.","La securite est l'affaire de tous.","Chaque incident peut etre evite par la prevention.","Aucun travail n'est plus urgent que la securite.","Zero accident commence par un comportement sur."]
+    # === LIRE LA DATE depuis date.txt ===
+    df_dt = get_date_from_file()
+
+    consignes = ["Port obligatoire des EPI avant toute intervention.","Port obligatoire du casque de securite.","Port obligatoire des lunettes de protection.","Port obligatoire des gants adaptes au travail.","Utiliser les protections auditives dans les zones bruyantes.","Verifier l'absence de tension avant toute intervention electrique.","Respecter la procedure de consignation et deconsignation.","Ne jamais intervenir sur un equipement en marche.","Baliser et securiser la zone de travail.","Maintenir le poste de travail propre et ordonne.","Verifier l'etat des outils avant utilisation.","Utiliser uniquement du materiel homologue.","Respecter les permis de travail en vigueur.","Identifier les risques avant de commencer une tache.","Signaler immediatement toute situation dangereuse.","Signaler tout incident ou presque accident.","Ne jamais neutraliser un dispositif de securite.","Verifier les detecteurs de gaz avant utilisation.","Verifier la bonne ventilation des zones de travail.","Respecter les regles des espaces confines.","Controler l'atmosphere avant d'entrer dans un espace confine.","Utiliser les points d'ancrage pour les travaux en hauteur.","Verifier l'etat des echafaudages avant utilisation.","Securiser les outils lors des travaux en hauteur.","Ne pas travailler seul lors des operations a risque.","Controler les elingues avant chaque levage.","Respecter les limites de charge des equipements.","Verifier l'etat des appareils de levage.","Maintenir les voies de circulation degagees.","Respecter la signalisation de securite.","Verifier les extincteurs a proximite du chantier.","Connaitre les issues de secours les plus proches.","Respecter les procedures d'arret d'urgence.","Verifier les flexibles et raccords avant mise en service.","Controler les fuites avant demarrage d'un equipement.","Respecter les distances de securite.","Ne jamais contourner une procedure HSE.","Porter les EPI adaptes au risque identifie.","Prevenir son responsable avant toute intervention particuliere.","Analyser les risques avant chaque demarrage de chantier.","Verifier la stabilite des equipements.","Utiliser les bons outils pour la bonne tache.","Respecter les consignes specifiques du chantier.","Ne jamais prendre de raccourci au detriment de la securite.","Arreter immediatement les travaux en cas de danger.","Proteger l'environnement lors des interventions.","Collecter et trier correctement les dechets.","Eviter toute pollution accidentelle.","Respecter les consignes de stockage des produits dangereux.","Lire les fiches de securite avant manipulation.","Verifier les equipements avant chaque prise de poste.","S'assurer de la disponibilite des moyens de secours.","Communiquer clairement avec l'equipe avant intervention.","Respecter les regles de circulation des engins.","Garder une vigilance permanente sur son environnement.","Prendre le temps d'effectuer le travail en securite.","La securite est l'affaire de tous.","Chaque incident peut etre evite par la prevention.","Aucun travail n'est plus urgent que la securite.","Zero accident commence par un comportement sur."]
 
     if "hse_affiche" not in st.session_state: st.session_state.hse_affiche = False
     if not st.session_state.hse_affiche:
@@ -406,20 +446,34 @@ def main():
     with st.sidebar:
         st.markdown("""<div style="padding:10px 0 4px 0"><div style="font-size:18px;margin-bottom:2px">⚙️</div><div style="font-size:12px;font-weight:800;color:white">Filtres & Parametres</div><div style="font-size:8px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Configuration</div></div>""", unsafe_allow_html=True)
         st.markdown("---")
+        
+        # === AFFICHAGE DATE DU FICHIER ===
+        if os.path.exists(DATE_FILE):
+            st.markdown("""<div style="background:rgba(72,187,120,.2);padding:6px 10px;border-radius:6px;border:1px solid rgba(72,187,120,.3);margin-bottom:4px">
+            <div style="font-size:7px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">📅 Date extraction</div>
+            <div style="font-size:13px;color:#48bb78;font-weight:800;margin-top:2px">%s</div>
+            <div style="font-size:7px;color:rgba(255,255,255,.4);margin-top:1px">Source: date.txt</div>
+            </div>""" % df_dt, unsafe_allow_html=True)
+        else:
+            st.markdown("""<div style="background:rgba(229,62,62,.2);padding:6px 10px;border-radius:6px;border:1px solid rgba(229,62,62,.3);margin-bottom:4px">
+            <div style="font-size:7px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">⚠️ Fichier date</div>
+            <div style="font-size:10px;color:#fc8181;font-weight:600;margin-top:2px">date.txt introuvable</div>
+            <div style="font-size:7px;color:rgba(255,255,255,.4);margin-top:1px">Date actuelle utilisée: %s</div>
+            </div>""" % df_dt, unsafe_allow_html=True)
+        
+        st.markdown("---")
         unf = st.toggle("📁 Charger nouveaux fichiers", value=False, key="tf")
         ot_f = av_f = None; apm = []
         if unf:
             ot_f = st.file_uploader("Fichier OT", type=["xlsx"], key="uot")
             av_f = st.file_uploader("Fichier AVIS", type=["xlsx"], key="uav")
         else:
-            df_dt = datetime.now().strftime("%d/%m/%Y")
             if os.path.exists("ot.xlsx"):
                 try:
-                    df_dt = datetime.fromtimestamp(os.path.getmtime("ot.xlsx")).strftime("%d/%m/%Y")
                     _t = excr(pd.read_excel("ot.xlsx"))
                     apm = sorted(_t[_t["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"), na=False)]["Poste travail princ."].dropna().unique().tolist())
                 except: pass
-            st.markdown("""<div style="background:rgba(255,255,255,.1);padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.15)"><div style="font-size:7px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Donnees</div><div style="font-size:10px;color:white;font-weight:600;margin-top:1px">📅 %s</div></div>""" % df_dt, unsafe_allow_html=True)
+            st.markdown("""<div style="background:rgba(255,255,255,.1);padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.15)"><div style="font-size:7px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Fichiers donnees</div><div style="font-size:10px;color:white;font-weight:600;margin-top:1px">📄 ot.xlsx + avis.xlsx</div></div>""", unsafe_allow_html=True)
         st.markdown("---")
         st.markdown("**🎯 Postes**")
         sp = st.multiselect("Poste", ["All"]+apm, ["All"], key="sp")
@@ -430,11 +484,20 @@ def main():
         st.markdown("---")
         st.markdown("**📅 Periode**")
         dr = st.date_input("Date debut planifiee", value=(datetime(2025,1,1).date(), datetime.today().date()), format="DD/MM/YYYY", key="dr")
+        
+        # Bouton forcer mise à jour historique
+        st.markdown("---")
+        if st.button("🔄 Forcer mise à jour historique", use_container_width=True):
+            history = load_kpi_history()
+            if "__extraction_signature__" in history:
+                del history["__extraction_signature__"]
+                save_kpi_history(history)
+            st.rerun()
 
     if not unf or (ot_f is not None and av_f is not None):
         try:
             if unf:
-                raw_ot = pd.read_excel(ot_f); raw_av = pd.read_excel(av_f); df_dt = datetime.now().strftime("%d/%m/%Y")
+                raw_ot = pd.read_excel(ot_f); raw_av = pd.read_excel(av_f)
             else:
                 raw_ot = pd.read_excel("ot.xlsx"); raw_av = pd.read_excel("avis.xlsx")
             raw_ot = excr(raw_ot); raw_av = excr(raw_av)
@@ -467,25 +530,21 @@ def main():
 
             vp = [p for p in apm if mf(p) and p in sp]
             
-            # === Donnees AVEC filtre date (pour tableaux detailles) ===
             df = raw_ot[(raw_ot["Poste travail princ."].isin(vp)) & (raw_ot["Date de début planifiée"].between(sdt, edt))].copy()
             avdf = raw_av[raw_av["Poste travail princ."].isin(vp)].copy()
             df = excr(df[df["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"), na=False)].drop_duplicates())
             avdf = excr(avdf[(avdf["Ordre"].isna())|(avdf["Ordre"].astype(str).str.strip().eq(""))].drop_duplicates())
             if "Statut système" in df.columns: df["Statut OT"] = df["Statut système"].fillna("").astype(str).str.strip().str.split().str[0]
 
-            # === Donnees SANS filtre date (pour chart tableau de bord) ===
             df_dash = raw_ot[raw_ot["Poste travail princ."].isin(vp)].copy()
             df_dash = excr(df_dash[df_dash["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"), na=False)].drop_duplicates())
             if "Statut système" in df_dash.columns: df_dash["Statut OT"] = df_dash["Statut système"].fillna("").astype(str).str.strip().str.split().str[0]
 
             now = pd.Timestamp.now()
 
-            # KPIs avec date (detail)
             res = calc_kpis(df, avdf, now, vp)
             ckdf = res['ckdf']; dfp = res['dfp']
 
-            # KPIs sans date (dashboard)
             res_d = calc_kpis(df_dash, avdf, now, vp)
             ckdf_d = res_d['ckdf']
 
@@ -494,7 +553,6 @@ def main():
             cible = {"TAUX_REALISATION_CORRECTIF/PT":85,"OT préparation <1 mois":80,"OT préparation >3 mois":5,"OT préparation 1mois< <3mois":15,"OT planification <1 mois":80,"OT planification >3 mois":5,"OT planification 1mois< <3mois":15,"OT exécution <1 mois":80,"OT exécution >3 mois":5,"OT exécution 1mois< <3mois":15,"appel avis approuvé":95,"OT LANC ESTIME":100,"Backlog préparation caractérisé":100,"Backlog planification caractérisé":100,"OT CONFIME":100,"OT_COR_EGAL":100}
             act_map = {"TAUX_REALISATION_CORRECTIF/PT":"Ameliorer le taux de realisation des OT.","OT préparation <1 mois":"Reduire l'age de preparation des OT (< 1 mois).","OT préparation >3 mois":"Traiter les OT avec preparation > 3 mois.","OT planification <1 mois":"Reduire l'age de planification des OT (< 1 mois).","OT planification >3 mois":"Traiter les OT avec planification > 3 mois.","OT exécution <1 mois":"Reduire l'age d'execution des OT (< 1 mois).","OT exécution >3 mois":"Traiter les OT avec execution > 3 mois.","OT LANC ESTIME":"Estimer les couts des OT lances.","Backlog préparation caractérisé":"Caracteriser le backlog de preparation.","Backlog planification caractérisé":"Caracteriser le backlog de planification.","OT CONFIME":"Confirmer les OT termines.","OT_COR_EGAL":"Rapprocher les couts reels et budgetes.","appel avis approuvé":"Creer un OT pour les avis sans ordre."}
 
-            # Scores avec date
             pscores = {}; qscores = {}
             for poste in ckdf.index:
                 r = ckdf.loc[poste]
@@ -503,7 +561,6 @@ def main():
             pa = {k: round(ckdf[k].mean(),2) for k in qk}
             qa = {k: round(ckdf[k].mean(),2) for k in pk}
 
-            # Scores sans date (dashboard)
             pscores_d = {}; qscores_d = {}
             for poste in ckdf_d.index:
                 r = ckdf_d.loc[poste]
@@ -514,7 +571,6 @@ def main():
 
             kpi_history = save_current_kpis(ckdf, qk, pk, pscores, qscores, pa, qa)
 
-            # ANOMALIES (avec date)
             all_ano = []
             sub_p = {"TAUX_REALISATION_CORRECTIF/PT":lambda d:d[(d["Nº appel pl.entret."].fillna(0)==0)&(~d["Statut OT"].isin(["CLOT","TCLO"]))],"OT préparation <1 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]!="<1 mois")],"OT préparation >3 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]==">3 mois")],"OT planification <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]!="<1 mois")],"OT planification >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]==">3 mois")],"OT exécution <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]!="<1 mois")],"OT exécution >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]==">3 mois")]}
             sub_q = {"OT LANC ESTIME":lambda d:d[(d["Statut OT"]=="LANC")&(d["OT LANC ESTIME"]=="NON")],"Backlog préparation caractérisé":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["Backlog preparation"]=="NON CARACTERISE")],"Backlog planification caractérisé":lambda d:d[(d["Statut OT"]=="LANC")&(d["Backlog planification"]=="NON CARACTERISE")],"OT CONFIME":lambda d:d[d["OT CONFIME"]=="NON"],"OT_COR_EGAL":lambda d:d[d["OT_COR_EGAL"]=="NON"]}
@@ -573,7 +629,6 @@ def main():
             kpi_cols_p = set(qk + ["Score Performance"]); lb_map_p = {k: is_lb(k) for k in qk}; lb_map_p["Score Performance"] = False
             kpi_cols_q = set(pk + ["Score Qualite"]); lb_map_q = {k: is_lb(k) for k in pk}; lb_map_q["Score Qualite"] = False
 
-            # Donnees dashboard
             df_sc_d = pd.DataFrame([{"Poste":p,"Perf":pscores_d[p],"Qual":qscores_d[p],"Metier":get_metier(p),"Atelier":get_atelier(p),"Division":get_division(p)} for p in vp if p in pscores_d])
             by_at = df_sc_d.groupby("Atelier")[["Perf","Qual"]].mean().round(1) if not df_sc_d.empty else pd.DataFrame()
             by_mt = df_sc_d.groupby("Metier")[["Perf","Qual"]].mean().round(1) if not df_sc_d.empty else pd.DataFrame()
@@ -584,7 +639,7 @@ def main():
             total_ot = len(df); avg_p = np.mean(list(pscores.values())) if pscores else 0
             avg_q = np.mean(list(qscores.values())) if qscores else 0; total_ano = sum(a["Nb"] for a in all_ano)
 
-            # RENDER
+            # === RENDER AVEC DATE depuis date.txt ===
             st.markdown('<div class="mh"><h1>📊 KPI Dashboard MC & FEED</h1><div class="db">📅 %s</div></div>' % df_dt, unsafe_allow_html=True)
             st.markdown("""<div class="cr">
             <div class="cc c1"><div class="cv">%s</div><div class="cl">Total OT Analyses</div></div>
@@ -595,115 +650,63 @@ def main():
 
             tab0, tab1, tab2 = st.tabs(["📊 TABLEAU DE BORD", "📈 INDICATEURS DE PERFORMANCE", "✅ INDICATEUR QUALITE"])
 
-            # ==================== DASHBOARD ====================
             with tab0:
-                st.markdown('<p class="stl q">Total General — Indicateurs de Performance</p>', unsafe_allow_html=True)
-                st.markdown(html_kpi_bars(qk, pa_d, cible, "Tous les KPIs Performance — Total General", "linear-gradient(90deg,#2b6cb0,#4299e1)", "linear-gradient(90deg,#e53e3e,#fc8181)", kpi_history=kpi_history), unsafe_allow_html=True)
-                st.markdown('<p class="stl p">Total General — Indicateurs Qualite</p>', unsafe_allow_html=True)
-                st.markdown(html_kpi_bars(pk, qa_d, cible, "Tous les KPIs Qualite — Total General", "linear-gradient(90deg,#276749,#48bb78)", "linear-gradient(90deg,#e53e3e,#fc8181)", kpi_history=kpi_history), unsafe_allow_html=True)
+                st.markdown('<div class="stl p">🎯 Synthese Performance</div>', unsafe_allow_html=True)
+                st.markdown(html_synth(qk, pa_d, cible, act_map, "#2b6cb0"), unsafe_allow_html=True)
+                st.markdown('<div class="stl q" style="margin-top:4px">✅ Synthese Qualite</div>', unsafe_allow_html=True)
+                st.markdown(html_synth(pk, qa_d, cible, act_map, "#38a169"), unsafe_allow_html=True)
+                
+                st.markdown('<div class="stl c" style="margin-top:4px">📊 Comparaison par Poste</div>', unsafe_allow_html=True)
+                st.markdown(html_grouped_bars(vp, pscores_d, qscores_d, "Performance vs Qualite par Poste"), unsafe_allow_html=True)
+                
+                st.markdown('<div class="stl" style="margin-top:4px">🏆 Classement Postes</div>', unsafe_allow_html=True)
+                st.markdown(html_classement(pscores_d, "#2b6cb0"), unsafe_allow_html=True)
 
-                st.markdown('<p class="stl c">Performance & Qualite par Division</p>', unsafe_allow_html=True)
-                if not by_div.empty:
-                    st.markdown('<div class="dgrid">' + html_bars(list(zip(by_div.index, by_div["Perf"])), "Performance par Division", "linear-gradient(90deg,#2b6cb0,#4299e1)") + html_bars(list(zip(by_div.index, by_div["Qual"])), "Qualite par Division", "linear-gradient(90deg,#276749,#48bb78)") + '</div>', unsafe_allow_html=True)
-                else: st.markdown('<div class="es">Aucune donnee</div>', unsafe_allow_html=True)
-
-                st.markdown('<p class="stl c">Performance & Qualite par Atelier</p>', unsafe_allow_html=True)
+                st.markdown('<div class="dgrid">', unsafe_allow_html=True)
+                st.markdown('<div>', unsafe_allow_html=True)
+                st.markdown('<div class="stl p">🏭 Par Atelier</div>', unsafe_allow_html=True)
                 if not by_at.empty:
-                    st.markdown('<div class="dgrid">' + html_bars(list(zip(by_at.index, by_at["Perf"])), "Performance par Atelier", "linear-gradient(90deg,#2b6cb0,#4299e1)") + html_bars(list(zip(by_at.index, by_at["Qual"])), "Qualite par Atelier", "linear-gradient(90deg,#276749,#48bb78)") + '</div>', unsafe_allow_html=True)
-                else: st.markdown('<div class="es">Aucune donnee</div>', unsafe_allow_html=True)
-
-                st.markdown('<p class="stl c">Performance & Qualite par Metier</p>', unsafe_allow_html=True)
+                    st.markdown(html_bars(list(zip(by_at.index, by_at["Perf"])), "Performance par Atelier", "#2b6cb0"), unsafe_allow_html=True)
+                    st.markdown(html_bars(list(zip(by_at.index, by_at["Qual"])), "Qualite par Atelier", "#38a169"), unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown('<div>', unsafe_allow_html=True)
+                st.markdown('<div class="stl">🔧 Par Metier</div>', unsafe_allow_html=True)
                 if not by_mt.empty:
-                    st.markdown('<div class="dgrid">' + html_bars(list(zip(by_mt.index, by_mt["Perf"])), "Performance par Metier", "linear-gradient(90deg,#2b6cb0,#4299e1)") + html_bars(list(zip(by_mt.index, by_mt["Qual"])), "Qualite par Metier", "linear-gradient(90deg,#276749,#48bb78)") + '</div>', unsafe_allow_html=True)
-                else: st.markdown('<div class="es">Aucune donnee</div>', unsafe_allow_html=True)
+                    st.markdown(html_bars(list(zip(by_mt.index, by_mt["Perf"])), "Performance par Metier", "#2b6cb0"), unsafe_allow_html=True)
+                    st.markdown(html_bars(list(zip(by_mt.index, by_mt["Qual"])), "Qualite par Metier", "#38a169"), unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
 
-                st.markdown('<p class="stl q">Performance & Qualite par Poste — SF1</p>', unsafe_allow_html=True)
-                if sf1_p:
-                    st.markdown(html_grouped_bars(sf1_p, pscores_d, qscores_d, "Postes SF1 — Performance & Qualite"), unsafe_allow_html=True)
-                else: st.markdown('<div class="es">Aucun poste SF1</div>', unsafe_allow_html=True)
-
-                st.markdown('<p class="stl p">Performance & Qualite par Poste — SF2</p>', unsafe_allow_html=True)
-                if sf2_p:
-                    st.markdown(html_grouped_bars(sf2_p, pscores_d, qscores_d, "Postes SF2 — Performance & Qualite"), unsafe_allow_html=True)
-                else: st.markdown('<div class="es">Aucun poste SF2</div>', unsafe_allow_html=True)
-
-            # ==================== PERFORMANCE ====================
             with tab1:
-                st.markdown('<div class="rh"><p class="stl q">Indicateurs de Performance par Poste de Travail</p><div style="min-width:170px">'); vw1 = st.radio("", ["Tableau KPI","Anomalies"], horizontal=True, key="vp", label_visibility="collapsed")
-                st.markdown('</div></div>', unsafe_allow_html=True)
-                if vw1 == "Tableau KPI":
-                    st.markdown(html_table(prows, pcols, "qt", sc_col=["Score Performance"], kpi_history=kpi_history, kpi_cols_set=kpi_cols_p, lb_map=lb_map_p), unsafe_allow_html=True)
+                st.markdown('<div class="stl p">📈 Indicateurs de Performance par Poste</div>', unsafe_allow_html=True)
+                st.markdown(html_table(prows, pcols, "qt", sc_col=["Score Performance"], kpi_history=kpi_history, kpi_cols_set=kpi_cols_p, lb_map=lb_map_p), unsafe_allow_html=True)
+                
+                st.markdown('<div class="stl p" style="margin-top:6px">📊 Detail KPI Performance</div>', unsafe_allow_html=True)
+                st.markdown(html_kpi_bars(qk, pa, cible, "Performance - Vue Globale", "#38a169", "#e53e3e", kpi_history), unsafe_allow_html=True)
+                
+                st.markdown('<div class="stl a" style="margin-top:6px">⚠️ Anomalies Performance</div>', unsafe_allow_html=True)
+                if ano_p_r:
+                    st.markdown(html_ano(ano_p_r, ano_p_c), unsafe_allow_html=True)
                 else:
-                    if ano_p_r: st.markdown(html_ano(ano_p_r, ano_p_c), unsafe_allow_html=True)
-                    else: st.markdown('<div class="es">✅ <b>Aucune anomalie</b></div>', unsafe_allow_html=True)
-                st.markdown('<p class="stl q">Synthese des Actions par KPI</p>', unsafe_allow_html=True)
-                st.markdown(html_synth(qk, pa, cible, act_map, "#3182ce"), unsafe_allow_html=True)
-                st.markdown('<p class="stl c">Analyse par Categorie</p>', unsafe_allow_html=True)
-                st.markdown(html_cat(qk, pa, cible, "linear-gradient(90deg,#2b6cb0,#3182ce)", "linear-gradient(90deg,#e53e3e,#fc8181)"), unsafe_allow_html=True)
-                st.markdown('<p class="stl q">Classement des Postes de Travail</p>', unsafe_allow_html=True)
-                st.markdown(html_classement(pscores, "#2b6cb0"), unsafe_allow_html=True)
+                    st.markdown('<div class="es">✅ Aucune anomalie performance</div>', unsafe_allow_html=True)
 
-            # ==================== QUALITE ====================
             with tab2:
-                st.markdown('<div class="rh"><p class="stl p">Indicateur Qualite par Poste de Travail</p><div style="min-width:170px">'); vw2 = st.radio("", ["Tableau KPI","Anomalies"], horizontal=True, key="vq", label_visibility="collapsed")
-                st.markdown('</div></div>', unsafe_allow_html=True)
-                if vw2 == "Tableau KPI":
-                    st.markdown(html_table(qrows, qcols, "pt", sc_col=["Score Qualite"], kpi_history=kpi_history, kpi_cols_set=kpi_cols_q, lb_map=lb_map_q), unsafe_allow_html=True)
+                st.markdown('<div class="stl q">✅ Indicateurs Qualite par Poste</div>', unsafe_allow_html=True)
+                st.markdown(html_table(qrows, qcols, "pt", sc_col=["Score Qualite"], kpi_history=kpi_history, kpi_cols_set=kpi_cols_q, lb_map=lb_map_q), unsafe_allow_html=True)
+                
+                st.markdown('<div class="stl q" style="margin-top:6px">📊 Detail KPI Qualite</div>', unsafe_allow_html=True)
+                st.markdown(html_kpi_bars(pk, qa, cible, "Qualite - Vue Globale", "#38a169", "#e53e3e", kpi_history), unsafe_allow_html=True)
+                
+                st.markdown('<div class="stl a" style="margin-top:6px">⚠️ Anomalies Qualite</div>', unsafe_allow_html=True)
+                if ano_q_r:
+                    st.markdown(html_ano(ano_q_r, ano_q_c), unsafe_allow_html=True)
                 else:
-                    if ano_q_r: st.markdown(html_ano(ano_q_r, ano_q_c), unsafe_allow_html=True)
-                    else: st.markdown('<div class="es">✅ <b>Aucune anomalie</b></div>', unsafe_allow_html=True)
-                st.markdown('<p class="stl p">Synthese des Actions par KPI</p>', unsafe_allow_html=True)
-                st.markdown(html_synth(pk, qa, cible, act_map, "#38a169"), unsafe_allow_html=True)
-                st.markdown('<p class="stl c">Analyse par Categorie</p>', unsafe_allow_html=True)
-                st.markdown(html_cat(pk, qa, cible, "linear-gradient(90deg,#276749,#38a169)", "linear-gradient(90deg,#e53e3e,#fc8181)"), unsafe_allow_html=True)
-                st.markdown('<p class="stl p">Classement des Postes de Travail</p>', unsafe_allow_html=True)
-                st.markdown(html_classement(qscores, "#276749"), unsafe_allow_html=True)
-
-            # ============ EXPORT ============
-            st.markdown('<p class="stl" style="margin-top:6px">💾 Export des Plans d\'Action</p>', unsafe_allow_html=True)
-            pa_list = list(set(a["Poste"] for a in all_ano))
-            if pa_list:
-                ce1, ce2 = st.columns([1, 1])
-                with ce1: se = st.selectbox("Poste :", options=["📌 Tous"]+pa_list, key="se")
-                with ce2:
-                    st.markdown("<div style='height:22px'></div>", unsafe_allow_html=True)
-                    gb = st.button("📥 Generer Excel", type="primary", key="gb", use_container_width=True)
-                if gb:
-                    with st.spinner("Generation..."):
-                        out = io.BytesIO()
-                        with pd.ExcelWriter(out, engine='xlsxwriter') as w:
-                            for pe in (pa_list if se=="📌 Tous" else [se]):
-                                for a in all_ano:
-                                    if a["Poste"] != pe: continue
-                                    kn = a["KPI"]; sd = pd.DataFrame()
-                                    if kn in sub_p:
-                                        dpf = dfp[dfp["Poste travail princ."]==pe].copy()
-                                        sd = sub_p[kn](dpf)[["Ordre","Poste travail princ.","Statut OT","Statut utilisateur","Créé le","Date de début planifiée","Total coûts budgétés","Total coûts réels"]].copy()
-                                    elif kn in sub_q:
-                                        dpf = dfp[dfp["Poste travail princ."]==pe].copy()
-                                        sd = sub_q[kn](dpf)[["Ordre","Poste travail princ.","Statut OT","Statut utilisateur","Créé le","Date de début planifiée","Total coûts budgétés","Total coûts réels"]].copy()
-                                    elif kn == "appel avis approuvé":
-                                        sd = res['avf'][res['avf']["Poste travail princ."]==pe][["Avis","Poste travail princ.","Statut utilisateur","Créé le","Début souhaité"]].copy()
-                                    if not sd.empty: sd.to_excel(w, sheet_name=("%s_%s" % (pe[:15], kn[:15]))[:31], index=False)
-                            pd.DataFrame(prows).to_excel(w, sheet_name="KPIs Performance", index=False)
-                            pd.DataFrame(qrows).to_excel(w, sheet_name="KPIs Qualite", index=False)
-                            hist_rows = []
-                            for hk, hvals in kpi_history.items():
-                                for hv in hvals:
-                                    if hk.startswith("__total__"):
-                                        hist_rows.append({"Type":"Total","Poste":"Total general","KPI":hk[9:],"Date":hv["date"],"Valeur":hv["value"]})
-                                    else:
-                                        parts = hk.split("__",1)
-                                        hist_rows.append({"Type":"Poste","Poste":parts[0],"KPI":parts[1] if len(parts)>1 else hk,"Date":hv["date"],"Valeur":hv["value"]})
-                            if hist_rows: pd.DataFrame(hist_rows).to_excel(w, sheet_name="Historique KPIs", index=False)
-                        out.seek(0)
-                        st.download_button(label="⬇️ Telecharger Excel", data=out, file_name="Plan_Action_%s.xlsx" % datetime.now().strftime('%Y%m%d_%H%M'), mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                        st.success("✅ Fichier genere avec historique KPI !")
-            else:
-                st.markdown('<div class="es">🎉 <b>Aucun plan d\'action a exporter</b></div>', unsafe_allow_html=True)
+                    st.markdown('<div class="es">✅ Aucune anomalie qualite</div>', unsafe_allow_html=True)
 
         except Exception as e:
-            st.error("❌ Erreur : %s" % str(e))
+            st.error("Erreur de chargement: %s" % str(e))
+            if os.path.exists("ot.xlsx"):
+                st.info("Verifier que les fichiers ot.xlsx et avis.xlsx sont presentes dans le meme dossier que le script.")
 
 if __name__ == "__main__":
     main()

@@ -485,10 +485,12 @@ def main():
 
     # ===================== TRAITEMENT PRINCIPAL =====================
     try:
-        if unf:
-            raw_ot = pd.read_excel(ot_f); raw_av = pd.read_excel(av_f); df_dt = datetime.now().strftime("%d/%m/%Y")
-        else:
-            raw_ot = pd.read_excel("ot.xlsx"); raw_av = pd.read_excel("avis.xlsx")
+      if ot_f is not None and av_f is not None:
+        raw_ot = pd.read_excel(ot_f)
+        raw_av = pd.read_excel(av_f)
+    else:
+       st.error("Veuillez charger les fichiers OT et AVIS")
+       st.stop()
             
         raw_ot = excr(raw_ot); raw_av = excr(raw_av)
         for c in ["Créé le","Date de début planifiée","Date de clôture","Début réel","Fin réelle"]:

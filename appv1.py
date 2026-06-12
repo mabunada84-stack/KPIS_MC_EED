@@ -5,6 +5,69 @@ import numpy as np
 import io, locale, random, time, os
 from datetime import datetime
 
+# ===================== FONCTIONS DATE & EXCEL =====================
+
+def read_date_file():
+    """Lit la date depuis le fichier date.txt"""
+    try:
+        if os.path.exists("date.txt"):
+            with open("date.txt", "r", encoding="utf-8") as f:
+                content = f.read().strip()
+                if content:
+                    return content
+    except:
+        pass
+    return datetime.now().strftime("%d/%m/%Y")
+
+def sheet_name_from_date(date_str):
+    """Convertit une date en nom de feuille Excel valide (max 31 car, pas de caractères interdits)"""
+    name = str(date_str)
+    for ch in ["/", "\\", ":", "*", "?", "[", "]"]:
+        name = name.replace(ch, "-")
+    return name[:31]
+
+def save_kpis_excel(ckdf, pscores, qscores, qk, pk, date_str):
+    """Enregistre les KPIs dans kpis.xlsx sur une feuille nommée par la date."""
+    sname = sheet_name_from_date(date_str)
+    fpath = "kpis.xlsx"
+    try:
+        rows = []
+        for poste in ckdf.index:
+            row = {"Poste de travail": poste}
+            for k in qk:
+                if k in ckdf.columns:
+                    v = ckdf.loc[poste, k]
+                    row[k] = round(float(v), 2) if pd.notna(v) else ""
+            row["Score Performance"] = round(float(pscores.get(poste, 0)), 2)
+            for k in pk:
+                if k in ckdf.columns:
+                    v = ckdf.loc[poste, k]
+                    row[k] = round(float(v), 2) if pd.notna(v) else ""
+            row["Score Qualite"] = round(float(qscores.get(poste, 0)), 2)
+            rows.append(row)
+        new_df = pd.DataFrame(rows)
+
+        all_sheets = {}
+        if os.path.exists(fpath):
+            try:
+                all_sheets = pd.read_excel(fpath, sheet_name=None)
+            except:
+                pass
+
+        if sname in all_sheets:
+            return
+
+        all_sheets[sname] = new_df
+
+        with pd.ExcelWriter(fpath, engine="openpyxl") as writer:
+            for sn, sdf in all_sheets.items():
+                safe_sn = sheet_name_from_date(str(sn))
+                sdf.to_excel(writer, sheet_name=safe_sn, index=False)
+    except Exception:
+        pass
+
+# ===================== CSS =====================
+
 def inject_custom_css():
     st.markdown("""<style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
@@ -82,8 +145,15 @@ def inject_custom_css():
     div[data-testid="stSidebar"] div[data-testid="stWidget"]{background:rgba(255,255,255,.08);border-radius:6px;padding:2px 6px;margin-bottom:2px;border:1px solid rgba(255,255,255,.1)}
     div[data-testid="stSidebar"] .stSelectbox>div>div,div[data-testid="stSidebar"] .stMultiSelect>div>div,div[data-testid="stSidebar"] .stDateInput>div>div{background:rgba(255,255,255,.95)!important;border-radius:5px}
     .es{text-align:center;padding:10px;color:#718096;font-size:10px}
+    .fw{background:#fff;border-radius:var(--r);padding:20px 16px;border:1px solid var(--b);box-shadow:0 2px 8px rgba(0,0,0,.04);text-align:center}
+    .fw .fi{font-size:48px;margin-bottom:10px}
+    .fw .ft{font-size:16px;font-weight:800;color:var(--p);margin-bottom:6px}
+    .fw .fd{font-size:11px;color:#718096;line-height:1.5}
+    .fw .fl{color:#e53e3e;font-weight:700;font-size:12px;margin-top:8px}
     @media(max-width:768px){.cr{grid-template-columns:repeat(2,1fr)}.mh h1{font-size:13px}.mh .db{float:none;display:block;margin-top:2px}.cg,.dgrid{grid-template-columns:1fr}.car .cal{width:100px}.gbr-l{width:90px}}
     </style>""", unsafe_allow_html=True)
+
+# ===================== MAIN =====================
 
 def main():
     try: locale.setlocale(locale.LC_ALL, 'fr_FR.UTF-8')
@@ -91,6 +161,9 @@ def main():
         try: locale.setlocale(locale.LC_ALL, 'fr_FR')
         except: pass
     inject_custom_css()
+
+    # Lire la date depuis date.txt
+    date_from_file = read_date_file()
 
     consignes = ["Port obligatoire des EPI avant toute intervention.","Port obligatoire du casque de securite.","Port obligatoire des lunettes de protection.","Port obligatoire des gants adaptes au travail.","Utiliser les protections auditives dans les zones bruyantes.","Verifier l'absence de tension avant toute intervention electrique.","Respecter la procedure de consignation et deconsignation.","Ne jamais intervenir sur un equipement en marche.","Baliser et securiser la zone de travail.","Maintenir le poste de travail propre et ordonne.","Verifier l'etat des outils avant utilisation.","Utiliser uniquement du materiel homologue.","Respecter les permis de travail en vigueur.","Identifier les risques avant de commencer une tache.","Signaler immediatement toute situation dangereuse.","Signaler tout incident ou presque accident.","Ne jamais neutraliser un dispositif de securite.","Verifier les detecteurs de gaz avant utilisation.","Verifier la bonne ventilation des zones de travail.","Respecter les regles des espaces confines.","Controler l'atmosphere avant d'entrer dans un espace confine.","Utiliser les points d'ancrage pour les travaux en hauteur.","Verifier l'etat des echafaudages avant utilisation.","Securiser les outils lors des travaux en hauteur.","Ne pas travailler seul lors d'operations a risque.","Controler les elingues avant chaque levage.","Respecter les limites de charge des equipements.","Verifier l'etat des appareils de levage.","Maintenir les voies de circulation degagees.","Respecter la signalisation de securite.","Verifier les extincteurs a proximite du chantier.","Connaitre les issues de secours les plus proches.","Respecter les procedures d'arret d'urgence.","Verifier les flexibles et raccords avant mise en service.","Controler les fuites avant demarrage d'un equipement.","Respecter les distances de securite.","Ne jamais contourner une procedure HSE.","Porter les EPI adaptes au risque identifie.","Prevenir son responsable avant toute intervention particuliere.","Analyser les risques avant chaque demarrage de chantier.","Verifier la stabilite des equipements.","Utiliser les bons outils pour la bonne tache.","Respecter les consignes specifiques du chantier.","Ne jamais prendre de raccourci au detriment de la securite.","Arreter immediatement les travaux en cas de danger.","Proteger l'environnement lors des interventions.","Collecter et trier correctement les dechets.","Eviter toute pollution accidentelle.","Respecter les consignes de stockage des produits dangereux.","Lire les fiches de securite avant manipulation.","Verifier les equipements avant chaque prise de poste.","S'assurer de la disponibilite des moyens de secours.","Communiquer clairement avec l'equipe avant intervention.","Respecter les regles de circulation des engins.","Garder une vigilance permanente sur son environnement.","Prendre le temps d'effectuer le travail en securite.","La securite est l'affaire de tous.","Chaque incident peut etre evite par la prevention.","Aucun travail n'est plus urgent que la securite.","Zero accident commence par un comportement sur."]
 
@@ -261,29 +334,6 @@ def main():
             h += '<div class="sr"><div class="sn">%s</div><div class="sc" style="background:%s">%.1f%%</div><div class="stg">Cible: %s%%</div><div class="sb" style="color:%s;background:%s">%s</div><div class="sa">%s</div></div>' % (k, scbg, av, tv, sclr, sbg, "ATTEINT" if met else "NON ATTEINT", act)
         return h
 
-    def html_cat(kpi_list, actuals, targets, col_ok, col_fail):
-        h = '<div class="ca">'
-        for k in kpi_list:
-            av, tv = actuals.get(k,0), targets.get(k,100)
-            met = av <= tv if is_lb(k) else av >= tv
-            bw = min(max(av,3),100); bg = col_ok if met else col_fail
-            h += '<div class="car"><div class="cal">%s</div><div class="cab"><div class="caf" style="width:%s%%;background:%s"></div></div><div class="cav-out">%.1f%% / %s%%</div></div>' % (k, bw, bg, av, tv)
-        h += '</div>'; return h
-
-    def html_classement(scores, accent):
-        sp = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-        met_p, not_p = [(p,s) for p,s in sp if s>=80], [(p,s) for p,s in sp if s<80]
-        t5, b5 = met_p[:5], not_p[-5:] if len(not_p)>5 else not_p
-        h = '<div class="cg"><div><div class="ct" style="color:#38a169">Top 5 — Objectif Atteint</div>'
-        if t5:
-            for i,(p,s) in enumerate(t5): h += '<div class="cgr"><span class="rk" style="color:%s">%s</span><span class="pn">%s</span><span class="ps" style="%s">%.2f%%</span></div>' % (accent,i+1,p,cs("%.2f"%s),s)
-        else: h += '<div style="padding:4px;font-size:8px;color:#718096">Aucun poste</div>'
-        h += '</div><div><div class="ct" style="color:#e53e3e">Bottom 5 — Non Atteint</div>'
-        if b5:
-            for i,(p,s) in enumerate(reversed(b5)): h += '<div class="cgr"><span class="rk" style="color:#e53e3e">%s</span><span class="pn">%s</span><span class="ps" style="%s">%.2f%%</span></div>' % (len(b5)-i,p,cs("%.2f"%s),s)
-        else: h += '<div style="padding:4px;font-size:8px;color:#38a169">Tous atteints</div>'
-        h += '</div></div>'; return h
-
     def html_kpi_bars(kpi_list, actuals, targets, title, color_ok, color_fail):
         h = '<div class="ca"><div class="ct" style="color:%s">%s</div>' % (color_ok, title)
         for k in kpi_list:
@@ -310,6 +360,20 @@ def main():
             h += '<div class="gbr"><div class="gbr-l">%s</div><div class="gbr-g"><div class="gbr-w"><div class="gbr-f gb-p" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div><div class="gbr-w"><div class="gbr-f gb-q" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div></div></div>' % (p, pw, pv, qw, qv)
         h += '</div>'; return h
 
+    def html_classement(scores, accent):
+        sp = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        met_p, not_p = [(p,s) for p,s in sp if s>=80], [(p,s) for p,s in sp if s<80]
+        t5, b5 = met_p[:5], not_p[-5:] if len(not_p)>5 else not_p
+        h = '<div class="cg"><div><div class="ct" style="color:#38a169">Top 5 — Objectif Atteint</div>'
+        if t5:
+            for i,(p,s) in enumerate(t5): h += '<div class="cgr"><span class="rk" style="color:%s">%s</span><span class="pn">%s</span><span class="ps" style="%s">%.2f%%</span></div>' % (accent,i+1,p,cs("%.2f"%s),s)
+        else: h += '<div style="padding:4px;font-size:8px;color:#718096">Aucun poste</div>'
+        h += '</div><div><div class="ct" style="color:#e53e3e">Bottom 5 — Non Atteint</div>'
+        if b5:
+            for i,(p,s) in enumerate(reversed(b5)): h += '<div class="cgr"><span class="rk" style="color:#e53e3e">%s</span><span class="pn">%s</span><span class="ps" style="%s">%.2f%%</span></div>' % (len(b5)-i,p,cs("%.2f"%s),s)
+        else: h += '<div style="padding:4px;font-size:8px;color:#38a169">Tous atteints</div>'
+        h += '</div></div>'; return h
+
     # ===================== SIDEBAR =====================
     with st.sidebar:
         st.markdown("""<div style="padding:10px 0 4px 0"><div style="font-size:18px;margin-bottom:2px">⚙️</div><div style="font-size:12px;font-weight:800;color:white">Filtres & Parametres</div><div style="font-size:8px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Configuration</div></div>""", unsafe_allow_html=True)
@@ -320,14 +384,15 @@ def main():
             ot_f = st.file_uploader("Fichier OT", type=["xlsx"], key="uot")
             av_f = st.file_uploader("Fichier AVIS", type=["xlsx"], key="uav")
         else:
-            df_dt = datetime.now().strftime("%d/%m/%Y")
+            df_dt_sidebar = datetime.now().strftime("%d/%m/%Y")
             if os.path.exists("ot.xlsx"):
                 try:
-                    df_dt = datetime.fromtimestamp(os.path.getmtime("ot.xlsx")).strftime("%d/%m/%Y")
+                    df_dt_sidebar = datetime.fromtimestamp(os.path.getmtime("ot.xlsx")).strftime("%d/%m/%Y")
                     _t = excr(pd.read_excel("ot.xlsx"))
                     apm = sorted(_t[_t["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"), na=False)]["Poste travail princ."].dropna().unique().tolist())
-                except: pass
-            st.markdown("""<div style="background:rgba(255,255,255,.1);padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.15)"><div style="font-size:7px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Donnees</div><div style="font-size:10px;color:white;font-weight:600;margin-top:1px">📅 %s</div></div>""" % df_dt, unsafe_allow_html=True)
+                except:
+                    pass
+            st.markdown("""<div style="background:rgba(255,255,255,.1);padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.15)"><div style="font-size:7px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Donnees OT</div><div style="font-size:10px;color:white;font-weight:600;margin-top:1px">📅 %s</div></div>""" % df_dt_sidebar, unsafe_allow_html=True)
         st.markdown("---")
         st.markdown("**🎯 Postes**")
         sp = st.multiselect("Poste", ["All"]+apm, ["All"], key="sp")
@@ -339,10 +404,47 @@ def main():
         st.markdown("**📅 Periode**")
         dr = st.date_input("Date debut planifiee", value=(datetime(2025,1,1).date(), datetime.today().date()), format="DD/MM/YYYY", key="dr")
 
+    # ===================== VERIFICATION FICHIERS =====================
+    ot_exists = os.path.exists("ot.xlsx")
+    avis_exists = os.path.exists("avis.xlsx")
+    fichiers_ok = True
+    fichiers_manquants = []
+
+    if not unf:
+        if not ot_exists:
+            fichiers_ok = False
+            fichiers_manquants.append("ot.xlsx")
+        if not avis_exists:
+            fichiers_ok = False
+            fichiers_manquants.append("avis.xlsx")
+    else:
+        if ot_f is None and av_f is None:
+            fichiers_ok = False
+            fichiers_manquants.append("Fichier OT (uploader)")
+            fichiers_manquants.append("Fichier AVIS (uploader)")
+        elif ot_f is None:
+            fichiers_ok = False
+            fichiers_manquants.append("Fichier OT (uploader)")
+        elif av_f is None:
+            fichiers_ok = False
+            fichiers_manquants.append("Fichier AVIS (uploader)")
+
+    if not fichiers_ok:
+        st.markdown('<div class="mh"><h1>📊 KPI Dashboard MC & FEED</h1><div class="db">📅 %s</div></div>' % date_from_file, unsafe_allow_html=True)
+        st.markdown("""<div class="fw">
+        <div class="fi">📂</div>
+        <div class="ft">Fichiers de donnees manquants</div>
+        <div class="fd">L'application necessite les fichiers suivants pour fonctionner :</div>
+        <div class="fl">%s</div>
+        <div class="fd" style="margin-top:12px">Placez les fichiers dans le meme dossier que l'application,<br>ou activez l'option "Charger nouveaux fichiers" dans la barre laterale.</div>
+        </div>""" % "<br>".join(["❌ " + f for f in fichiers_manquants]), unsafe_allow_html=True)
+        st.stop()
+
+    # ===================== TRAITEMENT =====================
     if not unf or (ot_f is not None and av_f is not None):
         try:
             if unf:
-                raw_ot = pd.read_excel(ot_f); raw_av = pd.read_excel(av_f); df_dt = datetime.now().strftime("%d/%m/%Y")
+                raw_ot = pd.read_excel(ot_f); raw_av = pd.read_excel(av_f)
             else:
                 raw_ot = pd.read_excel("ot.xlsx"); raw_av = pd.read_excel("avis.xlsx")
             raw_ot = excr(raw_ot); raw_av = excr(raw_av)
@@ -414,6 +516,10 @@ def main():
             pa_d = {k: round(ckdf_d[k].mean(),2) for k in qk}
             qa_d = {k: round(ckdf_d[k].mean(),2) for k in pk}
 
+            # === ENREGISTREMENT EXCEL ===
+            save_kpis_excel(ckdf, pscores, qscores, qk, pk, date_from_file)
+
+            # === ANOMALIES ===
             all_ano = []
             sub_p = {"TAUX_REALISATION_CORRECTIF/PT":lambda d:d[(d["Nº appel pl.entret."].fillna(0)==0)&(~d["Statut OT"].isin(["CLOT","TCLO"]))],"OT préparation <1 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]!="<1 mois")],"OT préparation >3 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]==">3 mois")],"OT planification <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]!="<1 mois")],"OT planification >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]==">3 mois")],"OT exécution <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]!="<1 mois")],"OT exécution >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]==">3 mois")]}
             sub_q = {"OT LANC ESTIME":lambda d:d[(d["Statut OT"]=="LANC")&(d["OT LANC ESTIME"]=="NON")],"Backlog préparation caractérisé":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["Backlog preparation"]=="NON CARACTERISE")],"Backlog planification caractérisé":lambda d:d[(d["Statut OT"]=="LANC")&(d["Backlog planification"]=="NON CARACTERISE")],"OT CONFIME":lambda d:d[d["OT CONFIME"]=="NON"],"OT_COR_EGAL":lambda d:d[d["OT_COR_EGAL"]=="NON"]}
@@ -481,7 +587,7 @@ def main():
             avg_q = np.mean(list(qscores.values())) if qscores else 0; total_ano = sum(a["Nb"] for a in all_ano)
 
             # ==================== RENDER ====================
-            st.markdown('<div class="mh"><h1>📊 KPI Dashboard MC & FEED</h1><div class="db">📅 %s</div></div>' % df_dt, unsafe_allow_html=True)
+            st.markdown('<div class="mh"><h1>📊 KPI Dashboard MC & FEED</h1><div class="db">📅 %s</div></div>' % date_from_file, unsafe_allow_html=True)
             st.markdown("""<div class="cr">
             <div class="cc c1"><div class="cv">%s</div><div class="cl">Total OT Analyses</div></div>
             <div class="cc c2"><div class="cv">%.1f%%</div><div class="cl">Score Performance</div></div>

@@ -397,7 +397,6 @@ def calc_kpis(df_i, av_i, now, posts):
     res = {}
     df, av = df_i.copy(), av_i.copy()
     
-    # Sécurité colonnes
     for col in ["Nº appel pl.entret.", "Total coûts budgétés", "Total coûts réels"]:
         if col not in df.columns: df[col] = np.nan
 
@@ -529,7 +528,6 @@ def main():
     if "hse_affiche" not in st.session_state: st.session_state.hse_affiche = False
     if not st.session_state.hse_affiche:
         c = random.choice(["Port obligatoire des EPI avant toute intervention.", "Ne jamais intervenir sur un equipement en marche.", "Baliser et securiser la zone de travail.", "Aucun travail n'est plus urgent que la securite."])
-        # CORRECTION APPLIQUEE ICI : Utilisation de """ pour autoriser l'apostrophe sans casser le code
         st.markdown("""<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a365d,#2d3748,#1a365d);padding:40px">
         <div style="font-size:64px;margin-bottom:20px">🦺</div>
         <h1 style="text-align:center;font-size:42px;color:#fff;font-weight:900;margin:0">HSE - CONSIGNE DE SECURITE</h1>
@@ -696,7 +694,8 @@ def main():
             st.markdown(html_evolution_table(evol_rows), unsafe_allow_html=True)
             if evol_rows:
                 evol_df = pd.DataFrame([{k: v for k, v in r.items() if k not in ["Tendance_Color", "Delta_Raw", "LB"]} for r in evol_rows])
-                st.download_button("📥 Exporter Évolution", data=evol_df.to_csv(index=False).encode(), "evolution_kpi.csv", "text/csv")
+                # CORRECTION APPLIQUEE ICI : file_name= et mime=
+                st.download_button("📥 Exporter Évolution", data=evol_df.to_csv(index=False).encode(), file_name="evolution_kpi.csv", mime="text/csv")
 
         with tab6:
             st.markdown('<div class="stl a">RECOMMANDATIONS</div>', unsafe_allow_html=True)
@@ -704,7 +703,8 @@ def main():
             st.markdown(html_rec_cards(recs), unsafe_allow_html=True)
             if recs:
                 recs_df = pd.DataFrame([{k: v for k, v in r.items() if k not in ["Priorite_Color", "Priorite_Sort"]} for r in recs])
-                st.download_button("📥 Exporter Recommandations", data=recs_df.to_csv(index=False).encode(), "recommandations.csv", "text/csv")
+                # CORRECTION APPLIQUEE ICI : file_name= et mime=
+                st.download_button("📥 Exporter Recommandations", data=recs_df.to_csv(index=False).encode(), file_name="recommandations.csv", mime="text/csv")
 
         st.markdown("---")
         evol_export = pd.DataFrame([{k: v for k, v in r.items() if k not in ["Tendance_Color", "Delta_Raw", "LB"]} for r in evol_rows]) if evol_rows else None

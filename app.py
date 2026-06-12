@@ -527,58 +527,67 @@ def main():
         raw_ot, raw_av = excr(raw_ot), excr(raw_av)
         
         # ==========================================
-        # MAPPING INTELLIGENT DES COLONNES
+        # MAPPING ULTRA INTELLIGENT
         # ==========================================
         ot_rename = {}
+        
+        # 1. On sécurise les colonnes avec des mots clés précis pour éviter les conflits
         for col in raw_ot.columns:
             cl = str(col).strip().lower()
-            if "statut ot" in cl or "statut de l'ot" in cl or (cl == "statut" and "Statut OT" not in raw_ot.columns):
-                ot_rename[col] = "Statut OT"
-            if "poste travail" in cl and "Poste travail princ." not in raw_ot.columns:
-                ot_rename[col] = "Poste travail princ."
-            if cl in ["ordre", "n° ordre", "numero ordre", "nº ordre"] and "Ordre" not in raw_ot.columns:
-                ot_rename[col] = "Ordre"
-            if "statut système" in cl or "statut syst" in cl:
+            if "statut système" in cl or "statut syst" in cl or "system status" in cl:
                 ot_rename[col] = "Statut système"
-            if "statut utilisateur" in cl and "Statut utilisateur" not in raw_ot.columns:
+            elif "statut utilisateur" in cl or "user status" in cl:
                 ot_rename[col] = "Statut utilisateur"
-            if "couts budg" in cl and "Total coûts budgétés" not in raw_ot.columns:
-                ot_rename[col] = "Total coûts budgétés"
-            if "couts re" in cl and "Total coûts réels" not in raw_ot.columns:
-                ot_rename[col] = "Total coûts réels"
-            if "appel" in cl and "entretien" in cl and "Nº appel pl.entret." not in raw_ot.columns:
-                ot_rename[col] = "Nº appel pl.entret."
-            if "créé le" in cl and "Créé le" not in raw_ot.columns:
-                ot_rename[col] = "Créé le"
-            if "date de début planifiée" in cl and "Date de début planifiée" not in raw_ot.columns:
-                ot_rename[col] = "Date de début planifiée"
+            elif "statut ot" in cl or "statut de l'ot" in cl:
+                ot_rename[col] = "Statut OT"
+
+        # 2. Si "Statut OT" manque toujours mais qu'il y a un "Statut" isolé, on le prend
+        if "Statut OT" not in ot_rename.values():
+            for col in raw_ot.columns:
+                cl = str(col).strip().lower()
+                if cl == "statut" and col not in ot_rename:
+                    ot_rename[col] = "Statut OT"
+                    break 
+
+        # 3. Si ça manque ENCORE, on cherche la dernière colonne restante qui contient le mot "statut"
+        if "Statut OT" not in ot_rename.values():
+            statut_restants = [col for col in raw_ot.columns if "statut" in str(col).lower() and col not in ot_rename]
+            if len(statut_restants) == 1:
+                ot_rename[statut_restants[0]] = "Statut OT"
+
+        # 4. On mappe le reste des colonnes
+        for col in raw_ot.columns:
+            cl = str(col).strip().lower()
+            if "poste travail" in cl and "Poste travail princ." not in raw_ot.columns and col not in ot_rename: ot_rename[col] = "Poste travail princ."
+            if cl in ["ordre", "n° ordre", "numero ordre", "nº ordre"] and "Ordre" not in raw_ot.columns and col not in ot_rename: ot_rename[col] = "Ordre"
+            if "couts budg" in cl and "Total coûts budgétés" not in raw_ot.columns and col not in ot_rename: ot_rename[col] = "Total coûts budgétés"
+            if "couts re" in cl and "Total coûts réels" not in raw_ot.columns and col not in ot_rename: ot_rename[col] = "Total coûts réels"
+            if "appel" in cl and "entretien" in cl and "Nº appel pl.entret." not in raw_ot.columns and col not in ot_rename: ot_rename[col] = "Nº appel pl.entret."
+            if "créé le" in cl and "Créé le" not in raw_ot.columns and col not in ot_rename: ot_rename[col] = "Créé le"
+            if "date de début planifiée" in cl and "Date de début planifiée" not in raw_ot.columns and col not in ot_rename: ot_rename[col] = "Date de début planifiée"
+                
         if ot_rename:
             raw_ot = raw_ot.rename(columns=ot_rename)
             
         av_rename = {}
         for col in raw_av.columns:
             cl = str(col).strip().lower()
-            if "poste travail" in cl and "Poste travail princ." not in raw_av.columns:
-                av_rename[col] = "Poste travail princ."
-            if cl in ["ordre", "n° ordre", "numero ordre", "nº ordre"] and "Ordre" not in raw_av.columns:
-                av_rename[col] = "Ordre"
-            if cl in ["avis", "n° avis", "numero avis", "nº avis"] and "Avis" not in raw_av.columns:
-                av_rename[col] = "Avis"
-            if "statut utilisateur" in cl and "Statut utilisateur" not in raw_av.columns:
-                av_rename[col] = "Statut utilisateur"
+            if "poste travail" in cl and "Poste travail princ." not in raw_av.columns: av_rename[col] = "Poste travail princ."
+            if cl in ["ordre", "n° ordre", "numero ordre", "nº ordre"] and "Ordre" not in raw_av.columns: av_rename[col] = "Ordre"
+            if cl in ["avis", "n° avis", "numero avis", "nº avis"] and "Avis" not in raw_av.columns: av_rename[col] = "Avis"
+            if "statut utilisateur" in cl and "Statut utilisateur" not in raw_av.columns: av_rename[col] = "Statut utilisateur"
         if av_rename:
             raw_av = raw_av.rename(columns=av_rename)
         # ==========================================
 
-        # Vérification de sécurité
+        # Vérification
         colonnes_obligatoires_ot = ["Poste travail princ.", "Statut OT", "Statut système", "Statut utilisateur", "Ordre"]
         colonnes_manquantes_ot = [c for c in colonnes_obligatoires_ot if c not in raw_ot.columns]
         
         if colonnes_manquantes_ot:
-            st.error("❌ Erreur de format dans le fichier OT !")
-            st.markdown("**Les colonnes suivantes sont manquantes :** `%s`" % "`, `".join(colonnes_manquantes_ot))
-            with st.expander("📋 Voir les colonnes détectées dans votre fichier OT"):
-                st.code("\n".join(raw_ot.columns.tolist()))
+            st.error("❌ Le système n'a pas pu identifier la colonne : `%s`" % "`, `".join(colonnes_manquantes_ot))
+            st.text("Voici la liste EXACTE des colonnes de votre fichier Excel. Copiez-collez cette liste dans votre prochaine réponse pour que je corrige le code :")
+            st.code("\n".join(raw_ot.columns.tolist()))
             st.stop()
 
         for c in ["Créé le", "Date de début planifiée", "Date de clôture", "Début réel", "Fin réelle"]:

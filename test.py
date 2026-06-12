@@ -2,9 +2,126 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import io, locale, random, time, os
+import io, locale, random, time, os, json
 from datetime import datetime
 
+HISTORY_FILE = "kpi_history.json"
+
+# ===================== HISTORIQUE KPI =====================
+def load_kpi_history():
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def save_kpi_history(history):
+    try:
+        with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
+            json.dump(history, f, indent=2, ensure_ascii=False)
+    except:
+        pass
+
+def save_current_kpis(ckdf, qk, pk, pscores, qscores, pa, qa):
+    history = load_kpi_history()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    MAX_H = 20
+
+    def add_entry(key, val):
+        if val is None or (isinstance(val, float) and np.isnan(val)):
+            return
+        fv = round(float(val), 2)
+        if key not in history:
+            history[key] = []
+        if (history[key] and history[key][-1]["date"][:16] == now_str[:16]
+                and abs(history[key][-1]["value"] - fv) < 0.01):
+            return
+        history[key].append({"date": now_str, "value": fv})
+        if len(history[key]) > MAX_H:
+            history[key] = history[key][-MAX_H:]
+
+    for poste in ckdf.index:
+        for k in qk + pk:
+            if k in ckdf.columns:
+                v = ckdf.loc[poste, k]
+                if pd.notna(v):
+                    add_entry(f"{poste}__{k}", v)
+        if poste in pscores:
+            add_entry(f"{poste}__Score Performance", pscores[poste])
+        if poste in qscores:
+            add_entry(f"{poste}__Score Qualité", qscores[poste])
+
+    for k in qk:
+        add_entry(f"__total__{k}", pa.get(k))
+    for k in pk:
+        add_entry(f"__total__{k}", qa.get(k))
+
+    avg_p = float(np.mean(list(pscores.values()))) if pscores else 0.0
+    avg_q = float(np.mean(list(qscores.values()))) if qscores else 0.0
+    add_entry("__total__Score Performance", avg_p)
+    add_entry("__total__Score Qualité", avg_q)
+
+    save_kpi_history(history)
+    return history
+
+# ===================== SPARKLINE & TENDANCE =====================
+def generate_sparkline(values):
+    if not values or len(values) < 2:
+        return ""
+    blocks = ['\u2581', '\u2582', '\u2583', '\u2584', '\u2585', '\u2586', '\u2587', '\u2588']
+    vals = [float(v) for v in values if v is not None]
+    if len(vals) < 2:
+        return ""
+    dv = vals[-8:]
+    mn, mx = min(dv), max(dv)
+    if mx == mn:
+        return '\u2584' * len(dv)
+    norm = [(v - mn) / (mx - mn) * 7 for v in dv]
+    return ''.join(blocks[min(7, max(0, int(round(n))))] for n in norm)
+
+def get_trend_info(values, lower_better=False):
+    if len(values) < 2:
+        return "", ""
+    prev, curr = float(values[-2]), float(values[-1])
+    diff = curr - prev
+    if abs(diff) < 0.5:
+        return "\u27a1\ufe0f", "stable"
+    if lower_better:
+        return ("\U0001f4c8", "am\u00e9lioration") if diff < 0 else ("\U0001f4c9", "d\u00e9gradation")
+    else:
+        return ("\U0001f4c8", "am\u00e9lioration") if diff > 0 else ("\U0001f4c9", "d\u00e9gradation")
+
+def build_kpi_cell(value_str, hist_entries, lower_better=False):
+    if not hist_entries or len(hist_entries) < 2:
+        return value_str
+    values = [h["value"] for h in hist_entries if h.get("value") is not None]
+    if len(values) < 2:
+        return value_str
+    spark = generate_sparkline(values)
+    trend_icon, trend_label = get_trend_info(values, lower_better)
+    curr = hist_entries[-1]
+    prev = hist_entries[-2]
+    cv = curr.get("value", "N/A")
+    pv = prev.get("value", "N/A")
+    diff = (float(cv) - float(pv)) if isinstance(cv, (int, float)) and isinstance(pv, (int, float)) else 0
+    lines = [
+        f"Valeur actuelle : {cv}",
+        f"Valeur pr\u00e9c\u00e9dente : {pv}",
+        f"\u00c9cart : {diff:+.2f}",
+        f"Date actuelle : {curr.get('date', 'N/A')}",
+        f"Date pr\u00e9c\u00e9dente : {prev.get('date', 'N/A')}",
+        f"Tendance : {trend_label}",
+        f"Historique : {len(hist_entries)} point(s)"
+    ]
+    tooltip = "&#10;".join(lines)
+    return (f'<span title="{tooltip}" class="kc">'
+            f'<span class="kt">{trend_icon}</span>'
+            f'<span class="ks">{spark}</span>'
+            f'<span class="kv">{value_str}</span></span>')
+
+# ===================== CSS =====================
 def inject_custom_css():
     st.markdown("""<style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
@@ -36,6 +153,10 @@ def inject_custom_css():
     .tw tbody tr:hover td{background:#ebf8ff!important}
     .cb td{background:#2b6cb0!important;color:#fff!important;font-weight:700!important;font-size:8px!important}
     .tr td{background:#e2e8f0!important;font-weight:800!important;font-size:8px!important}
+    .kc{display:inline-flex;align-items:center;gap:1px;white-space:nowrap;cursor:help}
+    .kc .kt{font-size:8px;line-height:1}
+    .kc .ks{font-size:5px;letter-spacing:-1px;line-height:1;opacity:.85}
+    .kc .kv{font-size:7px;font-weight:700}
     .stTabs [data-baseweb="tab-list"]{gap:2px;background:#e2e8f0;padding:2px;border-radius:6px;margin-bottom:3px}
     .stTabs [data-baseweb="tab"]{border-radius:5px;padding:5px 10px;font-weight:600;font-size:10px}
     .stTabs [aria-selected="true"]{background:#fff!important;color:var(--p)!important;box-shadow:0 2px 5px rgba(0,0,0,.07)}
@@ -62,9 +183,9 @@ def inject_custom_css():
     .cgr .pn{flex:1;font-weight:600;color:#1a202c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .cgr .ps{font-weight:800;min-width:45px;text-align:right}
     .tkg{display:flex;flex-wrap:wrap;gap:3px}
-    .tkc{padding:4px 6px;border-radius:4px;text-align:center;min-width:85px}
+    .tkc{padding:4px 6px;border-radius:4px;text-align:center;min-width:120px}
     .tkc .tkl{font-size:6px;color:#718096;font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .tkc .tkv{font-size:13px;font-weight:900;line-height:1.2}
+    .tkc .tkv{font-size:11px;font-weight:900;line-height:1.3;white-space:nowrap}
     .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
     .stButton>button[kind="primary"]{background:linear-gradient(135deg,var(--p),var(--pl));border:none;border-radius:6px;padding:6px 12px;font-weight:700;font-size:11px;width:100%}
     ::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:#f1f1f1}::-webkit-scrollbar-thumb{background:#cbd5e0;border-radius:2px}
@@ -74,7 +195,7 @@ def inject_custom_css():
     div[data-testid="stSidebar"] div[data-testid="stWidget"]{background:rgba(255,255,255,.08);border-radius:6px;padding:2px 6px;margin-bottom:2px;border:1px solid rgba(255,255,255,.1)}
     div[data-testid="stSidebar"] .stSelectbox>div>div,div[data-testid="stSidebar"] .stMultiSelect>div>div,div[data-testid="stSidebar"] .stDateInput>div>div{background:rgba(255,255,255,.95)!important;border-radius:5px}
     .es{text-align:center;padding:10px;color:#718096;font-size:10px}
-    @media(max-width:768px){.cr{grid-template-columns:repeat(2,1fr)}.mh h1{font-size:13px}.mh .db{float:none;display:block;margin-top:2px}.cg,.dgrid{grid-template-columns:1fr}.car .cal{width:100px}.tkc{min-width:70px}}
+    @media(max-width:768px){.cr{grid-template-columns:repeat(2,1fr)}.mh h1{font-size:13px}.mh .db{float:none;display:block;margin-top:2px}.cg,.dgrid{grid-template-columns:1fr}.car .cal{width:100px}.tkc{min-width:90px}}
     </style>""", unsafe_allow_html=True)
 
 def main():
@@ -185,7 +306,7 @@ def main():
         if c in ["OT préparation 1mois< <3mois","OT planification 1mois< <3mois","OT exécution 1mois< <3mois"]:
             return "background:#c6efce;color:#006100;font-weight:600" if val<=15 else "background:#ffc7ce;color:#9c0006;font-weight:600"
         if c in ["OT préparation >3 mois","OT planification >3 mois","OT exécution >3 mois"]:
-            return "background:#c6efce;color:#006100;font-weight:600" if val<=5 else "background:#ffc7ce;color:#9c0006;font-weight:600"
+            return "background:#c6efce;color:#006100;font-weight:600" if val<=5 else "background:#ffc7ce;color:#9c0006;font-weight:600")
         if c == "TAUX_REALISATION_CORRECTIF/PT":
             return "background:#c6efce;color:#006100;font-weight:600" if val>=85 else ("background:#ffeb9c;color:#9c6500;font-weight:600" if val>=80 else "background:#ffc7ce;color:#9c0006;font-weight:600")
         if c == "appel avis approuvé":
@@ -220,20 +341,27 @@ def main():
     def is_lb(k):
         return k in ["OT préparation >3 mois","OT planification >3 mois","OT exécution >3 mois","OT préparation 1mois< <3mois","OT planification 1mois< <3mois","OT exécution 1mois< <3mois"]
 
-    def html_table(rows, cols, tc, sc_col=None):
+    def html_table(rows, cols, tc, sc_col=None, kpi_history=None, kpi_cols_set=None, lb_map=None):
         h = '<table class="tw %s"><thead><tr>' % tc + ''.join('<th>%s</th>' % c for c in cols) + '</tr></thead><tbody>'
         for r in rows:
             rc = "cb" if r.get("_t")=="cible" else ("tr" if r.get("_t")=="total" else "")
             h += '<tr class="%s">' % rc
             for c in cols:
                 v = r.get(c, "")
-                if r.get("_t")=="cible": h += '<td>%s</td>' % v
-                elif r.get("_t")=="total":
-                    s = cs(v) if sc_col and c in sc_col else ks(v, c)
-                    h += '<td style="%s">%s</td>' % (s or "", v)
+                if r.get("_t") == "cible":
+                    h += '<td>%s</td>' % v
                 else:
                     s = cs(v) if sc_col and c in sc_col else ks(v, c)
-                    h += '<td style="%s">%s</td>' % (s or "", v)
+                    display_v = str(v)
+                    if kpi_history and kpi_cols_set and c in kpi_cols_set:
+                        if r.get("_t") == "total":
+                            key = f"__total__{c}"
+                        else:
+                            key = f"{r.get('Poste de travail', '')}__{c}"
+                        hist = kpi_history.get(key, [])
+                        lb = lb_map.get(c, False) if lb_map else False
+                        display_v = build_kpi_cell(str(v), hist, lb)
+                    h += '<td style="%s">%s</td>' % (s or "", display_v)
             h += '</tr>'
         return h + '</tbody></table>'
 
@@ -287,11 +415,14 @@ def main():
         h += '</div></div>'
         return h
 
-    def html_total_kpis(kpi_list, actuals, title, accent):
+    def html_total_kpis(kpi_list, actuals, title, accent, kpi_history=None, prefix="__total__"):
         h = '<div class="ca"><div class="ct" style="color:%s">%s</div><div class="tkg">' % (accent, title)
         for k in kpi_list:
             av = actuals.get(k, 0); s = ks(av, k)
-            h += '<div class="tkc" style="%s"><div class="tkl">%s</div><div class="tkv">%.1f%%</div></div>' % (s, k, av)
+            hist = kpi_history.get(f"{prefix}{k}", []) if kpi_history else []
+            lb = is_lb(k)
+            cell_html = build_kpi_cell("%.1f%%" % av, hist, lb)
+            h += '<div class="tkc" style="%s"><div class="tkl">%s</div><div class="tkv">%s</div></div>' % (s, k, cell_html)
         h += '</div></div>'
         return h
 
@@ -391,6 +522,9 @@ def main():
             pa = {k: round(ckdf[k].mean(), 2) for k in qk}
             qa = {k: round(ckdf[k].mean(), 2) for k in pk}
 
+            # ============ SAUVEGARDE HISTORIQUE KPI ============
+            kpi_history = save_current_kpis(ckdf, qk, pk, pscores, qscores, pa, qa)
+
             # ANOMALIES
             all_ano = []
             sub_p = {"TAUX_REALISATION_CORRECTIF/PT":lambda d:d[(d["Nº appel pl.entret."].fillna(0)==0)&(~d["Statut OT"].isin(["CLOT","TCLO"]))],"OT préparation <1 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]!="<1 mois")],"OT préparation >3 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]==">3 mois")],"OT planification <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]!="<1 mois")],"OT planification >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]==">3 mois")],"OT exécution <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]!="<1 mois")],"OT exécution >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]==">3 mois")]}
@@ -452,6 +586,15 @@ def main():
             pcols, prows = build_kpi(qk, pscores, "Score Performance")
             qcols, qrows = build_kpi(pk, qscores, "Score Qualité")
 
+            # Colonnes KPI avec sparkline et map lower-better
+            kpi_cols_p = set(qk + ["Score Performance"])
+            lb_map_p = {k: is_lb(k) for k in qk}
+            lb_map_p["Score Performance"] = False
+
+            kpi_cols_q = set(pk + ["Score Qualité"])
+            lb_map_q = {k: is_lb(k) for k in pk}
+            lb_map_q["Score Qualité"] = False
+
             # DASHBOARD DATA
             df_sc = pd.DataFrame([{"Poste":p,"Perf":pscores[p],"Qual":qscores[p],"Métier":get_metier(p),"Atelier":get_atelier(p)} for p in vp if p in pscores])
             by_at = df_sc.groupby("Atelier")[["Perf","Qual"]].mean().round(1) if not df_sc.empty else pd.DataFrame()
@@ -459,6 +602,9 @@ def main():
 
             total_ot = len(df); avg_p = np.mean(list(pscores.values())) if pscores else 0
             avg_q = np.mean(list(qscores.values())) if qscores else 0; total_ano = sum(a["Nb"] for a in all_ano)
+
+            # Compteur historique pour l'en-tête
+            hist_count = len([k for k in kpi_history if k.startswith("__total__") and kpi_history[k]])
 
             # RENDER
             st.markdown('<div class="mh"><h1>📊 KPI Dashboard MC & FEED</h1><div class="db">📅 %s</div></div>' % df_dt, unsafe_allow_html=True)
@@ -474,14 +620,14 @@ def main():
             # ==================== DASHBOARD ====================
             with tab0:
                 st.markdown('<p class="stl q">Total Général — Indicateurs de Performance</p>', unsafe_allow_html=True)
-                st.markdown(html_total_kpis(qk, pa, "Tous les KPIs Performance — Total Général", "#2b6cb0"), unsafe_allow_html=True)
+                st.markdown(html_total_kpis(qk, pa, "Tous les KPIs Performance — Total Général", "#2b6cb0", kpi_history=kpi_history), unsafe_allow_html=True)
 
                 st.markdown('<p class="stl p">Total Général — Indicateurs Qualité</p>', unsafe_allow_html=True)
-                st.markdown(html_total_kpis(pk, qa, "Tous les KPIs Qualité — Total Général", "#276749"), unsafe_allow_html=True)
+                st.markdown(html_total_kpis(pk, qa, "Tous les KPIs Qualité — Total Général", "#276749", kpi_history=kpi_history), unsafe_allow_html=True)
 
                 st.markdown('<p class="stl c">Performance & Qualité par Atelier</p>', unsafe_allow_html=True)
                 if not by_at.empty:
-                    st.markdown('<div class="dgrid">' + 
+                    st.markdown('<div class="dgrid">' +
                         html_bars(list(zip(by_at.index, by_at["Perf"])), "Performance par Atelier", "linear-gradient(90deg,#2b6cb0,#4299e1)") +
                         html_bars(list(zip(by_at.index, by_at["Qual"])), "Qualité par Atelier", "linear-gradient(90deg,#276749,#48bb78)") +
                         '</div>', unsafe_allow_html=True)
@@ -502,7 +648,7 @@ def main():
                 with c_b: vw1 = st.radio("", ["Tableau KPI", "Anomalies"], horizontal=True, key="vp", label_visibility="collapsed")
                 st.markdown("<div style='height:2px'></div>", unsafe_allow_html=True)
                 if vw1 == "Tableau KPI":
-                    st.markdown(html_table(prows, pcols, "qt", sc_col=["Score Performance"]), unsafe_allow_html=True)
+                    st.markdown(html_table(prows, pcols, "qt", sc_col=["Score Performance"], kpi_history=kpi_history, kpi_cols_set=kpi_cols_p, lb_map=lb_map_p), unsafe_allow_html=True)
                 else:
                     if ano_p_r: st.markdown(html_ano(ano_p_r, ano_p_c), unsafe_allow_html=True)
                     else: st.markdown('<div class="es">✅ <b>Aucune anomalie</b></div>', unsafe_allow_html=True)
@@ -521,7 +667,7 @@ def main():
                 with c_b2: vw2 = st.radio("", ["Tableau KPI", "Anomalies"], horizontal=True, key="vq", label_visibility="collapsed")
                 st.markdown("<div style='height:2px'></div>", unsafe_allow_html=True)
                 if vw2 == "Tableau KPI":
-                    st.markdown(html_table(qrows, qcols, "pt", sc_col=["Score Qualité"]), unsafe_allow_html=True)
+                    st.markdown(html_table(qrows, qcols, "pt", sc_col=["Score Qualité"], kpi_history=kpi_history, kpi_cols_set=kpi_cols_q, lb_map=lb_map_q), unsafe_allow_html=True)
                 else:
                     if ano_q_r: st.markdown(html_ano(ano_q_r, ano_q_c), unsafe_allow_html=True)
                     else: st.markdown('<div class="es">✅ <b>Aucune anomalie</b></div>', unsafe_allow_html=True)
@@ -561,9 +707,21 @@ def main():
                                     if not sd.empty: sd.to_excel(w, sheet_name=("%s_%s" % (pe[:15], kn[:15]))[:31], index=False)
                             pd.DataFrame(prows).to_excel(w, sheet_name="KPIs Performance", index=False)
                             pd.DataFrame(qrows).to_excel(w, sheet_name="KPIs Qualité", index=False)
+                            # Export historique KPI
+                            hist_rows = []
+                            for hk, hvals in kpi_history.items():
+                                for hv in hvals:
+                                    parts = hk.split("__", 1)
+                                    if parts[0] == "" and "__" in hk[1:]:
+                                        sub = hk[1:].split("__", 1)
+                                        hist_rows.append({"Type": "Total", "Poste": "Total général", "KPI": sub[1] if len(sub)>1 else hk, "Date": hv["date"], "Valeur": hv["value"]})
+                                    else:
+                                        hist_rows.append({"Type": "Poste", "Poste": parts[0], "KPI": parts[1] if len(parts)>1 else hk, "Date": hv["date"], "Valeur": hv["value"]})
+                            if hist_rows:
+                                pd.DataFrame(hist_rows).to_excel(w, sheet_name="Historique KPIs", index=False)
                         out.seek(0)
                         st.download_button(label="⬇️ Télécharger Excel", data=out, file_name="Plan_Action_%s.xlsx" % datetime.now().strftime('%Y%m%d_%H%M'), mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                        st.success("✅ Fichier généré !")
+                        st.success("✅ Fichier généré avec historique KPI !")
             else:
                 st.markdown('<div class="es">🎉 <b>Aucun plan d\'action à exporter</b></div>', unsafe_allow_html=True)
 
@@ -572,4 +730,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-F

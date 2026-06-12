@@ -188,7 +188,7 @@ def main():
         except: pass
     inject_custom_css()
 
-    # === MODIFICATION DATE : lecture depuis date.txt ===
+    # === LECTURE DATE depuis date.txt ===
     df_dt = get_date_from_file()
 
     consignes = ["Port obligatoire des EPI avant toute intervention.","Port obligatoire du casque de securite.","Port obligatoire des lunettes de protection.","Port obligatoire des gants adaptes au travail.","Utiliser les protections auditives dans les zones bruyantes.","Verifier l'absence de tension avant toute intervention electrique.","Respecter la procedure de consignation et deconsignation.","Ne jamais intervenir sur un equipement en marche.","Baliser et securiser la zone de travail.","Maintenir le poste de travail propre et ordonne.","Verifier l'etat des outils avant utilisation.","Utiliser uniquement du materiel homologue.","Respecter les permis de travail en vigueur.","Identifier les risques avant de commencer une tache.","Signaler immediatement toute situation dangereuse.","Signaler tout incident ou presque accident.","Ne jamais neutraliser un dispositif de securite.","Verifier les detecteurs de gaz avant utilisation.","Verifier la bonne ventilation des zones de travail.","Respecter les regles des espaces confines.","Controler l'atmosphere avant d'entrer dans un espace confine.","Utiliser les points d'ancrage pour les travaux en hauteur.","Verifier l'etat des echafaudages avant utilisation.","Securiser les outils lors des travaux en hauteur.","Ne pas travailler seul lors d'operations a risque.","Controler les elingues avant chaque levage.","Respecter les limites de charge des equipements.","Verifier l'etat des appareils de levage.","Maintenir les voies de circulation degagees.","Respecter la signalisation de securite.","Verifier les extincteurs a proximite du chantier.","Connaitre les issues de secours les plus proches.","Respecter les procedures d'arret d'urgence.","Verifier les flexibles et raccords avant mise en service.","Controler les fuites avant demarrage d'un equipement.","Respecter les distances de securite.","Ne jamais contourner une procedure HSE.","Porter les EPI adaptes au risque identifie.","Prevenir son responsable avant toute intervention particuliere.","Analyser les risques avant chaque demarrage de chantier.","Verifier la stabilite des equipements.","Utiliser les bons outils pour la bonne tache.","Respecter les consignes specifiques du chantier.","Ne jamais prendre de raccourci au detriment de la securite.","Arreter immediatement les travaux en cas de danger.","Proteger l'environnement lors des interventions.","Collecter et trier correctement les dechets.","Eviter toute pollution accidentelle.","Respecter les consignes de stockage des produits dangereux.","Lire les fiches de securite avant manipulation.","Verifier les equipements avant chaque prise de poste.","S'assurer de la disponibilite des moyens de secours.","Communiquer clairement avec l'equipe avant intervention.","Respecter les regles de circulation des engins.","Garder une vigilance permanente sur son environnement.","Prendre le temps d'effectuer le travail en securite.","La securite est l'affaire de tous.","Chaque incident peut etre evite par la prevention.","Aucun travail n'est plus urgent que la securite.","Zero accident commence par un comportement sur."]
@@ -431,7 +431,6 @@ def main():
             ot_f = st.file_uploader("Fichier OT", type=["xlsx"], key="uot")
             av_f = st.file_uploader("Fichier AVIS", type=["xlsx"], key="uav")
         else:
-            # === MODIFICATION DATE : supprimé df_dt = datetime... et df_dt = fromtimestamp ===
             if os.path.exists("ot.xlsx"):
                 try:
                     _t = excr(pd.read_excel("ot.xlsx"))
@@ -452,7 +451,6 @@ def main():
     if not unf or (ot_f is not None and av_f is not None):
         try:
             if unf:
-                # === MODIFICATION DATE : supprimé df_dt = datetime.now()... ===
                 raw_ot = pd.read_excel(ot_f); raw_av = pd.read_excel(av_f)
             else:
                 raw_ot = pd.read_excel("ot.xlsx"); raw_av = pd.read_excel("avis.xlsx")
@@ -616,4 +614,62 @@ def main():
 
             # ==================== DASHBOARD ====================
             with tab0:
-                st.markdow
+                st.markdown('<div class="stl p">🎯 Synthese Performance</div>', unsafe_allow_html=True)
+                st.markdown(html_synth(qk, pa_d, cible, act_map, "#2b6cb0"), unsafe_allow_html=True)
+                st.markdown('<div class="stl q" style="margin-top:4px">✅ Synthese Qualite</div>', unsafe_allow_html=True)
+                st.markdown(html_synth(pk, qa_d, cible, act_map, "#38a169"), unsafe_allow_html=True)
+                
+                st.markdown('<div class="stl c" style="margin-top:4px">📊 Comparaison par Poste</div>', unsafe_allow_html=True)
+                st.markdown(html_grouped_bars(vp, pscores_d, qscores_d, "Performance vs Qualite par Poste"), unsafe_allow_html=True)
+                
+                st.markdown('<div class="stl" style="margin-top:4px">🏆 Classement Postes</div>', unsafe_allow_html=True)
+                st.markdown(html_classement(pscores_d, "#2b6cb0"), unsafe_allow_html=True)
+
+                st.markdown('<div class="dgrid">', unsafe_allow_html=True)
+                st.markdown('<div>', unsafe_allow_html=True)
+                st.markdown('<div class="stl p">🏭 Par Atelier</div>', unsafe_allow_html=True)
+                if not by_at.empty:
+                    st.markdown(html_bars(list(zip(by_at.index, by_at["Perf"])), "Performance par Atelier", "#2b6cb0"), unsafe_allow_html=True)
+                    st.markdown(html_bars(list(zip(by_at.index, by_at["Qual"])), "Qualite par Atelier", "#38a169"), unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown('<div>', unsafe_allow_html=True)
+                st.markdown('<div class="stl">🔧 Par Metier</div>', unsafe_allow_html=True)
+                if not by_mt.empty:
+                    st.markdown(html_bars(list(zip(by_mt.index, by_mt["Perf"])), "Performance par Metier", "#2b6cb0"), unsafe_allow_html=True)
+                    st.markdown(html_bars(list(zip(by_mt.index, by_mt["Qual"])), "Qualite par Metier", "#38a169"), unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+
+            with tab1:
+                st.markdown('<div class="stl p">📈 Indicateurs de Performance par Poste</div>', unsafe_allow_html=True)
+                st.markdown(html_table(prows, pcols, "qt", sc_col=["Score Performance"], kpi_history=kpi_history, kpi_cols_set=kpi_cols_p, lb_map=lb_map_p), unsafe_allow_html=True)
+                
+                st.markdown('<div class="stl p" style="margin-top:6px">📊 Detail KPI Performance</div>', unsafe_allow_html=True)
+                st.markdown(html_kpi_bars(qk, pa, cible, "Performance - Vue Globale", "#38a169", "#e53e3e", kpi_history), unsafe_allow_html=True)
+                
+                st.markdown('<div class="stl a" style="margin-top:6px">⚠️ Anomalies Performance</div>', unsafe_allow_html=True)
+                if ano_p_r:
+                    st.markdown(html_ano(ano_p_r, ano_p_c), unsafe_allow_html=True)
+                else:
+                    st.markdown('<div class="es">✅ Aucune anomalie performance</div>', unsafe_allow_html=True)
+
+            with tab2:
+                st.markdown('<div class="stl q">✅ Indicateurs Qualite par Poste</div>', unsafe_allow_html=True)
+                st.markdown(html_table(qrows, qcols, "pt", sc_col=["Score Qualite"], kpi_history=kpi_history, kpi_cols_set=kpi_cols_q, lb_map=lb_map_q), unsafe_allow_html=True)
+                
+                st.markdown('<div class="stl q" style="margin-top:6px">📊 Detail KPI Qualite</div>', unsafe_allow_html=True)
+                st.markdown(html_kpi_bars(pk, qa, cible, "Qualite - Vue Globale", "#38a169", "#e53e3e", kpi_history), unsafe_allow_html=True)
+                
+                st.markdown('<div class="stl a" style="margin-top:6px">⚠️ Anomalies Qualite</div>', unsafe_allow_html=True)
+                if ano_q_r:
+                    st.markdown(html_ano(ano_q_r, ano_q_c), unsafe_allow_html=True)
+                else:
+                    st.markdown('<div class="es">✅ Aucune anomalie qualite</div>', unsafe_allow_html=True)
+
+        except Exception as e:
+            st.error("Erreur de chargement: %s" % str(e))
+            if os.path.exists("ot.xlsx"):
+                st.info("Verifier que les fichiers ot.xlsx et avis.xlsx sont presents dans le meme dossier que le script.")
+
+if __name__ == "__main__":
+    main()

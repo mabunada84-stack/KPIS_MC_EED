@@ -162,6 +162,7 @@ def inject_custom_css():
 # ============================================================
 
 def is_xlsx_buffer(f):
+    """Vérifie si un file-like commence par la signature ZIP/PK (xlsx)."""
     try:
         pos = f.tell()
     except Exception:
@@ -174,56 +175,99 @@ def is_xlsx_buffer(f):
     return b == b'PK\x03\x04'
 
 def read_any_excel(source, usecols=None, parse_dates=None):
+    """
+    Lit un fichier Excel/CSV depuis un chemin (str) ou un UploadedFile/BytesIO.
+    Gère les fichiers .xls renommés en .xlsx, les vrais .xlsx, .csv, etc.
+    """
     last_err = None
+
+    # ---- Cas 1 : chemin fichier (string) ----
     if isinstance(source, str):
         ext = os.path.splitext(source)[1].lower()
-        if ext in (".xlsx",):
-            try: return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="openpyxl")
-            except Exception as e: last_err = e
-        if ext in (".xls",):
-            try: return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="xlrd")
-            except Exception as e: last_err = e
+        
+        # 1) Si l'extension est .csv ou .txt, essayer CSV en priorité
         if ext in (".csv", ".txt"):
-            try: return pd.read_csv(source, usecols=usecols, parse_dates=parse_dates)
-            except Exception as e: last_err = e
-        if last_err is None:
-            try: return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="openpyxl")
-            except Exception as e: last_err = e
+            try:
+                return pd.read_csv(source, usecols=usecols, parse_dates=parse_dates)
+            except Exception as e:
+                last_err = e
+
+        # 2) Construire la liste ordonnée des moteurs Excel à essayer
+        if ext == ".xls":
+            engines = ["xlrd", "openpyxl"]
+        elif ext == ".xlsx":
+            engines = ["openpyxl", "xlrd"]   # openpyxl en premier, xlrd en secours si renommé
+        else:
+            engines = ["openpyxl", "xlrd"]   # extension inconnue, tenter les deux
+
+        for eng in engines:
+            try:
+                return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine=eng)
+            except Exception as e:
+                last_err = e
+
+        # 3) Si tous les moteurs Excel ont échoué, tenter CSV en dernier recours
+        try:
+            df = pd.read_csv(source, usecols=usecols, parse_dates=parse_dates, sep=None, engine="python")
+            if df.shape[1] > 1:
+                return df
+        except Exception as e:
+            last_err = e
+
         raise ValueError(f"Impossible de lire le fichier '{source}': {last_err}")
+
+    # ---- Cas 2 : file-like (Streamlit UploadedFile, BytesIO, etc.) ----
     try:
         source.seek(0)
     except Exception:
         pass
+
+    # Essai 1 : xlsx (openpyxl) si signature PK..
     if is_xlsx_buffer(source):
         try:
             source.seek(0)
             return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="openpyxl")
         except Exception as e:
             last_err = e
-            try: source.seek(0)
-            except: pass
-    try:
-        source.seek(0)
-        df = pd.read_csv(source, usecols=usecols, parse_dates=parse_dates, sep=None, engine="python")
-        if df.shape[1] > 1: return df
-        last_err = "CSV lu mais une seule colonne detectee"
-    except Exception as e:
-        last_err = e
-        try: source.seek(0)
-        except: pass
+            try:
+                source.seek(0)
+            except Exception:
+                pass
+
+    # Essai 2 : xls legacy (xlrd) — gère les .xls uploadés ou renommés
     try:
         source.seek(0)
         return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="xlrd")
     except Exception as e:
         last_err = e
-        try: source.seek(0)
-        except: pass
+        try:
+            source.seek(0)
+        except Exception:
+            pass
+
+    # Essai 3 : csv (séparateur auto)
+    try:
+        source.seek(0)
+        df = pd.read_csv(source, usecols=usecols, parse_dates=parse_dates, sep=None, engine="python")
+        if df.shape[1] > 1:
+            return df
+        last_err = "CSV lu mais une seule colonne detectee"
+    except Exception as e:
+        last_err = e
+        try:
+            source.seek(0)
+        except Exception:
+            pass
+
+    # Essai 4 : dernier recours, forcer openpyxl sans vérification
     try:
         source.seek(0)
         return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="openpyxl")
     except Exception as e:
         last_err = e
+
     raise ValueError(f"Aucun moteur ne peut lire ce fichier. Derniere erreur: {last_err}")
+
 
 # ============================================================
 # -------- Suite du programme --------

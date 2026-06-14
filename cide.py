@@ -8,7 +8,7 @@ import plotly.express as px
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
-# -------- 1. PAGE CONFIG (AVANT TOUT st.xxx) --------
+# -------- PAGE CONFIG --------
 st.set_page_config(
     layout="wide",
     page_title="Dashboard KPI"
@@ -57,15 +57,13 @@ def save_kpis_to_excel(prows, pcols, qrows, qcols, ano_p_r, ano_p_c, ano_q_r, an
     try: wb.save(filepath)
     except: pass
 
-# -------- 2 & 5. CSS injection avec sidebar 250px + plein ecran --------
+# -------- CSS injection --------
 def inject_custom_css():
     st.markdown("""<style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
     :root{--p:#1e3a5f;--pl:#2c5282;--b:#e2e8f0;--r:10px}
     *{box-sizing:border-box;margin:0;padding:0}
     .stApp{background:#edf2f7;font-family:'Inter',sans-serif}
-
-    /* 5. Plein ecran */
     .main .block-container{
         max-width: 100% !important;
         width: 100% !important;
@@ -74,7 +72,6 @@ def inject_custom_css():
         padding-top:.6rem;
         padding-bottom:.6rem;
     }
-
     .stTabs,.stTabs>div,.stTabs [data-baseweb="tab-list"]{width:100%!important;max-width:100%!important}
     .mh{background:linear-gradient(135deg,var(--p),var(--pl));padding:10px 16px;border-radius:var(--r);margin-bottom:4px;box-shadow:0 6px 20px rgba(0,0,0,.1);overflow:hidden}
     .mh h1{color:#fff;font-size:16px;font-weight:800;margin:0;display:inline}
@@ -139,8 +136,6 @@ def inject_custom_css():
     .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
     .stButton>button[kind="primary"]{background:linear-gradient(135deg,var(--p),var(--pl));border:none;border-radius:6px;padding:6px 12px;font-weight:700;font-size:11px;width:100%}
     ::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:#f1f1f1}::-webkit-scrollbar-thumb{background:#cbd5e0;border-radius:2px}
-
-    /* 2. Sidebar 250px */
     section[data-testid="stSidebar"] {
         width: 250px !important;
         min-width: 250px !important;
@@ -154,12 +149,10 @@ def inject_custom_css():
     div[data-testid="stSidebar"] .stSelectbox label,div[data-testid="stSidebar"] .stMultiSelect label,div[data-testid="stSidebar"] .stDateInput label,div[data-testid="stSidebar"] .stCheckbox label{color:rgba(255,255,255,.8)!important;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:.5px}
     div[data-testid="stSidebar"] div[data-testid="stWidget"]{background:rgba(255,255,255,.08);border-radius:6px;padding:2px 6px;margin-bottom:2px;border:1px solid rgba(255,255,255,.1)}
     div[data-testid="stSidebar"] .stSelectbox>div>div,div[data-testid="stSidebar"] .stMultiSelect>div>div,div[data-testid="stSidebar"] .stDateInput>div>div{background:rgba(255,255,255,.95)!important;border-radius:5px}
-    /* checkbox toggle specifique */
     div[data-testid="stSidebar"] .stCheckbox div[data-testid="stWidget"]{
         background:rgba(255,255,255,.15)!important;
         border:1px solid rgba(255,255,255,.25)!important;
     }
-
     .es{text-align:center;padding:10px;color:#718096;font-size:10px}
     .rh{display:flex;align-items:center;justify-content:space-between;margin-bottom:0}
     .rh .stl{margin:0}
@@ -174,6 +167,114 @@ def inject_custom_css():
     .g-red{background:#ffc7ce;color:#9c0006;font-weight:600}
     @media(max-width:768px){.cr{grid-template-columns:repeat(2,1fr)}.mh h1{font-size:13px}.mh .db{float:none;display:block;margin-top:2px}.cg,.dgrid{grid-template-columns:1fr}.car .cal{width:100px}.gbr-l{width:90px}}
     </style>""", unsafe_allow_html=True)
+
+# ============================================================
+# -------- Lecture robuste des fichiers (local ou upload) --------
+# ============================================================
+
+def is_xlsx_buffer(f):
+    """Vérifie si un file-like commence par la signature ZIP/PK (xlsx)."""
+    try:
+        pos = f.tell()
+    except Exception:
+        pos = None
+    try:
+        b = f.read(4)
+        f.seek(0)
+    except Exception:
+        return False
+    return b == b'PK\x03\x04'
+
+
+def read_any_excel(source, usecols=None, parse_dates=None):
+    """
+    Lit un fichier Excel/CSV depuis un chemin (str) ou un UploadedFile/BytesIO.
+    Tente openpyxl → csv → xlrd selon la signature ou l'extension.
+    """
+    last_err = None
+
+    # ---- Cas 1 : chemin fichier (string) ----
+    if isinstance(source, str):
+        ext = os.path.splitext(source)[1].lower()
+        if ext in (".xlsx",):
+            try:
+                return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="openpyxl")
+            except Exception as e:
+                last_err = e
+        if ext in (".xls",):
+            try:
+                return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="xlrd")
+            except Exception as e:
+                last_err = e
+        if ext in (".csv", ".txt"):
+            try:
+                return pd.read_csv(source, usecols=usecols, parse_dates=parse_dates)
+            except Exception as e:
+                last_err = e
+        # Si l'extension est ambiguë ou absente, tenter openpyxl en premier
+        if last_err is None:
+            try:
+                return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="openpyxl")
+            except Exception as e:
+                last_err = e
+        raise ValueError(f"Impossible de lire le fichier '{source}': {last_err}")
+
+    # ---- Cas 2 : file-like (Streamlit UploadedFile, BytesIO, etc.) ----
+    try:
+        source.seek(0)
+    except Exception:
+        pass
+
+    # Essai 1 : xlsx (openpyxl) si signature PK..
+    if is_xlsx_buffer(source):
+        try:
+            source.seek(0)
+            return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="openpyxl")
+        except Exception as e:
+            last_err = e
+            try:
+                source.seek(0)
+            except Exception:
+                pass
+
+    # Essai 2 : csv (séparateur auto)
+    try:
+        source.seek(0)
+        df = pd.read_csv(source, usecols=usecols, parse_dates=parse_dates, sep=None, engine="python")
+        if df.shape[1] > 1:
+            return df
+        last_err = "CSV lu mais une seule colonne detectee"
+    except Exception as e:
+        last_err = e
+        try:
+            source.seek(0)
+        except Exception:
+            pass
+
+    # Essai 3 : xls legacy (xlrd)
+    try:
+        source.seek(0)
+        return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="xlrd")
+    except Exception as e:
+        last_err = e
+        try:
+            source.seek(0)
+        except Exception:
+            pass
+
+    # Essai 4 : dernier recours, forcer openpyxl sans vérification
+    try:
+        source.seek(0)
+        return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="openpyxl")
+    except Exception as e:
+        last_err = e
+
+    raise ValueError(f"Aucun moteur ne peut lire ce fichier. Derniere erreur: {last_err}")
+
+
+# ============================================================
+# -------- Suite du programme --------
+# ============================================================
 
 def main():
     try: locale.setlocale(locale.LC_ALL, 'fr_FR.UTF-8')
@@ -395,19 +496,13 @@ def main():
             h += '<div class="gbr"><div class="gbr-l">%s</div><div class="gbr-g"><div class="gbr-w"><div class="gbr-f gb-p" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div><div class="gbr-w"><div class="gbr-f gb-q" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div></div></div>' % (p, pw, pv, qw, qv)
         h += '</div>'; return h
 
-    # 4. height=450 + autosize=True
     def anl_pie_chart(data, names_col, values_col, title, colors=None):
         if data.empty: return None
         fig = px.pie(data, names=names_col, values=values_col, title=title,
                      color_discrete_sequence=colors or px.colors.qualitative.Set2)
         fig.update_traces(textposition='inside', textinfo='percent+label+value', textfont_size=9)
-        fig.update_layout(
-            height=450,
-            autosize=True,
-            margin=dict(t=40,b=10,l=10,r=10),
-            title_font_size=11,
-            legend=dict(font_size=8, orientation="h", yanchor="bottom", y=-0.15)
-        )
+        fig.update_layout(height=450, autosize=True, margin=dict(t=40,b=10,l=10,r=10), title_font_size=11,
+                          legend=dict(font_size=8, orientation="h", yanchor="bottom", y=-0.15))
         return fig
 
     def anl_html_table(df_out, pct_col=None, pct_thresh=(80,60)):
@@ -441,21 +536,18 @@ def main():
     # ===================== SIDEBAR =====================
     with st.sidebar:
         st.markdown("""<div style="padding:10px 0 4px 0"><div style="font-size:18px;margin-bottom:2px">⚙️</div><div style="font-size:12px;font-weight:800;color:white">Filtres & Parametres</div><div style="font-size:8px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Configuration</div></div>""", unsafe_allow_html=True)
-
-        # 3. Checkbox pour masquer/afficher les filtres
         show_filters = st.checkbox("Afficher les filtres", value=True, key="show_filters")
-
         if show_filters:
             st.markdown("---")
             unf = st.toggle("📁 Charger nouveaux fichiers", value=False, key="tf")
             ot_f = av_f = None; apm = []
             if unf:
-                ot_f = st.file_uploader("Fichier OT", type=["xlsx"], key="uot")
-                av_f = st.file_uploader("Fichier AVIS", type=["xlsx"], key="uav")
+                ot_f = st.file_uploader("Fichier OT", type=["xlsx","xls","csv"], key="uot")
+                av_f = st.file_uploader("Fichier AVIS", type=["xlsx","xls","csv"], key="uav")
             else:
                 if os.path.exists("ot.xlsx"):
                     try:
-                        _t = excr(pd.read_excel("ot.xlsx", engine='openpyxl'))
+                        _t = excr(read_any_excel("ot.xlsx"))
                         apm = sorted(_t[_t["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"), na=False)]["Poste travail princ."].dropna().unique().tolist())
                     except: pass
                 st.markdown("""<div style="background:rgba(255,255,255,.1);padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.15)"><div style="font-size:7px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Donnees</div><div style="font-size:10px;color:white;font-weight:600;margin-top:1px">📅 %s</div></div>""" % fichier_date, unsafe_allow_html=True)
@@ -470,11 +562,10 @@ def main():
             st.markdown("**📅 Periode**")
             dr = st.date_input("Date debut planifiee", value=(datetime(2025,1,1).date(), datetime.today().date()), format="DD/MM/YYYY", key="dr")
         else:
-            # Valeurs par defaut quand les filtres sont masques
             unf = False; ot_f = None; av_f = None; apm = []
             if os.path.exists("ot.xlsx"):
                 try:
-                    _t = excr(pd.read_excel("ot.xlsx", engine='openpyxl'))
+                    _t = excr(read_any_excel("ot.xlsx"))
                     apm = sorted(_t[_t["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"), na=False)]["Poste travail princ."].dropna().unique().tolist())
                 except: pass
             sp = apm; sa = ["All"]; sd = ["All"]
@@ -482,12 +573,15 @@ def main():
 
     if not unf or (ot_f is not None and av_f is not None):
         try:
+            # ========== LECTURE ROBUSTE (remplace l'ancien bloc) ==========
             if unf:
-                raw_ot = pd.read_excel(ot_f, engine='openpyxl')
-                raw_av = pd.read_excel(av_f, engine='openpyxl')
+                raw_ot = read_any_excel(ot_f)
+                raw_av = read_any_excel(av_f)
             else:
-                raw_ot = pd.read_excel("ot.xlsx", engine='openpyxl')
-                raw_av = pd.read_excel("avis.xlsx", engine='openpyxl')
+                raw_ot = read_any_excel("ot.xlsx")
+                raw_av = read_any_excel("avis.xlsx")
+            # ==============================================================
+
             raw_ot = excr(raw_ot); raw_av = excr(raw_av)
             for c in ["Créé le","Date de début planifiée","Date de clôture","Début réel","Fin réelle"]:
                 if c in raw_ot.columns: raw_ot[c] = pd.to_datetime(raw_ot[c], errors="coerce")
@@ -637,7 +731,6 @@ def main():
 
             tab0, tab1, tab2, tab3 = st.tabs(["📊 TABLEAU DE BORD", "📈 INDICATEURS PERFORMANCE", "✅ INDICATEUR QUALITE", "🔬 ANALYSE"])
 
-            # ==================== TAB0: DASHBOARD ====================
             with tab0:
                 st.markdown('<div class="stl p">📊 Vue d\'ensemble par poste</div>', unsafe_allow_html=True)
                 st.markdown(html_grouped_bars(vp, pscores_d, qscores_d, "Performance & Qualite par Poste de Travail"), unsafe_allow_html=True)
@@ -688,55 +781,42 @@ def main():
                 </div>
                 </div>""" % (clr_p, global_perf, clr_p, bg_p, met_p, clr_q, global_qual, clr_q, bg_q, met_q), unsafe_allow_html=True)
 
-            # ==================== TAB1: PERFORMANCE ====================
             with tab1:
                 st.markdown('<div class="stl p">📈 Synthese Performance</div>', unsafe_allow_html=True)
                 st.markdown(html_synth(qk, pa, cible, act_map, "#276749"), unsafe_allow_html=True)
-
                 st.markdown('<div class="stl p">📊 Tableau Detaille Performance</div>', unsafe_allow_html=True)
                 st.markdown(html_table(prows, pcols, "pt", ["Score Performance"]), unsafe_allow_html=True)
-
                 if ano_p_r:
                     st.markdown('<div class="stl a">⚠️ Anomalies Performance</div>', unsafe_allow_html=True)
                     st.markdown(html_ano(ano_p_r, ano_p_c), unsafe_allow_html=True)
                 else:
                     st.markdown('<div class="es">✅ Aucune anomalie performance detectee</div>', unsafe_allow_html=True)
-
                 st.markdown('<div class="stl c">🏆 Classement Performance</div>', unsafe_allow_html=True)
                 st.markdown(html_classement(pscores, "#276749"), unsafe_allow_html=True)
-
                 st.markdown('<div class="stl p">📊 Barres de Progression Performance</div>', unsafe_allow_html=True)
                 st.markdown(html_kpi_bars(qk, pa, cible, "Indicateurs Performance — Moyenne Globale", "#276749", "#e53e3e"), unsafe_allow_html=True)
-
                 exp_df_p = pd.DataFrame(prows)
                 st.markdown("---")
                 export_btn(exp_df_p, "performance_kpis_%s.xlsx" % fichier_date.replace("/","-"))
 
-            # ==================== TAB2: QUALITE ====================
             with tab2:
                 st.markdown('<div class="stl q">✅ Synthese Qualite</div>', unsafe_allow_html=True)
                 st.markdown(html_synth(pk, qa, cible, act_map, "#2b6cb0"), unsafe_allow_html=True)
-
                 st.markdown('<div class="stl q">📊 Tableau Detaille Qualite</div>', unsafe_allow_html=True)
                 st.markdown(html_table(qrows, qcols, "qt", ["Score Qualite"]), unsafe_allow_html=True)
-
                 if ano_q_r:
                     st.markdown('<div class="stl a">⚠️ Anomalies Qualite</div>', unsafe_allow_html=True)
                     st.markdown(html_ano(ano_q_r, ano_q_c), unsafe_allow_html=True)
                 else:
                     st.markdown('<div class="es">✅ Aucune anomalie qualite detectee</div>', unsafe_allow_html=True)
-
                 st.markdown('<div class="stl c">🏆 Classement Qualite</div>', unsafe_allow_html=True)
                 st.markdown(html_classement(qscores, "#2b6cb0"), unsafe_allow_html=True)
-
                 st.markdown('<div class="stl q">📊 Barres de Progression Qualite</div>', unsafe_allow_html=True)
                 st.markdown(html_kpi_bars(pk, qa, cible, "Indicateurs Qualite — Moyenne Globale", "#2b6cb0", "#e53e3e"), unsafe_allow_html=True)
-
                 exp_df_q = pd.DataFrame(qrows)
                 st.markdown("---")
                 export_btn(exp_df_q, "qualite_kpis_%s.xlsx" % fichier_date.replace("/","-"))
 
-            # ==================== TAB3: ANALYSE ====================
             with tab3:
                 st.markdown('<div class="stl p">📊 Distribution par Statut OT</div>', unsafe_allow_html=True)
                 if "Statut OT" in df_dash.columns and not df_dash.empty:
@@ -828,7 +908,7 @@ def main():
 
         except Exception as e:
             st.error("Erreur lors du chargement des donnees: %s" % str(e))
-            st.markdown('<div class="es">Veuillez verifier que les fichiers ot.xlsx et avis.xlsx sont presents a la racine, ou uploader les fichiers via le panneau lateral.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="es">Veuillez verifier que les fichiers ot.xlsx et avis.xlsx sont presents a la racine, ou uploader les fichiers via le panneau lateral.<br><br><b>Détail :</b> %s</div>' % str(e).replace("<","&lt;").replace(">","&gt;"), unsafe_allow_html=True)
     else:
         if unf:
             st.markdown('<div class="es">📁 Veuillez uploader les fichiers OT et AVIS pour continuer.</div>', unsafe_allow_html=True)

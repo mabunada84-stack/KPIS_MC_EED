@@ -517,10 +517,24 @@ def main():
             pa_d = {k: round(ckdf_d[k].mean(),2) for k in qk}
             qa_d = {k: round(ckdf_d[k].mean(),2) for k in pk}
 
-            # ANOMALIES
+            # ANOMALIES - CORRECTION : d["ap"] au lieu de d[">3 mois"]
             all_ano = []
-            sub_p = {"TAUX_REALISATION_CORRECTIF/PT":lambda d:d[(d["Nº appel pl.entret."].fillna(0)==0)&(~d["Statut OT"].isin(["CLOT","TCLO"]))],"OT préparation <1 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]!="<1 mois")],"OT préparation >3 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d[">3 mois"]==">3 mois")],"OT planification <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]!="<1 mois")],"OT planification >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]==">3 mois")],"OT exécution <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]!="<1 mois")],"OT exécution >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]==">3 mois")]}
-            sub_q = {"OT LANC ESTIME":lambda d:d[(d["Statut OT"]=="LANC")&(d["OT LANC ESTIME"]=="NON")],"Backlog préparation caractérisé":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["Backlog preparation"]=="NON CARACTERISE")],"Backlog planification caractérisé":lambda d:d[(d["Statut OT"]=="LANC")&(d["Backlog planification"]=="NON CARACTERISE")],"OT CONFIME":lambda d:d[d["OT CONFIME"]=="NON"],"OT_COR_EGAL":lambda d:d[d["OT_COR_EGAL"]=="NON"]}
+            sub_p = {
+                "TAUX_REALISATION_CORRECTIF/PT":lambda d:d[(d["Nº appel pl.entret."].fillna(0)==0)&(~d["Statut OT"].isin(["CLOT","TCLO"]))],
+                "OT préparation <1 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]!="<1 mois")],
+                "OT préparation >3 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]==">3 mois")],
+                "OT planification <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]!="<1 mois")],
+                "OT planification >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]==">3 mois")],
+                "OT exécution <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]!="<1 mois")],
+                "OT exécution >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]==">3 mois")]
+            }
+            sub_q = {
+                "OT LANC ESTIME":lambda d:d[(d["Statut OT"]=="LANC")&(d["OT LANC ESTIME"]=="NON")],
+                "Backlog préparation caractérisé":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["Backlog preparation"]=="NON CARACTERISE")],
+                "Backlog planification caractérisé":lambda d:d[(d["Statut OT"]=="LANC")&(d["Backlog planification"]=="NON CARACTERISE")],
+                "OT CONFIME":lambda d:d[d["OT CONFIME"]=="NON"],
+                "OT_COR_EGAL":lambda d:d[d["OT_COR_EGAL"]=="NON"]
+            }
             for poste in vp:
                 if poste not in dfp["Poste travail princ."].values: continue
                 dp = dfp[dfp["Poste travail princ."]==poste]
@@ -574,10 +588,8 @@ def main():
             pcols, prows = build_kpi(qk, pscores, "Score Performance")
             qcols, qrows = build_kpi(pk, qscores, "Score Qualite")
 
-            # Sauvegarde Excel
             save_kpis_to_excel(prows, pcols, qrows, qcols, ano_p_r, ano_p_c, ano_q_r, ano_q_c, fichier_date)
 
-            # Donnees dashboard
             df_sc_d = pd.DataFrame([{"Poste":p,"Perf":pscores_d[p],"Qual":qscores_d[p],"Metier":get_metier(p),"Atelier":get_atelier(p),"Division":get_division(p)} for p in vp if p in pscores_d])
             by_at = df_sc_d.groupby("Atelier")[["Perf","Qual"]].mean().round(1) if not df_sc_d.empty else pd.DataFrame()
             by_mt = df_sc_d.groupby("Metier")[["Perf","Qual"]].mean().round(1) if not df_sc_d.empty else pd.DataFrame()
@@ -586,18 +598,14 @@ def main():
             total_ot = len(df); avg_p = np.mean(list(pscores.values())) if pscores else 0
             avg_q = np.mean(list(qscores.values())) if qscores else 0; total_ano = sum(a["Nb"] for a in all_ano)
 
-            # Trouver colonne Designation
             desig_col = None
             for cn in ["Désignation du travail","Designation du travail","Désignation","Designation","Description"]:
                 if cn in dfp.columns: desig_col = cn; break
 
-            # Distribution par statut OT pour pie
+            # Donnees pour pie charts
             statut_dist = dfp["Statut OT"].value_counts().reset_index()
             statut_dist.columns = ["Statut", "Nombre"]
-            # Distribution par atelier pour pie
-            df_sc_d["Atelier_full"] = df_sc_d["Poste"].apply(lambda x: get_atelier(x))
-            atelier_dist = df_sc_d.groupby("Atelier_full").size().reset_index(name="Nombre")
-            # Distribution par metier pour pie
+            atelier_dist = df_sc_d.groupby("Atelier").size().reset_index(name="Nombre")
             metier_dist = df_sc_d.groupby("Metier").size().reset_index(name="Nombre")
 
             # RENDER
@@ -640,14 +648,13 @@ def main():
                     with c2:
                         st.markdown(html_bars([(idx,row["Qual"]) for idx,row in by_div.iterrows()], "Qualite par Division", "#276749"), unsafe_allow_html=True)
 
-                # Pie charts pleine largeur
                 st.markdown('<div class="stl c">🥧 Distribution</div>', unsafe_allow_html=True)
                 pc1, pc2, pc3 = st.columns(3)
                 with pc1:
                     fig_s = anl_pie_chart(statut_dist, "Statut", "Nombre", "Distribution par Statut OT", px.colors.qualitative.Pastel)
                     if fig_s: st.plotly_chart(fig_s, use_container_width=True)
                 with pc2:
-                    fig_a = anl_pie_chart(atelier_dist, "Atelier_full", "Nombre", "Distribution par Atelier", px.colors.qualitative.Set2)
+                    fig_a = anl_pie_chart(atelier_dist, "Atelier", "Nombre", "Distribution par Atelier", px.colors.qualitative.Set2)
                     if fig_a: st.plotly_chart(fig_a, use_container_width=True)
                 with pc3:
                     fig_m = anl_pie_chart(metier_dist, "Metier", "Nombre", "Distribution par Metier", px.colors.qualitative.Dark2)
@@ -724,7 +731,6 @@ def main():
             with tab3:
                 st.markdown('<div class="stl c">🔬 Analyse detaillee</div>', unsafe_allow_html=True)
 
-                # Analyse par poste avec score global
                 st.markdown('<div class="stl p">📊 Score global par poste</div>', unsafe_allow_html=True)
                 global_scores = {}
                 for p in vp:
@@ -732,9 +738,7 @@ def main():
                     global_scores[p] = round((pv + qv) / 2, 2)
                 st.markdown(html_bars([(p,s) for p,s in sorted(global_scores.items(), key=lambda x:x[1], reverse=True)], "Score Global (Performance + Qualite) / 2", "#805ad5"), unsafe_allow_html=True)
 
-                # Pie charts analyse
                 st.markdown('<div class="stl c">🥧 Analyse par repartition</div>', unsafe_allow_html=True)
-                # Repartition atteint/non atteint par type
                 p_met = sum(1 for v in pscores.values() if v >= 80)
                 p_not = len(pscores) - p_met
                 q_met = sum(1 for v in qscores.values() if v >= 80)
@@ -749,11 +753,9 @@ def main():
                     fig_qa = anl_pie_chart(qual_att_df, "Statut", "Nombre", "Objectifs Qualite Atteints", ["#3182ce","#e53e3e"])
                     if fig_qa: st.plotly_chart(fig_qa, use_container_width=True)
 
-                # Anomalies detaillees
                 st.markdown('<div class="stl a">⚠️ Detail des anomalies - Performance</div>', unsafe_allow_html=True)
                 if ano_p_r:
                     st.markdown(html_ano(ano_p_r, ano_p_c), unsafe_allow_html=True)
-                    # Pie anomalies par KPI performance
                     ano_p_df = pd.DataFrame([a for a in all_ano if a["Type"]=="P"])
                     if not ano_p_df.empty:
                         ano_p_by_kpi = ano_p_df.groupby("KPI")["Nb"].sum().reset_index()
@@ -773,7 +775,6 @@ def main():
                 else:
                     st.markdown('<div class="es">Aucune anomalie de qualite</div>', unsafe_allow_html=True)
 
-                # Export global
                 st.markdown('<div class="stl c">📥 Exports</div>', unsafe_allow_html=True)
                 ec1, ec2, ec3 = st.columns(3)
                 with ec1:

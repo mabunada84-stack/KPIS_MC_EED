@@ -263,12 +263,18 @@ def main():
     def ks(v, c):
         try: val = float(v)
         except: return ""
-        if c in ["OT préparation <1 mois","OT planification <1 mois","OT exécution <1 mois"]: return "background:#c6efce;color:#006100;font-weight:600" if val>=80 else ("background:#ffeb9c;color:#9c6500;font-weight:600" if val>=75 else "background:#ffc7ce;color:#9c0006;font-weight:600")
-        if c in ["OT préparation 1mois< <3mois","OT planification 1mois< <3mois","OT exécution 1mois< <3mois"]: return "background:#c6efce;color:#006100;font-weight:600" if val<=15 else "background:#ffc7ce;color:#9c0006;font-weight:600"
-        if c in ["OT préparation >3 mois","OT planification >3 mois","OT exécution >3 mois"]: return "background:#c6efce;color:#006100;font-weight:600" if val<=5 else "background:#ffc7ce;color:#9c0006;font-weight:600")
-        if c == "TAUX_REALISATION_CORRECTIF/PT": return "background:#c6efce;color:#006100;font-weight:600" if val>=85 else ("background:#ffeb9c;color:#9c6500;font-weight:600" if val>=80 else "background:#ffc7ce;color:#9c0006;font-weight:600")
-        if c == "appel avis approuvé": return "background:#c6efce;color:#006100;font-weight:600" if val>=95 else ("background:#ffeb9c;color:#9c6500;font-weight:600" if val>=90 else "background:#ffc7ce;color:#9c0006;font-weight:600")
-        if c in ["OT LANC ESTIME","Backlog préparation caractérisé","Backlog planification caractérisé","OT CONFIME","OT_COR_EGAL"]: return "background:#c6efce;color:#006100;font-weight:600" if val>=100 else ("background:#ffeb9c;color:#9c6500;font-weight:600" if val>=95 else "background:#ffc7ce;color:#9c0006;font-weight:600")
+        if c in ["OT préparation <1 mois","OT planification <1 mois","OT exécution <1 mois"]:
+            return "background:#c6efce;color:#006100;font-weight:600" if val>=80 else ("background:#ffeb9c;color:#9c6500;font-weight:600" if val>=75 else "background:#ffc7ce;color:#9c0006;font-weight:600")
+        if c in ["OT préparation 1mois< <3mois","OT planification 1mois< <3mois","OT exécution 1mois< <3mois"]:
+            return "background:#c6efce;color:#006100;font-weight:600" if val<=15 else "background:#ffc7ce;color:#9c0006;font-weight:600"
+        if c in ["OT préparation >3 mois","OT planification >3 mois","OT exécution >3 mois"]:
+            return "background:#c6efce;color:#006100;font-weight:600" if val<=5 else "background:#ffc7ce;color:#9c0006;font-weight:600"
+        if c == "TAUX_REALISATION_CORRECTIF/PT":
+            return "background:#c6efce;color:#006100;font-weight:600" if val>=85 else ("background:#ffeb9c;color:#9c6500;font-weight:600" if val>=80 else "background:#ffc7ce;color:#9c0006;font-weight:600")
+        if c == "appel avis approuvé":
+            return "background:#c6efce;color:#006100;font-weight:600" if val>=95 else ("background:#ffeb9c;color:#9c6500;font-weight:600" if val>=90 else "background:#ffc7ce;color:#9c0006;font-weight:600")
+        if c in ["OT LANC ESTIME","Backlog préparation caractérisé","Backlog planification caractérisé","OT CONFIME","OT_COR_EGAL"]:
+            return "background:#c6efce;color:#006100;font-weight:600" if val>=100 else ("background:#ffeb9c;color:#9c6500;font-weight:600" if val>=95 else "background:#ffc7ce;color:#9c0006;font-weight:600")
         return ""
     def cs(v):
         try: val = float(str(v).replace(' %','').strip())
@@ -370,7 +376,7 @@ def main():
         fig = px.pie(data, names=names_col, values=values_col, title=title,
                      color_discrete_sequence=colors or px.colors.qualitative.Set2)
         fig.update_traces(textposition='inside', textinfo='percent+label+value', textfont_size=9)
-        fig.update_layout(margin=dict(t=40,b=10,l=10,r=10), height=340, title_font_size=11,
+        fig.update_layout(margin=dict(t=40, b=10, l=10, r=10), height=340, title_font_size=11,
                           legend=dict(font_size=8, orientation="h", yanchor="bottom", y=-0.15))
         return fig
 
@@ -671,24 +677,76 @@ def main():
                         fig2 = anl_pie_chart(df_sc_d, "Atelier", "Qual", "Score Qualite par Atelier", ["#2b6cb0","#276749","#805ad5","#e53e3e","#dd6b20"])
                         if fig2: st.plotly_chart(fig2, use_container_width=True)
 
+                # Graphique Age Distribution
+                st.markdown('<div class="stl p">📅 Distribution Age des OT</div>', unsafe_allow_html=True)
+                if "ap" in dfp.columns:
+                    age_data = dfp[dfp["Statut OT"]=="CRÉÉ"]["ap"].dropna()
+                    if not age_data.empty:
+                        age_df = pd.DataFrame({"Age (mois)": age_data.round(1)})
+                        fig_age = px.histogram(age_df, x="Age (mois)", nbins=30, title="Distribution de l'age de preparation des OT (CRE)",
+                                              color_discrete_sequence=["#2b6cb0"])
+                        fig_age.update_layout(height=450, autosize=True, margin=dict(t=40, b=10, l=10, r=10), title_font_size=11,
+                                              legend=dict(font_size=8, orientation="h", yanchor="bottom", y=-0.15))
+                        fig_age.update_traces(marker_line_width=1, marker_line_color="white")
+                        st.plotly_chart(fig_age, use_container_width=True)
+
+                if "alp" in dfp.columns:
+                    age_lp_data = dfp[(dfp["Statut OT"]=="LANC") & (dfp["Contient SOPL"]==0)]["alp"].dropna()
+                    if not age_lp_data.empty:
+                        age_lp_df = pd.DataFrame({"Age (mois)": age_lp_data.round(1)})
+                        fig_age_lp = px.histogram(age_lp_df, x="Age (mois)", nbins=30, title="Distribution de l'age de planification des OT (LANC sans SOPL)",
+                                                 color_discrete_sequence=["#276749"])
+                        fig_age_lp.update_layout(height=450, autosize=True, margin=dict(t=40, b=10, l=10, r=10), title_font_size=11,
+                                                legend=dict(font_size=8, orientation="h", yanchor="bottom", y=-0.15))
+                        fig_age_lp.update_traces(marker_line_width=1, marker_line_color="white")
+                        st.plotly_chart(fig_age_lp, use_container_width=True)
+
+                if "aex" in dfp.columns:
+                    age_ex_data = dfp[(dfp["Statut OT"]=="LANC") & (dfp["Contient SOPL"]==1)]["aex"].dropna()
+                    if not age_ex_data.empty:
+                        age_ex_df = pd.DataFrame({"Age (mois)": age_ex_data.round(1)})
+                        fig_age_ex = px.histogram(age_ex_df, x="Age (mois)", nbins=30, title="Distribution de l'age d'execution des OT (LANC avec SOPL)",
+                                                 color_discrete_sequence=["#805ad5"])
+                        fig_age_ex.update_layout(height=450, autosize=True, margin=dict(t=40, b=10, l=10, r=10), title_font_size=11,
+                                                legend=dict(font_size=8, orientation="h", yanchor="bottom", y=-0.15))
+                        fig_age_ex.update_traces(marker_line_width=1, marker_line_color="white")
+                        st.plotly_chart(fig_age_ex, use_container_width=True)
+
+                # Repartition par statut
+                st.markdown('<div class="stl p">📊 Repartition par Statut OT</div>', unsafe_allow_html=True)
+                if "Statut OT" in dfp.columns:
+                    stat_counts = dfp["Statut OT"].value_counts().reset_index()
+                    stat_counts.columns = ["Statut", "Nombre"]
+                    stat_counts["Pourcentage"] = (stat_counts["Nombre"] / stat_counts["Nombre"].sum() * 100).round(1)
+                    fig_stat = px.pie(stat_counts, names="Statut", values="Nombre", title="Repartition par Statut OT",
+                                       color_discrete_sequence=["#38a169","#2b6cb0","#805ad5","#e53e3e","#dd6b20","#718096"])
+                    fig_stat.update_traces(textposition='inside', textinfo='percent+label+value', textfont_size=9)
+                    fig_stat.update_layout(height=400, margin=dict(t=40, b=10, l=10, r=10), title_font_size=11,
+                                           legend=dict(font_size=9, orientation="h", yanchor="bottom", y=-0.1))
+                    st.plotly_chart(fig_stat, use_container_width=True)
+
+                # Detail par Metier
                 st.markdown('<div class="stl p">📋 Detail par Metier</div>', unsafe_allow_html=True)
                 if not by_mt.empty:
                     by_mt_out = by_mt.reset_index().rename(columns={"index":"Metier"})
                     by_mt_out.columns = ["Metier","Performance (%)","Qualite (%)"]
                     st.markdown(anl_html_table(by_mt_out, None), unsafe_allow_html=True)
 
+                # Detail par Atelier
                 st.markdown('<div class="stl p">📋 Detail par Atelier</div>', unsafe_allow_html=True)
                 if not by_at.empty:
                     by_at_out = by_at.reset_index().rename(columns={"index":"Atelier"})
                     by_at_out.columns = ["Atelier","Performance (%)","Qualite (%)"]
                     st.markdown(anl_html_table(by_at_out, None), unsafe_allow_html=True)
 
+                # Detail par Division
                 st.markdown('<div class="stl p">📋 Detail par Division</div>', unsafe_allow_html=True)
                 if not by_div.empty:
                     by_div_out = by_div.reset_index().rename(columns={"index":"Division"})
                     by_div_out.columns = ["Division","Performance (%)","Qualite (%)"]
                     st.markdown(anl_html_table(by_div_out, None), unsafe_allow_html=True)
 
+                # Tableau Complet des KPIs
                 st.markdown('<div class="stl c">📋 Tableau Complet des KPIs</div>', unsafe_allow_html=True)
                 all_cols = ["Poste de travail"] + qk + pk + ["Score Performance","Score Qualite"]
                 all_rows = []
@@ -702,6 +760,26 @@ def main():
                 if all_rows:
                     full_df = pd.DataFrame(all_rows)
                     st.markdown(anl_html_table(full_df, None), unsafe_allow_html=True)
+
+                # Top anomalies detaillees
+                if all_ano:
+                    st.markdown('<div class="stl a">⚠️ Detail des Anomalies par Poste</div>', unsafe_allow_html=True)
+                    ano_detail_cols = ["Poste de travail"] + sorted(set(a["KPI"] for a in all_ano)) + ["Total"]
+                    ano_detail_rows = []
+                    ano_full = pd.DataFrame(all_ano)
+                    ano_pv = ano_full.pivot_table(index="Poste", columns="KPI", values="Nb", aggfunc="sum", fill_value=0).astype(int)
+                    ano_pv["Total"] = ano_pv.sum(axis=1)
+                    for idx in ano_pv.index:
+                        r = {"Poste de travail": idx}
+                        for c in ano_pv.columns:
+                            r[c] = ano_pv.loc[idx, c]
+                        ano_detail_rows.append(r)
+                    tr = {"Poste de travail": "TOTAL"}
+                    for c in ano_pv.columns:
+                        tr[c] = int(ano_pv[c].sum())
+                    ano_detail_rows.append(tr)
+                    if ano_detail_rows:
+                        st.markdown(anl_html_table(pd.DataFrame(ano_detail_rows), None), unsafe_allow_html=True)
 
                 st.markdown("---")
                 st.markdown('<div class="stl c">📥 Export</div>', unsafe_allow_html=True)

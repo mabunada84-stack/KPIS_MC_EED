@@ -9,7 +9,6 @@ import plotly.graph_objects as go
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
-# === 1. Page config WIDE ===
 st.set_page_config(
     layout="wide",
     page_title="Dashboard KPI",
@@ -98,118 +97,26 @@ def parse_kpis_excel(filepath):
         results[sheet_name] = poste_data
     return results
 
-def get_tendance(pe, qe, ae):
+def get_tendance(pe, qe):
     imp = 0; deg = 0
     if pe > 1: imp += 1
     elif pe < -1: deg += 1
     if qe > 1: imp += 1
     elif qe < -1: deg += 1
-    if ae < -1: imp += 1
-    elif ae > 1: deg += 1
     if imp >= 2: return "🟢 Amélioration","amelioration"
     elif deg >= 2: return "🔴 Dégradation","degradation"
     return "🟡 Stable","stable"
 
-def generate_ai_report(comp_df, dn, dn1):
-    if comp_df.empty: return "Aucune donnée disponible pour l'analyse."
-    total = len(comp_df)
-    nb_imp = len(comp_df[comp_df["Tendance"]=="amelioration"])
-    nb_deg = len(comp_df[comp_df["Tendance"]=="degradation"])
-    nb_stb = len(comp_df[comp_df["Tendance"]=="stable"])
-    mp = comp_df["Ecart Perf"].mean()
-    mq = comp_df["Ecart Qual"].mean()
-    ma = comp_df["Ecart Ano"].mean()
-    r = f"""## 📋 Rapport d'Évolution des KPIs
-**Période analysée : {dn1} → {dn}**
-
----
-
-### 📊 Résumé Général
-
-| Indicateur | Valeur |
-|---|---|
-| Nombre total de postes analysés | **{total}** |
-| Postes en amélioration 🟢 | **{nb_imp}** ({round(nb_imp/total*100,1)}%) |
-| Postes en dégradation 🔴 | **{nb_deg}** ({round(nb_deg/total*100,1)}%) |
-| Postes stables 🟡 | **{nb_stb}** ({round(nb_stb/total*100,1)}%) |
-| Évolution moyenne Performance | **{mp:+.2f} %** |
-| Évolution moyenne Qualité | **{mq:+.2f} %** |
-| Évolution moyenne Anomalies | **{ma:+.1f}** |
-
----
-
-### 🟢 Analyse des Améliorations
-"""
-    if nb_imp > 0:
-        imp_df = comp_df[comp_df["Tendance"]=="amelioration"].sort_values("Ecart Perf", ascending=False)
-        for _, rw in imp_df.head(5).iterrows():
-            r += f"- **{rw['Poste']}** : Performance {rw['Ecart Perf']:+.2f}%, Qualité {rw['Ecart Qual']:+.2f}%, Anomalies {rw['Ecart Ano']:+.0f}\n"
-        r += f"\n**Conclusion** : {nb_imp} poste(s) montrent une tendance positive. "
-        if mp > 0 and mq > 0: r += "Performance et Qualité en hausse, dynamique positive globale."
-        elif mp > 0: r += "Amélioration portée par la Performance. Qualité à surveiller."
-        else: r += "Amélioration portée par la Qualité. Performance à consolider."
-    else: r += "Aucun poste n'a montré d'amélioration significative.\n"
-    r += "\n---\n### 🔴 Analyse des Dégradations\n"
-    if nb_deg > 0:
-        deg_df = comp_df[comp_df["Tendance"]=="degradation"].sort_values("Ecart Perf", ascending=True)
-        for _, rw in deg_df.head(5).iterrows():
-            r += f"- **{rw['Poste']}** : Performance {rw['Ecart Perf']:+.2f}%, Qualité {rw['Ecart Qual']:+.2f}%, Anomalies {rw['Ecart Ano']:+.0f}\n"
-        r += f"\n**Conclusion** : {nb_deg} poste(s) nécessitent une attention particulière. "
-        crit = deg_df[(deg_df["Ecart Perf"]<0) & (deg_df["Ecart Ano"]>0)]
-        if not crit.empty: r += f"**Postes critiques** : {', '.join(crit['Poste'].tolist())}. Plan d'action prioritaire requis."
-        else: r += "Dégradation modérée mais suivi attentif nécessaire."
-    else: r += "Aucun poste en dégradation. Bonne stabilité.\n"
-    r += "\n---\n### 💡 Recommandations\n"
-    recs = []
-    if nb_deg > 0:
-        recs.append("1. **Réduire les anomalies récurrentes** sur les postes en dégradation via analyses de causes racines.")
-        recs.append("2. **Renforcer les actions préventives** sur les postes avec baisse Performance + hausse Anomalies.")
-    if nb_imp > 0:
-        top_imp = comp_df[comp_df["Tendance"]=="amelioration"].sort_values("Ecart Perf", ascending=False).head(3)
-        recs.append(f"3. **Généraliser les bonnes pratiques** : {', '.join(top_imp['Poste'].tolist())}.")
-    if nb_deg > 0 and nb_imp > 0:
-        recs.append("4. **Organiser un partage d'expérience** entre postes améliorés et dégradés.")
-    if ma > 0: recs.append("5. **Plan de réduction des anomalies** ciblé avec objectifs hebdomadaires.")
-    recs.append("6. **Suivi hebdomadaire des KPIs** pour détecter toute dérive rapidement.")
-    recs.append("7. **Prioriser les postes critiques** (baisse Perf + hausse Anomalies simultanée).")
-    recs.append("8. **Valider la caractérisation complète du backlog** pour fiabiliser les indicateurs.")
-    r += "\n".join(recs)
-    return r
-
-# === 2. CSS avec sidebar réduite et plein écran ===
 def inject_custom_css():
     st.markdown("""<style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
     :root{--p:#1e3a5f;--pl:#2c5282;--b:#e2e8f0;--r:10px}
     *{box-sizing:border-box;margin:0;padding:0}
     .stApp{background:#edf2f7;font-family:'Inter',sans-serif}
-
-    /* === 5. Vrai mode plein écran === */
-    .main .block-container{
-        max-width: 100% !important;
-        width: 100% !important;
-        padding-left: 0.5rem !important;
-        padding-right: 0.5rem !important;
-        padding-top: .5rem !important;
-        padding-bottom: .5rem !important;
-    }
-
-    /* === 2. Largeur sidebar réduite === */
-    section[data-testid="stSidebar"] {
-        width: 250px !important;
-    }
-    section[data-testid="stSidebar"][aria-expanded="false"] {
-        width: 0px !important;
-    }
-    section[data-testid="stSidebar"] .stMarkdown,
-    section[data-testid="stSidebar"] .stSelectbox,
-    section[data-testid="stSidebar"] .stMultiSelect,
-    section[data-testid="stSidebar"] .stDateInput,
-    section[data-testid="stSidebar"] .stToggle {
-        margin-left: 4px;
-        margin-right: 4px;
-    }
-
+    .main .block-container{max-width:100%!important;width:100%!important;padding-left:.5rem!important;padding-right:.5rem!important;padding-top:.5rem!important;padding-bottom:.5rem!important}
+    section[data-testid="stSidebar"]{width:250px!important}
+    section[data-testid="stSidebar"][aria-expanded="false"]{width:0px!important}
+    section[data-testid="stSidebar"] .stMarkdown,section[data-testid="stSidebar"] .stSelectbox,section[data-testid="stSidebar"] .stMultiSelect,section[data-testid="stSidebar"] .stDateInput,section[data-testid="stSidebar"] .stToggle{margin-left:4px;margin-right:4px}
     .stTabs,.stTabs>div,.stTabs [data-baseweb="tab-list"]{width:100%!important;max-width:100%!important}
     .mh{background:linear-gradient(135deg,var(--p),var(--pl));padding:12px 20px;border-radius:var(--r);margin-bottom:6px;box-shadow:0 6px 20px rgba(0,0,0,.1);overflow:hidden}
     .mh h1{color:#fff;font-size:18px;font-weight:800;margin:0;display:inline}
@@ -514,7 +421,6 @@ def main():
             h+='<div class="gbr"><div class="gbr-l">%s</div><div class="gbr-g"><div class="gbr-w"><div class="gbr-f gb-p" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div><div class="gbr-w"><div class="gbr-f gb-q" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div></div></div>'%(p,pw,pv,qw,qv)
         h+='</div>'; return h
 
-    # === 4. Chart donut eclaté avec height=450 et autosize ===
     def anl_pie_chart(data, names_col, values_col, title, colors=None):
         if data.empty: return None
         vals = data[values_col].values
@@ -565,14 +471,11 @@ def main():
         buf.seek(0)
         st.download_button("📥 Exporter Excel",data=buf,file_name=filename,mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-    # ===================== SIDEBAR =====================
     with st.sidebar:
-        # === 3. Bouton pour masquer/afficher les filtres ===
         show_filters = st.checkbox("⚙️ Afficher les filtres", value=True, key="show_filters")
         if not show_filters:
             st.markdown('<div style="text-align:center;padding:20px 0;color:rgba(255,255,255,.5);font-size:10px">Cliquez sur la flèche ▶ en haut<br>pour rouvrir les filtres</div>', unsafe_allow_html=True)
             st.stop()
-
         st.markdown("""<div style="padding:8px 0 4px 0"><div style="font-size:18px;margin-bottom:2px">⚙️</div><div style="font-size:12px;font-weight:800;color:white">Filtres & Parametres</div><div style="font-size:8px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Configuration</div></div>""",unsafe_allow_html=True)
         st.markdown("---")
         unf=st.toggle("📁 Charger nouveaux fichiers",value=False,key="tf")
@@ -942,6 +845,7 @@ def main():
                 </div>
                 </div>""", unsafe_allow_html=True)
 
+            # ==================== SUIVI EVOLUTION (SIMPLIFIE) ====================
             with tab4:
                 kpis_path = os.path.join("kpis", "indicateurs_kpis.xlsx")
                 if not os.path.exists(kpis_path):
@@ -955,7 +859,7 @@ def main():
                         date_n = sorted_dates[0]; date_n1 = sorted_dates[1]
                         data_n = all_data[date_n]; data_n1 = all_data[date_n1]
 
-                        st.markdown('<div class="ca" style="margin-bottom:6px"><div class="ct" style="color:#d69e2e">📉 Comparaison : %s → %s</div><div style="font-size:9px;color:#718096">Analyse automatique des ecarts entre les deux derniers enregistrements</div></div>' % (date_n1, date_n), unsafe_allow_html=True)
+                        st.markdown('<div class="ca" style="margin-bottom:6px"><div class="ct" style="color:#d69e2e">📉 Comparaison : %s → %s</div><div style="font-size:9px;color:#718096">Ecarts de Performance et Qualite entre les deux derniers enregistrements</div></div>' % (date_n1, date_n), unsafe_allow_html=True)
 
                         all_postes = sorted(set(list(data_n.keys()) + list(data_n1.keys())))
                         comp_rows = []
@@ -964,9 +868,8 @@ def main():
                             dn1_=data_n1.get(p,{"Score Performance":0,"Score Qualite":0,"Ano Perf":0,"Ano Qual":0})
                             ep=round(dn_["Score Performance"]-dn1_["Score Performance"],2)
                             eq=round(dn_["Score Qualite"]-dn1_["Score Qualite"],2)
-                            ea=int(dn_["Ano Perf"]+dn_["Ano Qual"])-int(dn1_["Ano Perf"]+dn1_["Ano Qual"])
-                            ti,tk=get_tendance(ep,eq,ea)
-                            comp_rows.append({"Poste":p,"Perf N-1":round(dn1_["Score Performance"],2),"Perf N":round(dn_["Score Performance"],2),"Ecart Perf":ep,"Qual N-1":round(dn1_["Score Qualite"],2),"Qual N":round(dn_["Score Qualite"],2),"Ecart Qual":eq,"Ano N-1":int(dn1_["Ano Perf"]+dn1_["Ano Qual"]),"Ano N":int(dn_["Ano Perf"]+dn_["Ano Qual"]),"Ecart Ano":ea,"Tendance":tk,"Tendance Icon":ti})
+                            ti,tk=get_tendance(ep,eq)
+                            comp_rows.append({"Poste":p,"Ecart Perf":ep,"Ecart Qual":eq,"Tendance":tk,"Tendance Icon":ti})
                         comp_df=pd.DataFrame(comp_rows)
 
                         nb_imp=len(comp_df[comp_df["Tendance"]=="amelioration"])
@@ -979,47 +882,49 @@ def main():
                         <div class="cc c1"><div class="cv">%s</div><div class="cl">Total Postes</div></div>
                         </div>"""%(nb_imp,nb_deg,nb_stb,len(comp_df)),unsafe_allow_html=True)
 
+                        # Tableau simplifié : 3 colonnes seulement
                         st.markdown('<div class="stl e">Tableau Comparatif par Poste de Travail</div>',unsafe_allow_html=True)
-                        h='<table class="tw et"><thead><tr><th>Poste</th><th>Perf N-1</th><th>Perf N</th><th>Ecart Perf</th><th>Qual N-1</th><th>Qual N</th><th>Ecart Qual</th><th>Ano N-1</th><th>Ano N</th><th>Ecart Ano</th><th>Tendance</th></tr></thead><tbody>'
+                        h='<table class="tw et"><thead><tr><th>Poste</th><th>Ecart Performance</th><th>Ecart Qualite</th><th>Tendance</th></tr></thead><tbody>'
                         for _,rw in comp_df.iterrows():
                             eps="g-green" if rw["Ecart Perf"]>0 else ("g-red" if rw["Ecart Perf"]<0 else "g-yellow")
                             eqs="g-green" if rw["Ecart Qual"]>0 else ("g-red" if rw["Ecart Qual"]<0 else "g-yellow")
-                            eas="g-green" if rw["Ecart Ano"]<0 else ("g-red" if rw["Ecart Ano"]>0 else "g-yellow")
                             tc="#38a169" if rw["Tendance"]=="amelioration" else ("#e53e3e" if rw["Tendance"]=="degradation" else "#d69e2e")
-                            h+='<tr><td style="font-weight:700">%s</td><td>%.2f%%</td><td>%.2f%%</td><td class="%s">%+.2f%%</td><td>%.2f%%</td><td>%.2f%%</td><td class="%s">%+.2f%%</td><td>%d</td><td>%d</td><td class="%s">%+d</td><td style="color:%s;font-weight:800">%s</td></tr>'%(rw["Poste"],rw["Perf N-1"],rw["Perf N"],eps,rw["Ecart Perf"],rw["Qual N-1"],rw["Qual N"],eqs,rw["Ecart Qual"],rw["Ano N-1"],rw["Ano N"],eas,rw["Ecart Ano"],tc,rw["Tendance Icon"])
+                            h+='<tr><td style="font-weight:700">%s</td><td class="%s">%+.2f%%</td><td class="%s">%+.2f%%</td><td style="color:%s;font-weight:800">%s</td></tr>'%(rw["Poste"],eps,rw["Ecart Perf"],eqs,rw["Ecart Qual"],tc,rw["Tendance Icon"])
                         h+='</tbody></table>'
                         st.markdown(h,unsafe_allow_html=True)
 
+                        # Top 5 Amelioration
                         st.markdown('<div class="stl" style="border-left-color:#38a169">🟢 Top 5 Postes en Amélioration</div>',unsafe_allow_html=True)
                         top5_up=comp_df[comp_df["Tendance"]=="amelioration"].copy()
                         if not top5_up.empty:
-                            top5_up["Score Gain"]=top5_up["Ecart Perf"]+top5_up["Ecart Qual"]-top5_up["Ecart Ano"]
+                            top5_up["Score Gain"]=top5_up["Ecart Perf"]+top5_up["Ecart Qual"]
                             top5_up=top5_up.nlargest(5,"Score Gain")
                             c1,c2=st.columns([1.2,1])
                             with c1:
-                                uh='<table class="anl-tbl"><thead><tr><th>Rang</th><th>Poste</th><th>Gain Perf</th><th>Gain Qual</th><th>Reduction Ano</th></tr></thead><tbody>'
+                                uh='<table class="anl-tbl"><thead><tr><th>Rang</th><th>Poste</th><th>Gain Perf</th><th>Gain Qual</th></tr></thead><tbody>'
                                 for i,(_,rw) in enumerate(top5_up.iterrows()):
-                                    uh+='<tr><td style="font-weight:800;color:#38a169">%d</td><td style="font-weight:600">%s</td><td class="g-green">%+.2f%%</td><td class="g-green">%+.2f%%</td><td class="g-green">%+d</td></tr>'%(i+1,rw["Poste"],rw["Ecart Perf"],rw["Ecart Qual"],-rw["Ecart Ano"])
+                                    uh+='<tr><td style="font-weight:800;color:#38a169">%d</td><td style="font-weight:600">%s</td><td class="g-green">%+.2f%%</td><td class="g-green">%+.2f%%</td></tr>'%(i+1,rw["Poste"],rw["Ecart Perf"],rw["Ecart Qual"])
                                 uh+='</tbody></table>'
                                 st.markdown(uh,unsafe_allow_html=True)
                             with c2:
                                 fig=go.Figure()
                                 fig.add_trace(go.Bar(y=top5_up["Poste"][::-1],x=top5_up["Ecart Perf"][::-1],name="Perf",marker_color="#2b6cb0",orientation="h"))
-                                fig.add_trace(go.Bar(y=top5_up["Poste"][::-1],x=top5_up["Ecart Qual"][::-1],name="Qual",marker_color="#276749",orientation="h"))
+                                fig.add_trace(go.Bar(y=top5_up["Poste"][::-1],x=top5_up["Ecart Qual"][::-1],name="Qual",marker_color="#27649",orientation="h"))
                                 fig.update_layout(barmode="group",height=300,autosize=True,margin=dict(l=120,t=20,b=20,r=20),font_size=9,legend=dict(orientation="h",yanchor="bottom",y=1.02))
                                 st.plotly_chart(fig,use_container_width=True)
                         else: st.markdown('<div class="es">Aucun poste en amélioration.</div>',unsafe_allow_html=True)
 
+                        # Top 5 Degradation
                         st.markdown('<div class="stl" style="border-left-color:#e53e3e">🔴 Top 5 Postes en Dégradation</div>',unsafe_allow_html=True)
                         top5_down=comp_df[comp_df["Tendance"]=="degradation"].copy()
                         if not top5_down.empty:
-                            top5_down["Score Perte"]=-(top5_down["Ecart Perf"]+top5_down["Ecart Qual"])+top5_down["Ecart Ano"]
+                            top5_down["Score Perte"]=-(top5_down["Ecart Perf"]+top5_down["Ecart Qual"])
                             top5_down=top5_down.nlargest(5,"Score Perte")
                             c1,c2=st.columns([1.2,1])
                             with c1:
-                                dh='<table class="anl-tbl"><thead><tr><th>Rang</th><th>Poste</th><th>Perte Perf</th><th>Perte Qual</th><th>Hausse Ano</th></tr></thead><tbody>'
+                                dh='<table class="anl-tbl"><thead><tr><th>Rang</th><th>Poste</th><th>Perte Perf</th><th>Perte Qual</th></tr></thead><tbody>'
                                 for i,(_,rw) in enumerate(top5_down.iterrows()):
-                                    dh+='<tr><td style="font-weight:800;color:#e53e3e">%d</td><td style="font-weight:600">%s</td><td class="g-red">%+.2f%%</td><td class="g-red">%+.2f%%</td><td class="g-red">%+d</td></tr>'%(i+1,rw["Poste"],rw["Ecart Perf"],rw["Ecart Qual"],rw["Ecart Ano"])
+                                    dh+='<tr><td style="font-weight:800;color:#e53e3e">%d</td><td style="font-weight:600">%s</td><td class="g-red">%+.2f%%</td><td class="g-red">%+.2f%%</td></tr>'%(i+1,rw["Poste"],rw["Ecart Perf"],rw["Ecart Qual"])
                                 dh+='</tbody></table>'
                                 st.markdown(dh,unsafe_allow_html=True)
                             with c2:
@@ -1029,72 +934,6 @@ def main():
                                 fig.update_layout(barmode="group",height=300,autosize=True,margin=dict(l=120,t=20,b=20,r=20),font_size=9,legend=dict(orientation="h",yanchor="bottom",y=1.02))
                                 st.plotly_chart(fig,use_container_width=True)
                         else: st.markdown('<div class="es">Aucun poste en dégradation.</div>',unsafe_allow_html=True)
-
-                        st.markdown('<div class="stl" style="border-left-color:#d69e2e">🟡 Top 5 Postes Stables</div>',unsafe_allow_html=True)
-                        comp_df["Var Abs"]=abs(comp_df["Ecart Perf"])+abs(comp_df["Ecart Qual"])+abs(comp_df["Ecart Ano"])
-                        top5_stable=comp_df.nsmallest(5,"Var Abs")
-                        sh='<table class="anl-tbl"><thead><tr><th>Rang</th><th>Poste</th><th>Ecart Perf</th><th>Ecart Qual</th><th>Ecart Ano</th></tr></thead><tbody>'
-                        for i,(_,rw) in enumerate(top5_stable.iterrows()):
-                            sh+='<tr><td style="font-weight:800;color:#d69e2e">%d</td><td style="font-weight:600">%s</td><td>%+.2f%%</td><td>%+.2f%%</td><td>%+d</td></tr>'%(i+1,rw["Poste"],rw["Ecart Perf"],rw["Ecart Qual"],rw["Ecart Ano"])
-                        sh+='</tbody></table>'
-                        st.markdown(sh,unsafe_allow_html=True)
-
-                        st.markdown('<div class="stl e">Graphiques d\'Évolution</div>',unsafe_allow_html=True)
-                        c1,c2,c3=st.columns(3)
-                        with c1:
-                            fig=go.Figure()
-                            fig.add_trace(go.Bar(x=comp_df["Poste"],y=comp_df["Perf N-1"],name=date_n1,marker_color="#a0aec0"))
-                            fig.add_trace(go.Bar(x=comp_df["Poste"],y=comp_df["Perf N"],name=date_n,marker_color="#2b6cb0"))
-                            fig.update_layout(title="Performance",height=450,autosize=True,margin=dict(t=40,b=80,l=10,r=10),font_size=8,xaxis_tickangle=-45,legend=dict(orientation="h",yanchor="bottom",y=-0.35),barmode="group")
-                            st.plotly_chart(fig,use_container_width=True)
-                        with c2:
-                            fig=go.Figure()
-                            fig.add_trace(go.Bar(x=comp_df["Poste"],y=comp_df["Qual N-1"],name=date_n1,marker_color="#a0aec0"))
-                            fig.add_trace(go.Bar(x=comp_df["Poste"],y=comp_df["Qual N"],name=date_n,marker_color="#276749"))
-                            fig.update_layout(title="Qualite",height=450,autosize=True,margin=dict(t=40,b=80,l=10,r=10),font_size=8,xaxis_tickangle=-45,legend=dict(orientation="h",yanchor="bottom",y=-0.35),barmode="group")
-                            st.plotly_chart(fig,use_container_width=True)
-                        with c3:
-                            fig=go.Figure()
-                            fig.add_trace(go.Bar(x=comp_df["Poste"],y=comp_df["Ano N-1"],name=date_n1,marker_color="#a0aec0"))
-                            fig.add_trace(go.Bar(x=comp_df["Poste"],y=comp_df["Ano N"],name=date_n,marker_color="#e53e3e"))
-                            fig.update_layout(title="Anomalies",height=450,autosize=True,margin=dict(t=40,b=80,l=10,r=10),font_size=8,xaxis_tickangle=-45,legend=dict(orientation="h",yanchor="bottom",y=-0.35),barmode="group")
-                            st.plotly_chart(fig,use_container_width=True)
-
-                        st.markdown("---")
-                        st.markdown('<div class="stl e">🤖 Analyse Automatique</div>',unsafe_allow_html=True)
-                        if st.button("🧠 Générer le Rapport d'Évolution",type="primary",key="gen_report"):
-                            st.session_state["ai_report"]=generate_ai_report(comp_df,date_n,date_n1)
-                        if "ai_report" in st.session_state:
-                            st.markdown(st.session_state["ai_report"])
-
-                        st.markdown("---")
-                        st.markdown('<div class="stl e">📥 Exports</div>',unsafe_allow_html=True)
-                        ec1,ec2=st.columns(2)
-                        with ec1:
-                            exp_df=comp_df[["Poste","Perf N-1","Perf N","Ecart Perf","Qual N-1","Qual N","Ecart Qual","Ano N-1","Ano N","Ecart Ano","Tendance Icon"]].copy()
-                            exp_df.columns=["Poste","Perf N-1","Perf N","Ecart Perf","Qual N-1","Qual N","Ecart Qual","Ano N-1","Ano N","Ecart Ano","Tendance"]
-                            buf=io.BytesIO()
-                            exp_df.to_excel(buf,index=False,engine="openpyxl")
-                            buf.seek(0)
-                            st.download_button("📥 Exporter Comparaison Excel",data=buf,file_name="suivi_evolution_%s_vs_%s.xlsx"%(date_n1.replace("/","-"),date_n.replace("/","-")),mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                        with ec2:
-                            if "ai_report" in st.session_state:
-                                html_r="""<!DOCTYPE html><html><head><meta charset="utf-8"><title>Rapport Evolution</title>
-                                <style>body{font-family:Arial,sans-serif;max-width:900px;margin:30px auto;padding:20px;color:#1a202c}
-                                h1{color:#1e3a5f;border-bottom:3px solid #2c5282;padding-bottom:10px}
-                                h2{color:#2c5282;margin-top:30px}h3{color:#4a5568}
-                                table{width:100%;border-collapse:collapse;margin:15px 0}
-                                th{background:#1e3a5f;color:#fff;padding:8px;text-align:left}
-                                td{padding:6px 8px;border-bottom:1px solid #e2e8f0}
-                                tr:nth-child(even) td{background:#f7fafc}
-                                hr{border:none;border-top:1px solid #e2e8f0;margin:20px 0}
-                                ul{padding-left:20px}li{margin:5px 0}</style></head><body>
-                                <h1>📉 Rapport d'Évolution des KPIs</h1>
-                                <p><strong>Période :</strong> %s → %s</p><hr>
-                                %s
-                                <hr><p style="font-size:10px;color:#a0aec0;text-align:center">Genere automatiquement - KPI Dashboard MC & FEED</p>
-                                </body></html>"""%(date_n1,date_n,st.session_state["ai_report"].replace("\n","<br>").replace("**","<strong>").replace("## ","<h2>").replace("### ","<h3>").replace("---","<hr>"))
-                                st.download_button("📄 Exporter Rapport HTML (PDF)",data=html_r.encode("utf-8"),file_name="rapport_evolution_%s.html"%date_n.replace("/","-"),mime="text/html")
 
         except Exception as e:
             st.error("Erreur: %s"%str(e))

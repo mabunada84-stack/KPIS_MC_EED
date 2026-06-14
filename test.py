@@ -418,7 +418,7 @@ def main():
         for p in sp2:
             pv,qv=pscores.get(p,0),qscores.get(p,0)
             pw,qw=min(max(pv,0),100),min(max(qv,0),100)
-            h+='<div class="gbr"><div class="gbr-l">%s</div><div class="gbr-g"><div class="gbr-w"><div class="gbr-f gb-p" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div><div class="gbr-w"><div class="gbr-f gb-q" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div></div></div>'%(p,pw,pv,qw,qv)
+            h+='<div class="gbr"><div class="gbr-l">%s</div><div class="gbr-g"><div class="gbr-w"><div class="gbr-f gb-p" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div><div class="gbr-w"><div class="gbr-f gb-q" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div></div></div></div>'%(p,pw,pv,qw,qv)
         h+='</div>'; return h
 
     def anl_pie_chart(data, names_col, values_col, title, colors=None):
@@ -426,24 +426,29 @@ def main():
         vals = data[values_col].values
         total = vals.sum()
         if total == 0: return None
+        labels = data[names_col].tolist()
         pct = vals / total * 100
+        clrs = colors or px.colors.qualitative.Set2
+        if len(clrs) < len(labels): clrs = clrs * (len(labels) // len(clrs) + 1)
         pull = []
         for p in pct:
             if p < 2: pull.append(0.18)
             elif p < 5: pull.append(0.12)
             elif p < 10: pull.append(0.06)
             else: pull.append(0.02)
-        fig = px.pie(data, names=names_col, values=values_col, title=title,
-                     color_discrete_sequence=colors or px.colors.qualitative.Set2,
-                     hole=0.38, pull=pull)
-        fig.update_traces(textposition='outside', textinfo='label+percent+value',
-                          textfont_size=9, insidetextorientation='radial',
-                          marker=dict(line=dict(color='#fff', width=1.5)))
-        fig.update_layout(margin=dict(t=50,b=70,l=10,r=10), height=450, autosize=True,
-                          title_font_size=12,
-                          legend=dict(font_size=8, orientation="h", yanchor="bottom", y=-0.22,
-                                      itemwidth=28, itemheight=14),
-                          uniformtext_minsize=8, uniformtext_mode='hide')
+        fig = go.Figure(go.Pie(
+            labels=labels, values=vals, pull=pull, hole=0.38,
+            textposition='outside', textinfo='label+percent+value',
+            textfont_size=9, insidetextorientation='radial',
+            marker=dict(colors=clrs[:len(labels)], line=dict(color='#fff', width=1.5))
+        ))
+        fig.update_layout(
+            title=dict(text=title, font_size=12),
+            margin=dict(t=50, b=70, l=10, r=10),
+            height=450, autosize=True,
+            legend=dict(font_size=8, orientation="h", yanchor="bottom", y=-0.22, itemwidth=28, itemheight=14),
+            uniformtext_minsize=8, uniformtext_mode='hide'
+        )
         return fig
 
     def anl_html_table(df_out,pct_col=None,pct_thresh=(80,60)):
@@ -489,7 +494,7 @@ def main():
                     _t=excr(pd.read_excel("ot.xlsx"))
                     apm=sorted(_t[_t["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"),na=False)]["Poste travail princ."].dropna().unique().tolist())
                 except: pass
-            st.markdown("""<div style="background:rgba(255,255,255,.1);padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.15)"><div style="font-size:7px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Donnees</div><div style="font-size:10px;color:white;font-weight:600;margin-top:1px">📅 %s</div></div>"""%fichier_date,unsafe_allow_html=True)
+            st.markdown("""<div style="background:rgba(255,255,255,.1);padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.15)><div style="font-size:7px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Donnees</div><div style="font-size:10px;color:white;font-weight:600;margin-top:1px">📅 %s</div></div>"""%fichier_date,unsafe_allow_html=True)
         st.markdown("---")
         st.markdown("**🎯 Postes**")
         sp=st.multiselect("Poste",["All"]+apm,["All"],key="sp")
@@ -526,7 +531,7 @@ def main():
                     if "Sulfurique (PS)" in sa and "PS" in p: m=True
                     if "Phosphorique (PP)" in sa and "PP" in p: m=True
                     if "Engrais (TSP/REX)" in sa and ("TSP" in p or "REX" in p): m=True
-                    if "Feed (MCP/DCP)" in sa and ("MCP" in p or "DCP" in p): m=True
+                    if "Feed (MCP/DCP)" in sa and ("MCP" in p or "DCP" in p: m=True
                     if not m: return False
                 if "All" not in sd:
                     m=False
@@ -845,7 +850,6 @@ def main():
                 </div>
                 </div>""", unsafe_allow_html=True)
 
-            # ==================== SUIVI EVOLUTION (SIMPLIFIE) ====================
             with tab4:
                 kpis_path = os.path.join("kpis", "indicateurs_kpis.xlsx")
                 if not os.path.exists(kpis_path):
@@ -874,7 +878,7 @@ def main():
 
                         nb_imp=len(comp_df[comp_df["Tendance"]=="amelioration"])
                         nb_deg=len(comp_df[comp_df["Tendance"]=="degradation"])
-                        nb_stb=len(comp_df[comp_df["Tendance"]=="stable"])
+                        nb_stb=len(comp_df["Tendance"]=="stable"])
                         st.markdown("""<div class="cr">
                         <div class="cc c2"><div class="cv">%s</div><div class="cl">Amelioration</div></div>
                         <div class="cc c4"><div class="cv">%s</div><div class="cl">Degradation</div></div>
@@ -882,7 +886,6 @@ def main():
                         <div class="cc c1"><div class="cv">%s</div><div class="cl">Total Postes</div></div>
                         </div>"""%(nb_imp,nb_deg,nb_stb,len(comp_df)),unsafe_allow_html=True)
 
-                        # Tableau simplifié : 3 colonnes seulement
                         st.markdown('<div class="stl e">Tableau Comparatif par Poste de Travail</div>',unsafe_allow_html=True)
                         h='<table class="tw et"><thead><tr><th>Poste</th><th>Ecart Performance</th><th>Ecart Qualite</th><th>Tendance</th></tr></thead><tbody>'
                         for _,rw in comp_df.iterrows():
@@ -893,7 +896,6 @@ def main():
                         h+='</tbody></table>'
                         st.markdown(h,unsafe_allow_html=True)
 
-                        # Top 5 Amelioration
                         st.markdown('<div class="stl" style="border-left-color:#38a169">🟢 Top 5 Postes en Amélioration</div>',unsafe_allow_html=True)
                         top5_up=comp_df[comp_df["Tendance"]=="amelioration"].copy()
                         if not top5_up.empty:
@@ -914,7 +916,6 @@ def main():
                                 st.plotly_chart(fig,use_container_width=True)
                         else: st.markdown('<div class="es">Aucun poste en amélioration.</div>',unsafe_allow_html=True)
 
-                        # Top 5 Degradation
                         st.markdown('<div class="stl" style="border-left-color:#e53e3e">🔴 Top 5 Postes en Dégradation</div>',unsafe_allow_html=True)
                         top5_down=comp_df[comp_df["Tendance"]=="degradation"].copy()
                         if not top5_down.empty:

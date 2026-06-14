@@ -5,4 +5,4 @@ openpyxl
 xlsxwriter
 numpy
 python-calamine
-openpyxl xlrd pyxlsb
+

@@ -170,7 +170,7 @@ def main():
     inject_custom_css()
     fichier_date = get_date_from_file()
 
-    # ===== DEFINITION GLOBALE des listes de KPIs (AVANT toute utilisation) =====
+    # ===== DEFINITION GLOBALE des listes de KPIs =====
     qk = ["TAUX_REALISATION_CORRECTIF/PT","OT préparation <1 mois","OT préparation >3 mois","OT préparation 1mois< <3mois","OT planification <1 mois","OT planification >3 mois","OT planification 1mois< <3mois","OT exécution <1 mois","OT exécution >3 mois","OT exécution 1mois< <3mois"]
     pk = ["appel avis approuvé","OT LANC ESTIME","Backlog préparation caractérisé","Backlog planification caractérisé","OT CONFIME","OT_COR_EGAL"]
     cible = {"TAUX_REALISATION_CORRECTIF/PT":85,"OT préparation <1 mois":80,"OT préparation >3 mois":5,"OT préparation 1mois< <3mois":15,"OT planification <1 mois":80,"OT planification >3 mois":5,"OT planification 1mois< <3mois":15,"OT exécution <1 mois":80,"OT exécution >3 mois":5,"OT exécution 1mois< <3mois":15,"appel avis approuvé":95,"OT LANC ESTIME":100,"Backlog préparation caractérisé":100,"Backlog planification caractérisé":100,"OT CONFIME":100,"OT_COR_EGAL":100}
@@ -444,7 +444,7 @@ def main():
         fig = px.pie(data, names=names_col, values=values_col, title=title,
                      color_discrete_sequence=colors or px.colors.qualitative.Set2)
         fig.update_traces(textposition='inside', textinfo='percent+label+value', textfont_size=9)
-        fig.update_layout(margin=dict(t=40,b=10,l=10,r=10), height=450, autosize=True, title_font_size=11,
+        fig.update_layout(margin=dict(t=40, b=10, l=10, r=10), height=450, autosize=True, title_font_size=11,
                           legend=dict(font_size=8, orientation="h", yanchor="bottom", y=-0.15))
         return fig
 
@@ -555,7 +555,7 @@ def main():
             res_d = calc_kpis(df_dash, avdf, now, vp)
             ckdf_d = res_d['ckdf']
 
-            # ===== VARIANCE ANALYSIS (qk et pk sont deja definis plus haut) =====
+            # ===== VARIANCE ANALYSIS =====
             all_kpis = list(ckdf.columns)
             var_df = pd.DataFrame(index=ckdf.index)
             for k in all_kpis:
@@ -774,7 +774,7 @@ def main():
                         fig_bpb = px.bar(bp_bar_data, x="Total", y="Poste", orientation="h",
                                          title="Top 10 Postes - Backlog Planification",
                                          color="Caracterise", color_discrete_sequence=["#276749","#e53e3e"])
-                        fig_bpb.update_layout(height=450, autosize=True, margin=dict(t=40,b=10,l=10,r=10), title_font_size=11)
+                        fig_bpb.update_layout(height=450, autosize=True, margin=dict(t=40, b=10, l=10, r=10), title_font_size=11)
                         st.plotly_chart(fig_bpb, use_container_width=True)
 
                 st.markdown('<div class="stl p">📊 Vue d\'ensemble par poste (avec variance)</div>', unsafe_allow_html=True)
@@ -860,7 +860,7 @@ def main():
                         fig_pb = px.bar(prep_df, x="Total", y="Poste", orientation="h",
                                         title="Top 10 Postes - Backlog Preparation",
                                         color="Caracterise", color_discrete_sequence=["#38a169","#e53e3e"])
-                        fig_pb.update_layout(height=450, autosize=True, margin=dict(t=40,b=10,l=10,r=10), title_font_size=11)
+                        fig_pb.update_layout(height=450, autosize=True, margin=dict(t=40, b=10, l=10, r=10), title_font_size=11)
                         st.plotly_chart(fig_pb, use_container_width=True)
                 else:
                     st.markdown('<div class="es">Aucun OT en statut CRÉÉ pour cette periode</div>', unsafe_allow_html=True)
@@ -882,7 +882,7 @@ def main():
                                          title=f"Repartition Age - {statut_label}",
                                          color_discrete_sequence=["#38a169","#ecc94b","#e53e3e"])
                         fig_age.update_traces(textposition='inside', textinfo='percent+label+value', textfont_size=9)
-                        fig_age.update_layout(height=450, autosize=True, margin=dict(t=40,b:10,l:10,r:10), title_font_size=11,
+                        fig_age.update_layout(height=450, autosize=True, margin=dict(t=40, b=10, l=10, r=10), title_font_size=11,
                                               legend=dict(font_size=8, orientation="h", yanchor="bottom", y=-0.15))
                         st.plotly_chart(fig_age, use_container_width=True)
 
@@ -944,7 +944,7 @@ def main():
                 fig_var = px.bar(var_chart_data, x="Variance", y="Poste", orientation="h",
                                  title="Variance Globale par Poste (Periode vs Reference)",
                                  color="Type", color_discrete_map={"Amelioration":"#276749","Regression":"#e53e3e"})
-                fig_var.update_layout(height=max(450, len(vp)*18), autosize=True, margin=dict(t=40,b:10,l:10,r:10), title_font_size=11)
+                fig_var.update_layout(height=max(450, len(vp)*18), autosize=True, margin=dict(t=40, b=10, l=10, r=10), title_font_size=11)
                 fig_var.update_xaxes(zeroline=True, zerolinewidth=2, zerolinecolor="#718096")
                 st.plotly_chart(fig_var, use_container_width=True)
 
@@ -969,7 +969,7 @@ def main():
                                          title="Heatmap Variance (Vert=Amelioration, Rouge=Regression)",
                                          color_continuous_scale=["#c53030","#f7fafc","#276749"],
                                          aspect="auto", zmin=-50, zmax=50)
-                    fig_heat.update_layout(height=450, autosize=True, margin=dict(t=40,b:80,l:120,r:10), title_font_size=11)
+                    fig_heat.update_layout(height=450, autosize=True, margin=dict(t=40, b=80, l=120, r=10), title_font_size=11)
                     fig_heat.update_xaxes(tickangle=45, tickfont_size=8)
                     fig_heat.update_yaxes(tickfont_size=8)
                     st.plotly_chart(fig_heat, use_container_width=True)

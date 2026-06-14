@@ -136,26 +136,15 @@ def inject_custom_css():
     .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
     .stButton>button[kind="primary"]{background:linear-gradient(135deg,var(--p),var(--pl));border:none;border-radius:6px;padding:6px 12px;font-weight:700;font-size:11px;width:100%}
     ::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:#f1f1f1}::-webkit-scrollbar-thumb{background:#cbd5e0;border-radius:2px}
-    section[data-testid="stSidebar"] {
-        width: 250px !important;
-        min-width: 250px !important;
-    }
-    section[data-testid="stSidebar"][aria-expanded="false"] {
-        width: 0px !important;
-        min-width: 0px !important;
-    }
+    section[data-testid="stSidebar"] { width: 250px !important; min-width: 250px !important; }
+    section[data-testid="stSidebar"][aria-expanded="false"] { width: 0px !important; min-width: 0px !important; }
     div[data-testid="stSidebar"]{background:linear-gradient(180deg,var(--p),#0f2744)}
     div[data-testid="stSidebar"]*{color:rgba(255,255,255,.9)!important}
     div[data-testid="stSidebar"] .stSelectbox label,div[data-testid="stSidebar"] .stMultiSelect label,div[data-testid="stSidebar"] .stDateInput label,div[data-testid="stSidebar"] .stCheckbox label{color:rgba(255,255,255,.8)!important;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:.5px}
     div[data-testid="stSidebar"] div[data-testid="stWidget"]{background:rgba(255,255,255,.08);border-radius:6px;padding:2px 6px;margin-bottom:2px;border:1px solid rgba(255,255,255,.1)}
     div[data-testid="stSidebar"] .stSelectbox>div>div,div[data-testid="stSidebar"] .stMultiSelect>div>div,div[data-testid="stSidebar"] .stDateInput>div>div{background:rgba(255,255,255,.95)!important;border-radius:5px}
-    div[data-testid="stSidebar"] .stCheckbox div[data-testid="stWidget"]{
-        background:rgba(255,255,255,.15)!important;
-        border:1px solid rgba(255,255,255,.25)!important;
-    }
+    div[data-testid="stSidebar"] .stCheckbox div[data-testid="stWidget"]{ background:rgba(255,255,255,.15)!important; border:1px solid rgba(255,255,255,.25)!important; }
     .es{text-align:center;padding:10px;color:#718096;font-size:10px}
-    .rh{display:flex;align-items:center;justify-content:space-between;margin-bottom:0}
-    .rh .stl{margin:0}
     .anl-tbl{width:100%;border-collapse:collapse;font-family:'Inter',sans-serif;font-size:9px;margin:0}
     .anl-tbl thead th{background:var(--p);color:#fff;font-weight:700;font-size:8px;padding:5px 6px;border:none;white-space:nowrap;position:sticky;top:0}
     .anl-tbl tbody td{padding:4px 6px;border-bottom:1px solid #edf2f7}
@@ -173,7 +162,6 @@ def inject_custom_css():
 # ============================================================
 
 def is_xlsx_buffer(f):
-    """Vérifie si un file-like commence par la signature ZIP/PK (xlsx)."""
     try:
         pos = f.tell()
     except Exception:
@@ -185,92 +173,57 @@ def is_xlsx_buffer(f):
         return False
     return b == b'PK\x03\x04'
 
-
 def read_any_excel(source, usecols=None, parse_dates=None):
-    """
-    Lit un fichier Excel/CSV depuis un chemin (str) ou un UploadedFile/BytesIO.
-    Tente openpyxl → csv → xlrd selon la signature ou l'extension.
-    """
     last_err = None
-
-    # ---- Cas 1 : chemin fichier (string) ----
     if isinstance(source, str):
         ext = os.path.splitext(source)[1].lower()
         if ext in (".xlsx",):
-            try:
-                return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="openpyxl")
-            except Exception as e:
-                last_err = e
+            try: return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="openpyxl")
+            except Exception as e: last_err = e
         if ext in (".xls",):
-            try:
-                return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="xlrd")
-            except Exception as e:
-                last_err = e
+            try: return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="xlrd")
+            except Exception as e: last_err = e
         if ext in (".csv", ".txt"):
-            try:
-                return pd.read_csv(source, usecols=usecols, parse_dates=parse_dates)
-            except Exception as e:
-                last_err = e
-        # Si l'extension est ambiguë ou absente, tenter openpyxl en premier
+            try: return pd.read_csv(source, usecols=usecols, parse_dates=parse_dates)
+            except Exception as e: last_err = e
         if last_err is None:
-            try:
-                return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="openpyxl")
-            except Exception as e:
-                last_err = e
+            try: return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="openpyxl")
+            except Exception as e: last_err = e
         raise ValueError(f"Impossible de lire le fichier '{source}': {last_err}")
-
-    # ---- Cas 2 : file-like (Streamlit UploadedFile, BytesIO, etc.) ----
     try:
         source.seek(0)
     except Exception:
         pass
-
-    # Essai 1 : xlsx (openpyxl) si signature PK..
     if is_xlsx_buffer(source):
         try:
             source.seek(0)
             return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="openpyxl")
         except Exception as e:
             last_err = e
-            try:
-                source.seek(0)
-            except Exception:
-                pass
-
-    # Essai 2 : csv (séparateur auto)
+            try: source.seek(0)
+            except: pass
     try:
         source.seek(0)
         df = pd.read_csv(source, usecols=usecols, parse_dates=parse_dates, sep=None, engine="python")
-        if df.shape[1] > 1:
-            return df
+        if df.shape[1] > 1: return df
         last_err = "CSV lu mais une seule colonne detectee"
     except Exception as e:
         last_err = e
-        try:
-            source.seek(0)
-        except Exception:
-            pass
-
-    # Essai 3 : xls legacy (xlrd)
+        try: source.seek(0)
+        except: pass
     try:
         source.seek(0)
         return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="xlrd")
     except Exception as e:
         last_err = e
-        try:
-            source.seek(0)
-        except Exception:
-            pass
-
-    # Essai 4 : dernier recours, forcer openpyxl sans vérification
+        try: source.seek(0)
+        except: pass
     try:
         source.seek(0)
         return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="openpyxl")
     except Exception as e:
         last_err = e
-
     raise ValueError(f"Aucun moteur ne peut lire ce fichier. Derniere erreur: {last_err}")
-
 
 # ============================================================
 # -------- Suite du programme --------
@@ -514,8 +467,7 @@ def main():
             rc = "tot" if is_tot else ""
             h += '<tr class="%s">' % rc
             for c in df_out.columns:
-                v = row[c]
-                s = ""
+                v = row[c]; s = ""
                 if pct_col and c == pct_col and not is_tot:
                     try:
                         pv = float(str(v).replace('%','').strip())
@@ -573,14 +525,14 @@ def main():
 
     if not unf or (ot_f is not None and av_f is not None):
         try:
-            # ========== LECTURE ROBUSTE (remplace l'ancien bloc) ==========
+            # ========== LECTURE ROBUSTE ==========
             if unf:
                 raw_ot = read_any_excel(ot_f)
                 raw_av = read_any_excel(av_f)
             else:
                 raw_ot = read_any_excel("ot.xlsx")
                 raw_av = read_any_excel("avis.xlsx")
-            # ==============================================================
+            # =======================================
 
             raw_ot = excr(raw_ot); raw_av = excr(raw_av)
             for c in ["Créé le","Date de début planifiée","Date de clôture","Début réel","Fin réelle"]:
@@ -649,7 +601,7 @@ def main():
             pa_d = {k: round(ckdf_d[k].mean(),2) for k in qk}
             qa_d = {k: round(ckdf_d[k].mean(),2) for k in pk}
 
-            # ANOMALIES
+            # ===== ANOMALIES =====
             all_ano = []
             sub_p = {"TAUX_REALISATION_CORRECTIF/PT":lambda d:d[(d["Nº appel pl.entret."].fillna(0)==0)&(~d["Statut OT"].isin(["CLOT","TCLO"]))],"OT préparation <1 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]!="<1 mois")],"OT préparation >3 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]==">3 mois")],"OT planification <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]!="<1 mois")],"OT planification >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]==">3 mois")],"OT exécution <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]!="<1 mois")],"OT exécution >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]==">3 mois")]}
             sub_q = {"OT LANC ESTIME":lambda d:d[(d["Statut OT"]=="LANC")&(d["OT LANC ESTIME"]=="NON")],"Backlog préparation caractérisé":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["Backlog preparation"]=="NON CARACTERISE")],"Backlog planification caractérisé":lambda d:d[(d["Statut OT"]=="LANC")&(d["Backlog planification"]=="NON CARACTERISE")],"OT CONFIME":lambda d:d[d["OT CONFIME"]=="NON"],"OT_COR_EGAL":lambda d:d[d["OT_COR_EGAL"]=="NON"]}
@@ -731,6 +683,7 @@ def main():
 
             tab0, tab1, tab2, tab3 = st.tabs(["📊 TABLEAU DE BORD", "📈 INDICATEURS PERFORMANCE", "✅ INDICATEUR QUALITE", "🔬 ANALYSE"])
 
+            # ==================== TAB0: DASHBOARD ====================
             with tab0:
                 st.markdown('<div class="stl p">📊 Vue d\'ensemble par poste</div>', unsafe_allow_html=True)
                 st.markdown(html_grouped_bars(vp, pscores_d, qscores_d, "Performance & Qualite par Poste de Travail"), unsafe_allow_html=True)
@@ -781,6 +734,7 @@ def main():
                 </div>
                 </div>""" % (clr_p, global_perf, clr_p, bg_p, met_p, clr_q, global_qual, clr_q, bg_q, met_q), unsafe_allow_html=True)
 
+            # ==================== TAB1: PERFORMANCE ====================
             with tab1:
                 st.markdown('<div class="stl p">📈 Synthese Performance</div>', unsafe_allow_html=True)
                 st.markdown(html_synth(qk, pa, cible, act_map, "#276749"), unsafe_allow_html=True)
@@ -799,6 +753,7 @@ def main():
                 st.markdown("---")
                 export_btn(exp_df_p, "performance_kpis_%s.xlsx" % fichier_date.replace("/","-"))
 
+            # ==================== TAB2: QUALITE ====================
             with tab2:
                 st.markdown('<div class="stl q">✅ Synthese Qualite</div>', unsafe_allow_html=True)
                 st.markdown(html_synth(pk, qa, cible, act_map, "#2b6cb0"), unsafe_allow_html=True)
@@ -817,6 +772,7 @@ def main():
                 st.markdown("---")
                 export_btn(exp_df_q, "qualite_kpis_%s.xlsx" % fichier_date.replace("/","-"))
 
+            # ==================== TAB3: ANALYSE ====================
             with tab3:
                 st.markdown('<div class="stl p">📊 Distribution par Statut OT</div>', unsafe_allow_html=True)
                 if "Statut OT" in df_dash.columns and not df_dash.empty:
@@ -908,7 +864,7 @@ def main():
 
         except Exception as e:
             st.error("Erreur lors du chargement des donnees: %s" % str(e))
-            st.markdown('<div class="es">Veuillez verifier que les fichiers ot.xlsx et avis.xlsx sont presents a la racine, ou uploader les fichiers via le panneau lateral.<br><br><b>Détail :</b> %s</div>' % str(e).replace("<","&lt;").replace(">","&gt;"), unsafe_allow_html=True)
+            st.markdown('<div class="es">Veuillez verifier que les fichiers ot.xlsx et avis.xlsx sont presents a la racine, ou uploader les fichiers via le panneau lateral.<br><br><b>Detail :</b> %s</div>' % str(e).replace("<","&lt;").replace(">","&gt;"), unsafe_allow_html=True)
     else:
         if unf:
             st.markdown('<div class="es">📁 Veuillez uploader les fichiers OT et AVIS pour continuer.</div>', unsafe_allow_html=True)

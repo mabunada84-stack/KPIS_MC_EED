@@ -9,6 +9,12 @@ import plotly.graph_objects as go
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
+st.set_page_config(
+    layout="wide",
+    page_title="Dashboard KPI",
+    page_icon="📊"
+)
+
 def get_date_from_file():
     if os.path.exists("date.txt"):
         try:
@@ -91,83 +97,15 @@ def parse_kpis_excel(filepath):
         results[sheet_name] = poste_data
     return results
 
-def get_tendance(pe, qe, ae):
+def get_tendance(pe, qe):
     imp = 0; deg = 0
     if pe > 1: imp += 1
     elif pe < -1: deg += 1
     if qe > 1: imp += 1
     elif qe < -1: deg += 1
-    if ae < -1: imp += 1
-    elif ae > 1: deg += 1
     if imp >= 2: return "🟢 Amélioration","amelioration"
     elif deg >= 2: return "🔴 Dégradation","degradation"
     return "🟡 Stable","stable"
-
-def generate_ai_report(comp_df, dn, dn1):
-    if comp_df.empty: return "Aucune donnée disponible pour l'analyse."
-    total = len(comp_df)
-    nb_imp = len(comp_df[comp_df["Tendance"]=="amelioration"])
-    nb_deg = len(comp_df[comp_df["Tendance"]=="degradation"])
-    nb_stb = len(comp_df[comp_df["Tendance"]=="stable"])
-    mp = comp_df["Ecart Perf"].mean()
-    mq = comp_df["Ecart Qual"].mean()
-    ma = comp_df["Ecart Ano"].mean()
-    r = f"""## 📋 Rapport d'Évolution des KPIs
-**Période analysée : {dn1} → {dn}**
-
----
-
-### 📊 Résumé Général
-
-| Indicateur | Valeur |
-|---|---|
-| Nombre total de postes analysés | **{total}** |
-| Postes en amélioration 🟢 | **{nb_imp}** ({round(nb_imp/total*100,1)}%) |
-| Postes en dégradation 🔴 | **{nb_deg}** ({round(nb_deg/total*100,1)}%) |
-| Postes stables 🟡 | **{nb_stb}** ({round(nb_stb/total*100,1)}%) |
-| Évolution moyenne Performance | **{mp:+.2f} %** |
-| Évolution moyenne Qualité | **{mq:+.2f} %** |
-| Évolution moyenne Anomalies | **{ma:+.1f}** |
-
----
-
-### 🟢 Analyse des Améliorations
-"""
-    if nb_imp > 0:
-        imp_df = comp_df[comp_df["Tendance"]=="amelioration"].sort_values("Ecart Perf", ascending=False)
-        for _, rw in imp_df.head(5).iterrows():
-            r += f"- **{rw['Poste']}** : Performance {rw['Ecart Perf']:+.2f}%, Qualité {rw['Ecart Qual']:+.2f}%, Anomalies {rw['Ecart Ano']:+.0f}\n"
-        r += f"\n**Conclusion** : {nb_imp} poste(s) montrent une tendance positive. "
-        if mp > 0 and mq > 0: r += "Performance et Qualité en hausse, dynamique positive globale."
-        elif mp > 0: r += "Amélioration portée par la Performance. Qualité à surveiller."
-        else: r += "Amélioration portée par la Qualité. Performance à consolider."
-    else: r += "Aucun poste n'a montré d'amélioration significative.\n"
-    r += "\n---\n### 🔴 Analyse des Dégradations\n"
-    if nb_deg > 0:
-        deg_df = comp_df[comp_df["Tendance"]=="degradation"].sort_values("Ecart Perf", ascending=True)
-        for _, rw in deg_df.head(5).iterrows():
-            r += f"- **{rw['Poste']}** : Performance {rw['Ecart Perf']:+.2f}%, Qualité {rw['Ecart Qual']:+.2f}%, Anomalies {rw['Ecart Ano']:+.0f}\n"
-        r += f"\n**Conclusion** : {nb_deg} poste(s) nécessitent une attention particulière. "
-        crit = deg_df[(deg_df["Ecart Perf"]<0) & (deg_df["Ecart Ano"]>0)]
-        if not crit.empty: r += f"**Postes critiques** : {', '.join(crit['Poste'].tolist())}. Plan d'action prioritaire requis."
-        else: r += "Dégradation modérée mais suivi attentif nécessaire."
-    else: r += "Aucun poste en dégradation. Bonne stabilité.\n"
-    r += "\n---\n### 💡 Recommandations\n"
-    recs = []
-    if nb_deg > 0:
-        recs.append("1. **Réduire les anomalies récurrentes** sur les postes en dégradation via analyses de causes racines.")
-        recs.append("2. **Renforcer les actions préventives** sur les postes avec baisse Performance + hausse Anomalies.")
-    if nb_imp > 0:
-        top_imp = comp_df[comp_df["Tendance"]=="amelioration"].sort_values("Ecart Perf", ascending=False).head(3)
-        recs.append(f"3. **Généraliser les bonnes pratiques** : {', '.join(top_imp['Poste'].tolist())}.")
-    if nb_deg > 0 and nb_imp > 0:
-        recs.append("4. **Organiser un partage d'expérience** entre postes améliorés et dégradés.")
-    if ma > 0: recs.append("5. **Plan de réduction des anomalies** ciblé avec objectifs hebdomadaires.")
-    recs.append("6. **Suivi hebdomadaire des KPIs** pour détecter toute dérive rapidement.")
-    recs.append("7. **Prioriser les postes critiques** (baisse Perf + hausse Anomalies simultanée).")
-    recs.append("8. **Valider la caractérisation complète du backlog** pour fiabiliser les indicateurs.")
-    r += "\n".join(recs)
-    return r
 
 def inject_custom_css():
     st.markdown("""<style>
@@ -175,79 +113,82 @@ def inject_custom_css():
     :root{--p:#1e3a5f;--pl:#2c5282;--b:#e2e8f0;--r:10px}
     *{box-sizing:border-box;margin:0;padding:0}
     .stApp{background:#edf2f7;font-family:'Inter',sans-serif}
-    .main .block-container{padding-top:.6rem;padding-bottom:.6rem;max-width:100%!important;padding-left:.2rem;padding-right:.2rem}
+    .main .block-container{max-width:100%!important;width:100%!important;padding-left:.5rem!important;padding-right:.5rem!important;padding-top:.5rem!important;padding-bottom:.5rem!important}
+    section[data-testid="stSidebar"]{width:250px!important}
+    section[data-testid="stSidebar"][aria-expanded="false"]{width:0px!important}
+    section[data-testid="stSidebar"] .stMarkdown,section[data-testid="stSidebar"] .stSelectbox,section[data-testid="stSidebar"] .stMultiSelect,section[data-testid="stSidebar"] .stDateInput,section[data-testid="stSidebar"] .stToggle{margin-left:4px;margin-right:4px}
     .stTabs,.stTabs>div,.stTabs [data-baseweb="tab-list"]{width:100%!important;max-width:100%!important}
-    .mh{background:linear-gradient(135deg,var(--p),var(--pl));padding:10px 16px;border-radius:var(--r);margin-bottom:4px;box-shadow:0 6px 20px rgba(0,0,0,.1);overflow:hidden}
-    .mh h1{color:#fff;font-size:16px;font-weight:800;margin:0;display:inline}
-    .mh .db{float:right;background:rgba(255,255,255,.15);padding:2px 10px;border-radius:14px;color:#fff;font-size:10px;font-weight:500;border:1px solid rgba(255,255,255,.2);margin-top:2px}
-    .cr{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:4px}
-    .cc{background:#fff;border-radius:var(--r);padding:8px 10px;box-shadow:0 2px 8px rgba(0,0,0,.04);border:1px solid var(--b);text-align:center}
-    .cc .cv{font-size:22px;font-weight:900;line-height:1}
-    .cc .cl{font-size:7px;color:#718096;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:1px}
+    .mh{background:linear-gradient(135deg,var(--p),var(--pl));padding:12px 20px;border-radius:var(--r);margin-bottom:6px;box-shadow:0 6px 20px rgba(0,0,0,.1);overflow:hidden}
+    .mh h1{color:#fff;font-size:18px;font-weight:800;margin:0;display:inline}
+    .mh .db{float:right;background:rgba(255,255,255,.15);padding:3px 12px;border-radius:14px;color:#fff;font-size:11px;font-weight:500;border:1px solid rgba(255,255,255,.2);margin-top:2px}
+    .cr{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:6px}
+    .cc{background:#fff;border-radius:var(--r);padding:10px 14px;box-shadow:0 2px 8px rgba(0,0,0,.04);border:1px solid var(--b);text-align:center}
+    .cc .cv{font-size:26px;font-weight:900;line-height:1}
+    .cc .cl{font-size:8px;color:#718096;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
     .cc.c1{border-top:3px solid #3182ce}.cc.c1 .cv{color:#2b6cb0}
     .cc.c2{border-top:3px solid #38a169}.cc.c2 .cv{color:#276749}
     .cc.c3{border-top:3px solid #805ad5}.cc.c3 .cv{color:#6b46c1}
     .cc.c4{border-top:3px solid #e53e3e}.cc.c4 .cv{color:#c53030}
-    .stl{font-size:11px;font-weight:700;color:var(--p);margin:4px 0 1px 0;padding-left:8px;border-left:3px solid var(--pl)}
+    .stl{font-size:12px;font-weight:700;color:var(--p);margin:5px 0 2px 0;padding-left:10px;border-left:3px solid var(--pl)}
     .stl.q{border-left-color:#3182ce}.stl.p{border-left-color:#38a169}.stl.a{border-left-color:#e53e3e}.stl.c{border-left-color:#805ad5}.stl.e{border-left-color:#d69e2e}
     .tw{width:100%;border-collapse:collapse;font-family:'Inter',sans-serif;font-size:8px;display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0}
-    .tw thead th{background:var(--p);color:#fff;font-weight:700;font-size:7px;text-transform:uppercase;letter-spacing:.3px;padding:3px;border:none;white-space:nowrap;position:sticky;top:0;z-index:10}
+    .tw thead th{background:var(--p);color:#fff;font-weight:700;font-size:7px;text-transform:uppercase;letter-spacing:.3px;padding:4px 5px;border:none;white-space:nowrap;position:sticky;top:0;z-index:10}
     .tw.qt thead th{background:linear-gradient(135deg,#2b6cb0,#3182ce)}
     .tw.pt thead th{background:linear-gradient(135deg,#276749,#38a169)}
     .tw.at thead th{background:linear-gradient(135deg,#c53030,#e53e3e)}
     .tw.et thead th{background:linear-gradient(135deg,#b7791f,#d69e2e)}
-    .tw tbody td{padding:2px 3px;border-bottom:1px solid #edf2f7;white-space:nowrap}
+    .tw tbody td{padding:3px 5px;border-bottom:1px solid #edf2f7;white-space:nowrap}
     .tw tbody tr:nth-child(even) td{background:#f7fafc}
     .tw tbody tr:hover td{background:#ebf8ff!important}
     .cb td{background:#2b6cb0!important;color:#fff!important;font-weight:700!important;font-size:8px!important}
     .tr td{background:#e2e8f0!important;font-weight:800!important;font-size:8px!important}
-    .stTabs [data-baseweb="tab-list"]{gap:2px;background:#e2e8f0;padding:2px;border-radius:6px;margin-bottom:3px}
-    .stTabs [data-baseweb="tab"]{border-radius:5px;padding:5px 10px;font-weight:600;font-size:10px}
+    .stTabs [data-baseweb="tab-list"]{gap:3px;background:#e2e8f0;padding:3px;border-radius:6px;margin-bottom:4px}
+    .stTabs [data-baseweb="tab"]{border-radius:5px;padding:6px 14px;font-weight:600;font-size:11px}
     .stTabs [aria-selected="true"]{background:#fff!important;color:var(--p)!important;box-shadow:0 2px 5px rgba(0,0,0,.07)}
-    .sr{display:flex;align-items:center;padding:4px 8px;background:#fff;border-radius:5px;margin-bottom:1px;border:1px solid var(--b);font-size:9px}
-    .sr .sn{font-weight:700;color:var(--p);min-width:200px;font-size:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .sr .sc{padding:2px 7px;border-radius:12px;font-weight:800;font-size:10px;min-width:40px;text-align:center;margin:0 6px;color:#fff}
+    .sr{display:flex;align-items:center;padding:5px 10px;background:#fff;border-radius:5px;margin-bottom:1px;border:1px solid var(--b);font-size:9px}
+    .sr .sn{font-weight:700;color:var(--p);min-width:220px;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .sr .sc{padding:2px 8px;border-radius:12px;font-weight:800;font-size:10px;min-width:45px;text-align:center;margin:0 8px;color:#fff}
     .sr .sa{color:#718096;font-size:8px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .sr .stg{font-size:7px;color:#718096;min-width:50px;text-align:center;white-space:nowrap}
-    .sr .sb{font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;white-space:nowrap}
-    .ca{background:#fff;border-radius:var(--r);padding:8px;margin-top:2px;border:1px solid var(--b);box-shadow:0 1px 4px rgba(0,0,0,.02)}
-    .ca .ct{font-size:10px;font-weight:700;margin-bottom:4px;padding-bottom:3px;border-bottom:1px solid var(--b)}
+    .sr .stg{font-size:7px;color:#718096;min-width:55px;text-align:center;white-space:nowrap}
+    .sr .sb{font-size:7px;font-weight:700;padding:1px 6px;border-radius:3px;white-space:nowrap}
+    .ca{background:#fff;border-radius:var(--r);padding:10px;margin-top:3px;border:1px solid var(--b);box-shadow:0 1px 4px rgba(0,0,0,.02)}
+    .ca .ct{font-size:11px;font-weight:700;margin-bottom:5px;padding-bottom:4px;border-bottom:1px solid var(--b)}
     .car{display:flex;align-items:center;margin-bottom:3px;font-size:8px}
     .car:last-child{margin-bottom:0}
-    .car .cal{width:160px;font-weight:600;color:var(--p);text-align:right;padding-right:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .car .cab{flex:1;height:22px;background:#edf2f7;border-radius:4px;overflow:hidden}
+    .car .cal{width:180px;font-weight:600;color:var(--p);text-align:right;padding-right:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .car .cab{flex:1;height:24px;background:#edf2f7;border-radius:4px;overflow:hidden}
     .car .caf{height:100%;border-radius:4px;transition:width .3s}
-    .car .cav-out{font-size:8px;font-weight:800;color:#1a202c;min-width:50px;text-align:right;padding-left:4px}
-    .gbr{display:flex;align-items:center;padding:2px 0;font-size:8px;border-bottom:1px solid #f7fafc}
+    .car .cav-out{font-size:8px;font-weight:800;color:#1a202c;min-width:55px;text-align:right;padding-left:5px}
+    .gbr{display:flex;align-items:center;padding:3px 0;font-size:8px;border-bottom:1px solid #f7fafc}
     .gbr:last-child{border:none}
-    .gbr-l{width:140px;font-weight:600;color:#1a202c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:7px}
-    .gbr-g{display:flex;align-items:center;gap:3px;flex:1}
-    .gbr-w{flex:1;height:18px;background:#edf2f7;border-radius:3px;overflow:hidden}
+    .gbr-l{width:160px;font-weight:600;color:#1a202c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:7px}
+    .gbr-g{display:flex;align-items:center;gap:4px;flex:1}
+    .gbr-w{flex:1;height:20px;background:#edf2f7;border-radius:3px;overflow:hidden}
     .gbr-f{height:100%;border-radius:3px}
     .gb-p{background:linear-gradient(90deg,#2b6cb0,#4299e1)}
     .gb-q{background:linear-gradient(90deg,#276749,#48bb78)}
-    .gbr-v{font-size:7px;font-weight:800;min-width:42px;text-align:right;color:#1a202c}
-    .gbr-legend{display:flex;gap:12px;margin-bottom:4px;font-size:8px;font-weight:700}
+    .gbr-v{font-size:7px;font-weight:800;min-width:48px;text-align:right;color:#1a202c}
+    .gbr-legend{display:flex;gap:14px;margin-bottom:5px;font-size:8px;font-weight:700}
     .gbr-legend span{display:flex;align-items:center;gap:4px}
-    .gbr-legend i{display:inline-block;width:12px;height:12px;border-radius:2px}
-    .cg{display:grid;grid-template-columns:1fr 1fr;gap:4px}
-    .cg>div{background:#fff;border-radius:var(--r);padding:6px 8px;border:1px solid var(--b)}
-    .cg .ct{font-size:9px;font-weight:700;margin-bottom:2px;padding-bottom:2px;border-bottom:1px solid var(--b)}
-    .cgr{display:flex;align-items:center;padding:2px 0;font-size:8px;border-bottom:1px solid #f7fafc}
+    .gbr-legend i{display:inline-block;width:14px;height:14px;border-radius:2px}
+    .cg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+    .cg>div{background:#fff;border-radius:var(--r);padding:8px 10px;border:1px solid var(--b)}
+    .cg .ct{font-size:10px;font-weight:700;margin-bottom:3px;padding-bottom:3px;border-bottom:1px solid var(--b)}
+    .cgr{display:flex;align-items:center;padding:3px 0;font-size:9px;border-bottom:1px solid #f7fafc}
     .cgr:last-child{border:none}
-    .cgr .rk{width:14px;font-weight:800;text-align:center}
+    .cgr .rk{width:16px;font-weight:800;text-align:center}
     .cgr .pn{flex:1;font-weight:600;color:#1a202c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .cgr .ps{font-weight:800;min-width:45px;text-align:right}
+    .cgr .ps{font-weight:800;min-width:50px;text-align:right}
     .anl-tbl{width:100%;border-collapse:collapse;font-family:'Inter',sans-serif;font-size:9px;margin:0}
-    .anl-tbl thead th{background:var(--p);color:#fff;font-weight:700;font-size:8px;padding:5px 6px;border:none;white-space:nowrap;position:sticky;top:0}
-    .anl-tbl tbody td{padding:4px 6px;border-bottom:1px solid #edf2f7}
+    .anl-tbl thead th{background:var(--p);color:#fff;font-weight:700;font-size:8px;padding:5px 7px;border:none;white-space:nowrap;position:sticky;top:0}
+    .anl-tbl tbody td{padding:4px 7px;border-bottom:1px solid #edf2f7}
     .anl-tbl tbody tr:nth-child(even) td{background:#f7fafc}
     .anl-tbl tbody tr:hover td{background:#ebf8ff!important}
     .anl-tbl .tot td{background:#2b6cb0!important;color:#fff!important;font-weight:700!important}
     .g-green{background:#c6efce;color:#006100;font-weight:600}
     .g-yellow{background:#ffeb9c;color:#9c6500;font-weight:600}
     .g-red{background:#ffc7ce;color:#9c0006;font-weight:600}
-    .es{text-align:center;padding:10px;color:#718096;font-size:10px}
+    .es{text-align:center;padding:12px;color:#718096;font-size:11px}
     .rh{display:flex;align-items:center;justify-content:space-between;margin-bottom:0}
     .rh .stl{margin:0}
     div[data-testid="stSidebar"]{background:linear-gradient(180deg,var(--p),#0f2744)}
@@ -255,16 +196,16 @@ def inject_custom_css():
     div[data-testid="stSidebar"] .stSelectbox label,div[data-testid="stSidebar"] .stMultiSelect label,div[data-testid="stSidebar"] .stDateInput label{color:rgba(255,255,255,.8)!important;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:.5px}
     div[data-testid="stSidebar"] div[data-testid="stWidget"]{background:rgba(255,255,255,.08);border-radius:6px;padding:2px 6px;margin-bottom:2px;border:1px solid rgba(255,255,255,.1)}
     div[data-testid="stSidebar"] .stSelectbox>div>div,div[data-testid="stSidebar"] .stMultiSelect>div>div,div[data-testid="stSidebar"] .stDateInput>div>div{background:rgba(255,255,255,.95)!important;border-radius:5px}
-    .stButton>button[kind="primary"]{background:linear-gradient(135deg,var(--p),var(--pl));border:none;border-radius:6px;padding:6px 12px;font-weight:700;font-size:11px}
-    .legend-box{background:#fff;border-radius:var(--r);padding:10px 14px;margin-top:6px;border:1px solid var(--b);box-shadow:0 1px 4px rgba(0,0,0,.02)}
-    .legend-box .lt{font-size:10px;font-weight:800;color:var(--p);margin-bottom:6px;padding-bottom:4px;border-bottom:2px solid var(--pl)}
-    .legend-box .ls{font-size:9px;font-weight:700;color:#2c5282;margin:4px 0 2px 0}
-    .legend-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 20px}
-    .legend-item{display:flex;align-items:center;gap:6px;font-size:8px;padding:2px 0}
-    .legend-item .lk{display:inline-block;min-width:55px;padding:1px 5px;border-radius:3px;font-weight:800;color:#fff;text-align:center;font-size:7px}
-    .legend-item .ld{color:#4a5568;font-size:8px}
-    ::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:#f1f1f1}::-webkit-scrollbar-thumb{background:#cbd5e0;border-radius:2px}
-    @media(max-width:768px){.cr{grid-template-columns:repeat(2,1fr)}.mh h1{font-size:13px}.mh .db{float:none;display:block;margin-top:2px}.cg{grid-template-columns:1fr}.car .cal{width:100px}.gbr-l{width:90px}.legend-grid{grid-template-columns:1fr}}
+    .stButton>button[kind="primary"]{background:linear-gradient(135deg,var(--p),var(--pl));border:none;border-radius:6px;padding:8px 16px;font-weight:700;font-size:12px}
+    .legend-box{background:#fff;border-radius:var(--r);padding:12px 16px;margin-top:8px;border:1px solid var(--b);box-shadow:0 1px 4px rgba(0,0,0,.02)}
+    .legend-box .lt{font-size:11px;font-weight:800;color:var(--p);margin-bottom:8px;padding-bottom:5px;border-bottom:2px solid var(--pl)}
+    .legend-box .ls{font-size:9px;font-weight:700;color:#2c5282;margin:5px 0 3px 0}
+    .legend-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px}
+    .legend-item{display:flex;align-items:center;gap:8px;font-size:9px;padding:3px 0}
+    .legend-item .lk{display:inline-block;min-width:60px;padding:2px 6px;border-radius:3px;font-weight:800;color:#fff;text-align:center;font-size:8px}
+    .legend-item .ld{color:#4a5568;font-size:9px}
+    ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:#f1f1f1}::-webkit-scrollbar-thumb{background:#cbd5e0;border-radius:3px}
+    @media(max-width:768px){.cr{grid-template-columns:repeat(2,1fr)}.mh h1{font-size:14px}.mh .db{float:none;display:block;margin-top:3px}.cg{grid-template-columns:1fr}.car .cal{width:110px}.gbr-l{width:100px}.legend-grid{grid-template-columns:1fr}}
     </style>""", unsafe_allow_html=True)
 
 def main():
@@ -462,7 +403,7 @@ def main():
             av,tv=actuals.get(k,0),targets.get(k,100)
             met=av<=tv if is_lb(k) else av>=tv
             bw=min(max(av,0),100); bg=color_ok if met else color_fail
-            h+='<div class="car"><div class="cal" style="width:240px">%s</div><div class="cab"><div class="caf" style="width:%s%%;background:%s"></div></div><div class="cav-out">%.1f%%</div></div>'%(k,bw,bg,av)
+            h+='<div class="car"><div class="cal" style="width:260px">%s</div><div class="cab"><div class="caf" style="width:%s%%;background:%s"></div></div><div class="cav-out">%.1f%%</div></div>'%(k,bw,bg,av)
         h+='</div>'; return h
     def html_bars(data,title,color):
         h='<div class="ca"><div class="ct" style="color:%s">%s</div>'%(color,title)
@@ -480,14 +421,12 @@ def main():
             h+='<div class="gbr"><div class="gbr-l">%s</div><div class="gbr-g"><div class="gbr-w"><div class="gbr-f gb-p" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div><div class="gbr-w"><div class="gbr-f gb-q" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div></div></div>'%(p,pw,pv,qw,qv)
         h+='</div>'; return h
 
-    # === Chart donut eclaté pour petits secteurs ===
     def anl_pie_chart(data, names_col, values_col, title, colors=None):
         if data.empty: return None
         vals = data[values_col].values
         total = vals.sum()
         if total == 0: return None
         pct = vals / total * 100
-        # Plus le secteur est petit, plus il est éclaté
         pull = []
         for p in pct:
             if p < 2: pull.append(0.18)
@@ -498,12 +437,13 @@ def main():
                      color_discrete_sequence=colors or px.colors.qualitative.Set2,
                      hole=0.38, pull=pull)
         fig.update_traces(textposition='outside', textinfo='label+percent+value',
-                          textfont_size=8, insidetextorientation='radial',
+                          textfont_size=9, insidetextorientation='radial',
                           marker=dict(line=dict(color='#fff', width=1.5)))
-        fig.update_layout(margin=dict(t=45,b=60,l=10,r=10), height=380, title_font_size=11,
-                          legend=dict(font_size=7, orientation="h", yanchor="bottom", y=-0.25,
-                                      itemwidth=25, itemheight=12),
-                          uniformtext_minsize=7, uniformtext_mode='hide')
+        fig.update_layout(margin=dict(t=50,b=70,l=10,r=10), height=450, autosize=True,
+                          title_font_size=12,
+                          legend=dict(font_size=8, orientation="h", yanchor="bottom", y=-0.22,
+                                      itemwidth=28, itemheight=14),
+                          uniformtext_minsize=8, uniformtext_mode='hide')
         return fig
 
     def anl_html_table(df_out,pct_col=None,pct_thresh=(80,60)):
@@ -531,9 +471,12 @@ def main():
         buf.seek(0)
         st.download_button("📥 Exporter Excel",data=buf,file_name=filename,mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-    # ===================== SIDEBAR =====================
     with st.sidebar:
-        st.markdown("""<div style="padding:10px 0 4px 0"><div style="font-size:18px;margin-bottom:2px">⚙️</div><div style="font-size:12px;font-weight:800;color:white">Filtres & Parametres</div><div style="font-size:8px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Configuration</div></div>""",unsafe_allow_html=True)
+        show_filters = st.checkbox("⚙️ Afficher les filtres", value=True, key="show_filters")
+        if not show_filters:
+            st.markdown('<div style="text-align:center;padding:20px 0;color:rgba(255,255,255,.5);font-size:10px">Cliquez sur la flèche ▶ en haut<br>pour rouvrir les filtres</div>', unsafe_allow_html=True)
+            st.stop()
+        st.markdown("""<div style="padding:8px 0 4px 0"><div style="font-size:18px;margin-bottom:2px">⚙️</div><div style="font-size:12px;font-weight:800;color:white">Filtres & Parametres</div><div style="font-size:8px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Configuration</div></div>""",unsafe_allow_html=True)
         st.markdown("---")
         unf=st.toggle("📁 Charger nouveaux fichiers",value=False,key="tf")
         ot_f=av_f=None; apm=[]
@@ -702,7 +645,6 @@ def main():
 
             tab0,tab1,tab2,tab3,tab4=st.tabs(["📊 TABLEAU DE BORD","📈 INDICATEURS PERFORMANCE","✅ INDICATEUR QUALITE","🔬 ANALYSE","📉 SUIVI ÉVOLUTION"])
 
-            # ==================== DASHBOARD ====================
             with tab0:
                 st.markdown('<div class="stl p">Vue d\'ensemble par poste</div>',unsafe_allow_html=True)
                 st.markdown(html_grouped_bars(vp,pscores_d,qscores_d,"Performance & Qualite par Poste de Travail"),unsafe_allow_html=True)
@@ -728,7 +670,6 @@ def main():
                 st.markdown(html_classement(pscores_d,"#2b6cb0"),unsafe_allow_html=True)
                 st.markdown(html_classement(qscores_d,"#276749"),unsafe_allow_html=True)
 
-            # ==================== PERFORMANCE ====================
             with tab1:
                 choix_p=st.radio("Choix",["📈 Indicateurs","⚠️ Anomalies"],horizontal=True,key="choix_p")
                 if choix_p=="📈 Indicateurs":
@@ -744,7 +685,6 @@ def main():
                 st.markdown(html_kpi_bars(qk,pa,cible,"Performance Globale","#2b6cb0","#e53e3e"),unsafe_allow_html=True)
                 st.markdown(html_classement(pscores,"#2b6cb0"),unsafe_allow_html=True)
 
-            # ==================== QUALITE ====================
             with tab2:
                 choix_q=st.radio("Choix",["✅ Indicateurs","⚠️ Anomalies"],horizontal=True,key="choix_q")
                 if choix_q=="✅ Indicateurs":
@@ -760,9 +700,7 @@ def main():
                 st.markdown(html_kpi_bars(pk,qa,cible,"Qualite Globale","#276749","#e53e3e"),unsafe_allow_html=True)
                 st.markdown(html_classement(qscores,"#276749"),unsafe_allow_html=True)
 
-            # ==================== ANALYSE ====================
             with tab3:
-                # --- 1. OT OMS ---
                 st.markdown('<div class="stl c">1. Analyse des OT OMS</div>',unsafe_allow_html=True)
                 if desig_col:
                     oms_df=dfp[dfp[desig_col].astype(str).str.contains("OMS",case=False,na=False)]
@@ -782,8 +720,6 @@ def main():
                     else: st.markdown('<div class="es">Aucun OT OMS.</div>',unsafe_allow_html=True)
                 else: st.markdown('<div class="es">Colonne Designation non trouvee.</div>',unsafe_allow_html=True)
                 st.markdown("---")
-
-                # --- 2. OT Thermo ---
                 st.markdown('<div class="stl c">2. OT Thermographiques</div>',unsafe_allow_html=True)
                 if desig_col:
                     th_df=dfp[dfp[desig_col].astype(str).str.contains("THERMO",case=False,na=False)]
@@ -802,8 +738,6 @@ def main():
                             if fig: st.plotly_chart(fig,use_container_width=True)
                     else: st.markdown('<div class="es">Aucun OT Thermo.</div>',unsafe_allow_html=True)
                 st.markdown("---")
-
-                # --- 3. Backlog Preparation ---
                 st.markdown('<div class="stl c">3. Backlog Preparation</div>',unsafe_allow_html=True)
                 bl_prep=dfp[dfp["Statut OT"]=="CRÉÉ"]
                 if not bl_prep.empty:
@@ -833,8 +767,6 @@ def main():
                         if fig: st.plotly_chart(fig,use_container_width=True)
                 else: st.markdown('<div class="es">Aucun backlog preparation.</div>',unsafe_allow_html=True)
                 st.markdown("---")
-
-                # --- 4. Backlog Planification ---
                 st.markdown('<div class="stl c">4. Backlog Planification</div>',unsafe_allow_html=True)
                 bl_plan=dfp[dfp["Statut OT"]=="LANC"]
                 if not bl_plan.empty:
@@ -864,8 +796,6 @@ def main():
                         if fig: st.plotly_chart(fig,use_container_width=True)
                 else: st.markdown('<div class="es">Aucun backlog planification.</div>',unsafe_allow_html=True)
                 st.markdown("---")
-
-                # --- 5. Backlog Execution ---
                 st.markdown('<div class="stl c">5. Backlog Execution</div>',unsafe_allow_html=True)
                 if not dfp.empty:
                     def ces(d):
@@ -892,7 +822,6 @@ def main():
                             if fig: st.plotly_chart(fig,use_container_width=True)
                 else: st.markdown('<div class="es">Aucune donnee.</div>',unsafe_allow_html=True)
 
-                # === LEGENDE CARACTERISATION ===
                 st.markdown("---")
                 st.markdown("""<div class="legend-box">
                 <div class="lt">📖 Légende des Codes de Caractérisation</div>
@@ -916,7 +845,7 @@ def main():
                 </div>
                 </div>""", unsafe_allow_html=True)
 
-            # ==================== SUIVI EVOLUTION ====================
+            # ==================== SUIVI EVOLUTION (SIMPLIFIE) ====================
             with tab4:
                 kpis_path = os.path.join("kpis", "indicateurs_kpis.xlsx")
                 if not os.path.exists(kpis_path):
@@ -930,7 +859,7 @@ def main():
                         date_n = sorted_dates[0]; date_n1 = sorted_dates[1]
                         data_n = all_data[date_n]; data_n1 = all_data[date_n1]
 
-                        st.markdown('<div class="ca" style="margin-bottom:6px"><div class="ct" style="color:#d69e2e">📉 Comparaison : %s → %s</div><div style="font-size:9px;color:#718096">Analyse automatique des ecarts entre les deux derniers enregistrements</div></div>' % (date_n1, date_n), unsafe_allow_html=True)
+                        st.markdown('<div class="ca" style="margin-bottom:6px"><div class="ct" style="color:#d69e2e">📉 Comparaison : %s → %s</div><div style="font-size:9px;color:#718096">Ecarts de Performance et Qualite entre les deux derniers enregistrements</div></div>' % (date_n1, date_n), unsafe_allow_html=True)
 
                         all_postes = sorted(set(list(data_n.keys()) + list(data_n1.keys())))
                         comp_rows = []
@@ -939,9 +868,8 @@ def main():
                             dn1_=data_n1.get(p,{"Score Performance":0,"Score Qualite":0,"Ano Perf":0,"Ano Qual":0})
                             ep=round(dn_["Score Performance"]-dn1_["Score Performance"],2)
                             eq=round(dn_["Score Qualite"]-dn1_["Score Qualite"],2)
-                            ea=int(dn_["Ano Perf"]+dn_["Ano Qual"])-int(dn1_["Ano Perf"]+dn1_["Ano Qual"])
-                            ti,tk=get_tendance(ep,eq,ea)
-                            comp_rows.append({"Poste":p,"Perf N-1":round(dn1_["Score Performance"],2),"Perf N":round(dn_["Score Performance"],2),"Ecart Perf":ep,"Qual N-1":round(dn1_["Score Qualite"],2),"Qual N":round(dn_["Score Qualite"],2),"Ecart Qual":eq,"Ano N-1":int(dn1_["Ano Perf"]+dn1_["Ano Qual"]),"Ano N":int(dn_["Ano Perf"]+dn_["Ano Qual"]),"Ecart Ano":ea,"Tendance":tk,"Tendance Icon":ti})
+                            ti,tk=get_tendance(ep,eq)
+                            comp_rows.append({"Poste":p,"Ecart Perf":ep,"Ecart Qual":eq,"Tendance":tk,"Tendance Icon":ti})
                         comp_df=pd.DataFrame(comp_rows)
 
                         nb_imp=len(comp_df[comp_df["Tendance"]=="amelioration"])
@@ -954,14 +882,14 @@ def main():
                         <div class="cc c1"><div class="cv">%s</div><div class="cl">Total Postes</div></div>
                         </div>"""%(nb_imp,nb_deg,nb_stb,len(comp_df)),unsafe_allow_html=True)
 
+                        # Tableau simplifié : 3 colonnes seulement
                         st.markdown('<div class="stl e">Tableau Comparatif par Poste de Travail</div>',unsafe_allow_html=True)
-                        h='<table class="tw et"><thead><tr><th>Poste</th><th>Perf N-1</th><th>Perf N</th><th>Ecart Perf</th><th>Qual N-1</th><th>Qual N</th><th>Ecart Qual</th><th>Ano N-1</th><th>Ano N</th><th>Ecart Ano</th><th>Tendance</th></tr></thead><tbody>'
+                        h='<table class="tw et"><thead><tr><th>Poste</th><th>Ecart Performance</th><th>Ecart Qualite</th><th>Tendance</th></tr></thead><tbody>'
                         for _,rw in comp_df.iterrows():
                             eps="g-green" if rw["Ecart Perf"]>0 else ("g-red" if rw["Ecart Perf"]<0 else "g-yellow")
                             eqs="g-green" if rw["Ecart Qual"]>0 else ("g-red" if rw["Ecart Qual"]<0 else "g-yellow")
-                            eas="g-green" if rw["Ecart Ano"]<0 else ("g-red" if rw["Ecart Ano"]>0 else "g-yellow")
                             tc="#38a169" if rw["Tendance"]=="amelioration" else ("#e53e3e" if rw["Tendance"]=="degradation" else "#d69e2e")
-                            h+='<tr><td style="font-weight:700">%s</td><td>%.2f%%</td><td>%.2f%%</td><td class="%s">%+.2f%%</td><td>%.2f%%</td><td>%.2f%%</td><td class="%s">%+.2f%%</td><td>%d</td><td>%d</td><td class="%s">%+d</td><td style="color:%s;font-weight:800">%s</td></tr>'%(rw["Poste"],rw["Perf N-1"],rw["Perf N"],eps,rw["Ecart Perf"],rw["Qual N-1"],rw["Qual N"],eqs,rw["Ecart Qual"],rw["Ano N-1"],rw["Ano N"],eas,rw["Ecart Ano"],tc,rw["Tendance Icon"])
+                            h+='<tr><td style="font-weight:700">%s</td><td class="%s">%+.2f%%</td><td class="%s">%+.2f%%</td><td style="color:%s;font-weight:800">%s</td></tr>'%(rw["Poste"],eps,rw["Ecart Perf"],eqs,rw["Ecart Qual"],tc,rw["Tendance Icon"])
                         h+='</tbody></table>'
                         st.markdown(h,unsafe_allow_html=True)
 
@@ -969,20 +897,20 @@ def main():
                         st.markdown('<div class="stl" style="border-left-color:#38a169">🟢 Top 5 Postes en Amélioration</div>',unsafe_allow_html=True)
                         top5_up=comp_df[comp_df["Tendance"]=="amelioration"].copy()
                         if not top5_up.empty:
-                            top5_up["Score Gain"]=top5_up["Ecart Perf"]+top5_up["Ecart Qual"]-top5_up["Ecart Ano"]
+                            top5_up["Score Gain"]=top5_up["Ecart Perf"]+top5_up["Ecart Qual"]
                             top5_up=top5_up.nlargest(5,"Score Gain")
                             c1,c2=st.columns([1.2,1])
                             with c1:
-                                uh='<table class="anl-tbl"><thead><tr><th>Rang</th><th>Poste</th><th>Gain Perf</th><th>Gain Qual</th><th>Reduction Ano</th></tr></thead><tbody>'
+                                uh='<table class="anl-tbl"><thead><tr><th>Rang</th><th>Poste</th><th>Gain Perf</th><th>Gain Qual</th></tr></thead><tbody>'
                                 for i,(_,rw) in enumerate(top5_up.iterrows()):
-                                    uh+='<tr><td style="font-weight:800;color:#38a169">%d</td><td style="font-weight:600">%s</td><td class="g-green">%+.2f%%</td><td class="g-green">%+.2f%%</td><td class="g-green">%+d</td></tr>'%(i+1,rw["Poste"],rw["Ecart Perf"],rw["Ecart Qual"],-rw["Ecart Ano"])
+                                    uh+='<tr><td style="font-weight:800;color:#38a169">%d</td><td style="font-weight:600">%s</td><td class="g-green">%+.2f%%</td><td class="g-green">%+.2f%%</td></tr>'%(i+1,rw["Poste"],rw["Ecart Perf"],rw["Ecart Qual"])
                                 uh+='</tbody></table>'
                                 st.markdown(uh,unsafe_allow_html=True)
                             with c2:
                                 fig=go.Figure()
                                 fig.add_trace(go.Bar(y=top5_up["Poste"][::-1],x=top5_up["Ecart Perf"][::-1],name="Perf",marker_color="#2b6cb0",orientation="h"))
-                                fig.add_trace(go.Bar(y=top5_up["Poste"][::-1],x=top5_up["Ecart Qual"][::-1],name="Qual",marker_color="#276749",orientation="h"))
-                                fig.update_layout(barmode="group",height=250,margin=dict(l=120,t=20,b=20,r=20),font_size=9,legend=dict(orientation="h",yanchor="bottom",y=1.02))
+                                fig.add_trace(go.Bar(y=top5_up["Poste"][::-1],x=top5_up["Ecart Qual"][::-1],name="Qual",marker_color="#27649",orientation="h"))
+                                fig.update_layout(barmode="group",height=300,autosize=True,margin=dict(l=120,t=20,b=20,r=20),font_size=9,legend=dict(orientation="h",yanchor="bottom",y=1.02))
                                 st.plotly_chart(fig,use_container_width=True)
                         else: st.markdown('<div class="es">Aucun poste en amélioration.</div>',unsafe_allow_html=True)
 
@@ -990,92 +918,22 @@ def main():
                         st.markdown('<div class="stl" style="border-left-color:#e53e3e">🔴 Top 5 Postes en Dégradation</div>',unsafe_allow_html=True)
                         top5_down=comp_df[comp_df["Tendance"]=="degradation"].copy()
                         if not top5_down.empty:
-                            top5_down["Score Perte"]=-(top5_down["Ecart Perf"]+top5_down["Ecart Qual"])+top5_down["Ecart Ano"]
+                            top5_down["Score Perte"]=-(top5_down["Ecart Perf"]+top5_down["Ecart Qual"])
                             top5_down=top5_down.nlargest(5,"Score Perte")
                             c1,c2=st.columns([1.2,1])
                             with c1:
-                                dh='<table class="anl-tbl"><thead><tr><th>Rang</th><th>Poste</th><th>Perte Perf</th><th>Perte Qual</th><th>Hausse Ano</th></tr></thead><tbody>'
+                                dh='<table class="anl-tbl"><thead><tr><th>Rang</th><th>Poste</th><th>Perte Perf</th><th>Perte Qual</th></tr></thead><tbody>'
                                 for i,(_,rw) in enumerate(top5_down.iterrows()):
-                                    dh+='<tr><td style="font-weight:800;color:#e53e3e">%d</td><td style="font-weight:600">%s</td><td class="g-red">%+.2f%%</td><td class="g-red">%+.2f%%</td><td class="g-red">%+d</td></tr>'%(i+1,rw["Poste"],rw["Ecart Perf"],rw["Ecart Qual"],rw["Ecart Ano"])
+                                    dh+='<tr><td style="font-weight:800;color:#e53e3e">%d</td><td style="font-weight:600">%s</td><td class="g-red">%+.2f%%</td><td class="g-red">%+.2f%%</td></tr>'%(i+1,rw["Poste"],rw["Ecart Perf"],rw["Ecart Qual"])
                                 dh+='</tbody></table>'
                                 st.markdown(dh,unsafe_allow_html=True)
                             with c2:
                                 fig=go.Figure()
                                 fig.add_trace(go.Bar(y=top5_down["Poste"][::-1],x=top5_down["Ecart Perf"][::-1],name="Perf",marker_color="#e53e3e",orientation="h"))
                                 fig.add_trace(go.Bar(y=top5_down["Poste"][::-1],x=top5_down["Ecart Qual"][::-1],name="Qual",marker_color="#c53030",orientation="h"))
-                                fig.update_layout(barmode="group",height=250,margin=dict(l=120,t=20,b=20,r=20),font_size=9,legend=dict(orientation="h",yanchor="bottom",y=1.02))
+                                fig.update_layout(barmode="group",height=300,autosize=True,margin=dict(l=120,t=20,b=20,r=20),font_size=9,legend=dict(orientation="h",yanchor="bottom",y=1.02))
                                 st.plotly_chart(fig,use_container_width=True)
                         else: st.markdown('<div class="es">Aucun poste en dégradation.</div>',unsafe_allow_html=True)
-
-                        # Top 5 Stables
-                        st.markdown('<div class="stl" style="border-left-color:#d69e2e">🟡 Top 5 Postes Stables</div>',unsafe_allow_html=True)
-                        comp_df["Var Abs"]=abs(comp_df["Ecart Perf"])+abs(comp_df["Ecart Qual"])+abs(comp_df["Ecart Ano"])
-                        top5_stable=comp_df.nsmallest(5,"Var Abs")
-                        sh='<table class="anl-tbl"><thead><tr><th>Rang</th><th>Poste</th><th>Ecart Perf</th><th>Ecart Qual</th><th>Ecart Ano</th></tr></thead><tbody>'
-                        for i,(_,rw) in enumerate(top5_stable.iterrows()):
-                            sh+='<tr><td style="font-weight:800;color:#d69e2e">%d</td><td style="font-weight:600">%s</td><td>%+.2f%%</td><td>%+.2f%%</td><td>%+d</td></tr>'%(i+1,rw["Poste"],rw["Ecart Perf"],rw["Ecart Qual"],rw["Ecart Ano"])
-                        sh+='</tbody></table>'
-                        st.markdown(sh,unsafe_allow_html=True)
-
-                        # Graphiques evolution
-                        st.markdown('<div class="stl e">Graphiques d\'Évolution</div>',unsafe_allow_html=True)
-                        c1,c2,c3=st.columns(3)
-                        with c1:
-                            fig=go.Figure()
-                            fig.add_trace(go.Bar(x=comp_df["Poste"],y=comp_df["Perf N-1"],name=date_n1,marker_color="#a0aec0"))
-                            fig.add_trace(go.Bar(x=comp_df["Poste"],y=comp_df["Perf N"],name=date_n,marker_color="#2b6cb0"))
-                            fig.update_layout(title="Performance",height=300,margin=dict(t=40,b=60,l=10,r=10),font_size=7,xaxis_tickangle=-45,legend=dict(orientation="h",yanchor="bottom",y=-0.4),barmode="group")
-                            st.plotly_chart(fig,use_container_width=True)
-                        with c2:
-                            fig=go.Figure()
-                            fig.add_trace(go.Bar(x=comp_df["Poste"],y=comp_df["Qual N-1"],name=date_n1,marker_color="#a0aec0"))
-                            fig.add_trace(go.Bar(x=comp_df["Poste"],y=comp_df["Qual N"],name=date_n,marker_color="#276749"))
-                            fig.update_layout(title="Qualite",height=300,margin=dict(t=40,b=60,l=10,r=10),font_size=7,xaxis_tickangle=-45,legend=dict(orientation="h",yanchor="bottom",y=-0.4),barmode="group")
-                            st.plotly_chart(fig,use_container_width=True)
-                        with c3:
-                            fig=go.Figure()
-                            fig.add_trace(go.Bar(x=comp_df["Poste"],y=comp_df["Ano N-1"],name=date_n1,marker_color="#a0aec0"))
-                            fig.add_trace(go.Bar(x=comp_df["Poste"],y=comp_df["Ano N"],name=date_n,marker_color="#e53e3e"))
-                            fig.update_layout(title="Anomalies",height=300,margin=dict(t=40,b=60,l=10,r=10),font_size=7,xaxis_tickangle=-45,legend=dict(orientation="h",yanchor="bottom",y=-0.4),barmode="group")
-                            st.plotly_chart(fig,use_container_width=True)
-
-                        # AI Report
-                        st.markdown("---")
-                        st.markdown('<div class="stl e">🤖 Analyse Automatique</div>',unsafe_allow_html=True)
-                        if st.button("🧠 Générer le Rapport d'Évolution",type="primary",key="gen_report"):
-                            st.session_state["ai_report"]=generate_ai_report(comp_df,date_n,date_n1)
-                        if "ai_report" in st.session_state:
-                            st.markdown(st.session_state["ai_report"])
-
-                        # Exports
-                        st.markdown("---")
-                        st.markdown('<div class="stl e">📥 Exports</div>',unsafe_allow_html=True)
-                        ec1,ec2=st.columns(2)
-                        with ec1:
-                            exp_df=comp_df[["Poste","Perf N-1","Perf N","Ecart Perf","Qual N-1","Qual N","Ecart Qual","Ano N-1","Ano N","Ecart Ano","Tendance Icon"]].copy()
-                            exp_df.columns=["Poste","Perf N-1","Perf N","Ecart Perf","Qual N-1","Qual N","Ecart Qual","Ano N-1","Ano N","Ecart Ano","Tendance"]
-                            buf=io.BytesIO()
-                            exp_df.to_excel(buf,index=False,engine="openpyxl")
-                            buf.seek(0)
-                            st.download_button("📥 Exporter Comparaison Excel",data=buf,file_name="suivi_evolution_%s_vs_%s.xlsx"%(date_n1.replace("/","-"),date_n.replace("/","-")),mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                        with ec2:
-                            if "ai_report" in st.session_state:
-                                html_r="""<!DOCTYPE html><html><head><meta charset="utf-8"><title>Rapport Evolution</title>
-                                <style>body{font-family:Arial,sans-serif;max-width:900px;margin:30px auto;padding:20px;color:#1a202c}
-                                h1{color:#1e3a5f;border-bottom:3px solid #2c5282;padding-bottom:10px}
-                                h2{color:#2c5282;margin-top:30px}h3{color:#4a5568}
-                                table{width:100%;border-collapse:collapse;margin:15px 0}
-                                th{background:#1e3a5f;color:#fff;padding:8px;text-align:left}
-                                td{padding:6px 8px;border-bottom:1px solid #e2e8f0}
-                                tr:nth-child(even) td{background:#f7fafc}
-                                hr{border:none;border-top:1px solid #e2e8f0;margin:20px 0}
-                                ul{padding-left:20px}li{margin:5px 0}</style></head><body>
-                                <h1>📉 Rapport d'Évolution des KPIs</h1>
-                                <p><strong>Période :</strong> %s → %s</p><hr>
-                                %s
-                                <hr><p style="font-size:10px;color:#a0aec0;text-align:center">Genere automatiquement - KPI Dashboard MC & FEED</p>
-                                </body></html>"""%(date_n1,date_n,st.session_state["ai_report"].replace("\n","<br>").replace("**","<strong>").replace("## ","<h2>").replace("### ","<h3>").replace("---","<hr>"))
-                                st.download_button("📄 Exporter Rapport HTML (PDF)",data=html_r.encode("utf-8"),file_name="rapport_evolution_%s.html"%date_n.replace("/","-"),mime="text/html")
 
         except Exception as e:
             st.error("Erreur: %s"%str(e))

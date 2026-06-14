@@ -5,32 +5,28 @@ import numpy as np
 import io, locale, random, time, os
 from datetime import datetime
 import plotly.express as px
-# === MODIF 1 : Imports ajoutés ===
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
-# ============= MODIF 2 : excr déplacée au niveau module =============
+# ============= FONCTIONS MODULE =============
 def excr(df):
     """Exclut les compresseurs du DataFrame"""
     if "Poste travail princ." not in df.columns:
         return df
     return df[~df["Poste travail princ."].astype(str).str.contains("cresseur", case=False, na=False)].copy()
 
-# ============= MODIF 3 : Cache chargement Excel =============
 @st.cache_data(ttl=3600)
 def load_excel_cached(filepath):
     """Cache le chargement des fichiers Excel locaux (TTL 1h)"""
-    return pd.read_excel(filepath)
+    return pd.read_excel(filepath, engine="openpyxl")  # CORRECTION ENGINE
 
-# ============= MODIF 4 : Cache exclusion compresseurs =============
 @st.cache_data
 def excr_cached(df):
     """Cache l'exclusion des compresseurs"""
     return excr(df)
 
-# ============= MODIF 5 : Cache traitement dates =============
 @st.cache_data
 def process_dates(df, date_columns):
     """Cache le traitement des colonnes dates"""
@@ -195,7 +191,6 @@ def main():
         <style>@keyframes ld{from{width:0}to{width:100%%}}</style></div>""" % c, unsafe_allow_html=True)
         time.sleep(6); st.session_state.hse_affiche = True; st.rerun(); st.stop()
 
-    # === MODIF : excr supprimée d'ici (déplacée au niveau module) ===
     def contient_mot(t, lm):
         t = str(t); return any(m in t for l in lm for m in l.split())
     def cat_age(a):
@@ -439,7 +434,6 @@ def main():
         else:
             if os.path.exists("ot.xlsx"):
                 try:
-                    # === MODIF 6 & 7 : Utilisation du cache pour fichiers locaux ===
                     _t = excr_cached(load_excel_cached("ot.xlsx"))
                     apm = sorted(_t[_t["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"), na=False)]["Poste travail princ."].dropna().unique().tolist())
                 except: pass
@@ -457,19 +451,16 @@ def main():
 
     if not unf or (ot_f is not None and av_f is not None):
         try:
-            # === MODIF 6 : load_excel_cached pour fichiers locaux, pd.read_excel pour uploads ===
             if unf:
-                raw_ot = pd.read_excel(ot_f)
-                raw_av = pd.read_excel(av_f)
+                raw_ot = pd.read_excel(ot_f, engine="openpyxl") # CORRECTION ENGINE
+                raw_av = pd.read_excel(av_f, engine="openpyxl") # CORRECTION ENGINE
             else:
                 raw_ot = load_excel_cached("ot.xlsx")
                 raw_av = load_excel_cached("avis.xlsx")
 
-            # === MODIF 7 : excr_cached pour les données brutes ===
             raw_ot = excr_cached(raw_ot)
             raw_av = excr_cached(raw_av)
-
-            # === MODIF 8 : process_dates pour le traitement des dates ===
+            
             raw_ot = process_dates(raw_ot, ["Créé le","Date de début planifiée","Date de clôture","Début réel","Fin réelle"])
             raw_av = process_dates(raw_av, ["Créé le","Début souhaité","Date de la clôture"])
 
@@ -498,8 +489,7 @@ def main():
 
             vp = [p for p in apm if mf(p) and p in sp]
 
-            # excr direct pour les sous-ensembles filtrés (pas de cache ici, données dynamiques)
-            df = excr(df[df["Poste travail princ."].isin(vp) & (df["Date de début planifiée"].between(sdt, edt))].copy())
+            df = excr(raw_ot[(raw_ot["Poste travail princ."].isin(vp)) & (raw_ot["Date de début planifiée"].between(sdt, edt))].copy())
             avdf = excr(raw_av[raw_av["Poste travail princ."].isin(vp)].copy())
             df = excr(df[df["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"), na=False)].drop_duplicates())
             avdf = excr(avdf[(avdf["Ordre"].isna())|(avdf["Ordre"].astype(str).str.strip().eq(""))].drop_duplicates())
@@ -607,7 +597,7 @@ def main():
             for cn in ["Désignation du travail","Designation du travail","Désignation","Designation","Description"]:
                 if cn in dfp.columns: desig_col = cn; break
 
-            # RENDER
+            # ===================== RENDER =====================
             st.markdown('<div class="mh"><h1>📊 KPI Dashboard MC & FEED</h1><div class="db">📅 %s</div></div>' % fichier_date, unsafe_allow_html=True)
             st.markdown("""<div class="cr">
             <div class="cc c1"><div class="cv">%s</div><div class="cl">Total OT Analyses</div></div>
@@ -618,6 +608,7 @@ def main():
 
             tab0, tab1, tab2, tab3 = st.tabs(["📊 TABLEAU DE BORD", "📈 INDICATEURS PERFORMANCE", "✅ INDICATEUR QUALITE", "🔬 ANALYSE"])
 
+            # ==================== TAB 0 : DASHBOARD ====================
             with tab0:
                 st.markdown('<div class="stl p">📊 Vue d\'ensemble par poste</div>', unsafe_allow_html=True)
                 st.markdown(html_grouped_bars(vp, pscores_d, qscores_d, "Performance & Qualite par Poste de Travail"), unsafe_allow_html=True)
@@ -646,8 +637,66 @@ def main():
                     with c2:
                         st.markdown(html_bars([(idx,row["Qual"]) for idx,row in by_div.iterrows()], "Qualite par Division", "#276749"), unsafe_allow_html=True)
 
-            # ... (suite des tabs identique à la version originale)
-            # NOTE : Le reste du code (tab1, tab2, tab3) reste identique
+            # ==================== TAB 1 : PERFORMANCE ====================
+            with tab1:
+                st.markdown('<div class="stl p">🎯 Synthese Performance</div>', unsafe_allow_html=True)
+                st.markdown(html_synth(qk, pa, cible, act_map, "#38a169"), unsafe_allow_html=True)
+                
+                st.markdown('<div class="stl p">📊 Détail par KPI</div>', unsafe_allow_html=True)
+                st.markdown(html_kpi_bars(qk, pa, cible, "Détail KPIs Performance", "#276749", "#e53e3e"), unsafe_allow_html=True)
+                
+                st.markdown('<div class="stl p">📋 Tableau Complet</div>', unsafe_allow_html=True)
+                st.markdown(html_table(prows, pcols, "pt", ["Score Performance"]), unsafe_allow_html=True)
+                export_btn(pd.DataFrame(prows), "kpis_performance.xlsx")
+                
+                if ano_p_r:
+                    st.markdown('<div class="stl a">⚠️ Anomalies Performance</div>', unsafe_allow_html=True)
+                    st.markdown(html_ano(ano_p_r, ano_p_c), unsafe_allow_html=True)
+                
+                st.markdown('<div class="stl c">🏆 Classement Postes</div>', unsafe_allow_html=True)
+                st.markdown(html_classement(pscores, "#276749"), unsafe_allow_html=True)
+
+            # ==================== TAB 2 : QUALITE ====================
+            with tab2:
+                st.markdown('<div class="stl q">🎯 Synthese Qualite</div>', unsafe_allow_html=True)
+                st.markdown(html_synth(pk, qa, cible, act_map, "#3182ce"), unsafe_allow_html=True)
+                
+                st.markdown('<div class="stl q">📊 Détail par KPI</div>', unsafe_allow_html=True)
+                st.markdown(html_kpi_bars(pk, qa, cible, "Détail KPIs Qualité", "#2b6cb0", "#e53e3e"), unsafe_allow_html=True)
+                
+                st.markdown('<div class="stl q">📋 Tableau Complet</div>', unsafe_allow_html=True)
+                st.markdown(html_table(qrows, qcols, "qt", ["Score Qualite"]), unsafe_allow_html=True)
+                export_btn(pd.DataFrame(qrows), "kpis_qualite.xlsx")
+                
+                if ano_q_r:
+                    st.markdown('<div class="stl a">⚠️ Anomalies Qualite</div>', unsafe_allow_html=True)
+                    st.markdown(html_ano(ano_q_r, ano_q_c), unsafe_allow_html=True)
+                
+                st.markdown('<div class="stl c">🏆 Classement Postes</div>', unsafe_allow_html=True)
+                st.markdown(html_classement(qscores, "#2b6cb0"), unsafe_allow_html=True)
+
+            # ==================== TAB 3 : ANALYSE ====================
+            with tab3:
+                st.markdown('<div class="stl c">📊 Analyse croisée</div>', unsafe_allow_html=True)
+                
+                c1, c2 = st.columns(2)
+                with c1:
+                    fig_p = anl_pie_chart(dfp.groupby("Statut OT")["Ordre"].count().reset_index(), "Statut OT", "Ordre", "Répartition par Statut OT")
+                    if fig_p: st.plotly_chart(fig_p, use_container_width=True)
+                with c2:
+                    fig_a = anl_pie_chart(df_sc_d.groupby("Atelier")["Poste"].count().reset_index(), "Atelier", "Poste", "Répartition par Atelier", ["#2b6cb0","#276749","#805ad5","#e53e3e","#dd6b20"])
+                    if fig_a: st.plotly_chart(fig_a, use_container_width=True)
+                
+                if desig_col:
+                    st.markdown('<div class="stl a">🔍 OT Non Realises (Top 20)</div>', unsafe_allow_html=True)
+                    non_real = dfp[(dfp["Nº appel pl.entret."].fillna(0)==0) & (~dfp["Statut OT"].isin(["CLOT","TCLO"]))].copy()
+                    non_real = non_real[[desig_col, "Poste travail princ.", "Statut OT", "amp"]].dropna(subset=[desig_col])
+                    if not non_real.empty:
+                        non_real.columns = ["Designation", "Poste", "Statut", "Age (mois)"]
+                        st.markdown(anl_html_table(non_real.head(20)), unsafe_allow_html=True)
+
+                st.markdown('<div class="stl p">📈 Stats par Metier</div>', unsafe_allow_html=True)
+                st.markdown(anl_html_table(by_mt.reset_index().rename(columns={"Metier":"Metier"})), unsafe_allow_html=True)
 
         except Exception as e:
             st.error(f"Erreur de chargement des données : {e}")

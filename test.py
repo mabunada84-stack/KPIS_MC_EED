@@ -170,6 +170,12 @@ def main():
     inject_custom_css()
     fichier_date = get_date_from_file()
 
+    # ===== DEFINITION GLOBALE des listes de KPIs (AVANT toute utilisation) =====
+    qk = ["TAUX_REALISATION_CORRECTIF/PT","OT préparation <1 mois","OT préparation >3 mois","OT préparation 1mois< <3mois","OT planification <1 mois","OT planification >3 mois","OT planification 1mois< <3mois","OT exécution <1 mois","OT exécution >3 mois","OT exécution 1mois< <3mois"]
+    pk = ["appel avis approuvé","OT LANC ESTIME","Backlog préparation caractérisé","Backlog planification caractérisé","OT CONFIME","OT_COR_EGAL"]
+    cible = {"TAUX_REALISATION_CORRECTIF/PT":85,"OT préparation <1 mois":80,"OT préparation >3 mois":5,"OT préparation 1mois< <3mois":15,"OT planification <1 mois":80,"OT planification >3 mois":5,"OT planification 1mois< <3mois":15,"OT exécution <1 mois":80,"OT exécution >3 mois":5,"OT exécution 1mois< <3mois":15,"appel avis approuvé":95,"OT LANC ESTIME":100,"Backlog préparation caractérisé":100,"Backlog planification caractérisé":100,"OT CONFIME":100,"OT_COR_EGAL":100}
+    act_map = {"TAUX_REALISATION_CORRECTIF/PT":"Ameliorer le taux de realisation des OT.","OT préparation <1 mois":"Reduire l'age de preparation des OT (< 1 mois).","OT préparation >3 mois":"Traiter les OT avec preparation > 3 mois.","OT planification <1 mois":"Reduire l'age de planification des OT (< 1 mois).","OT planification >3 mois":"Traiter les OT avec planification > 3 mois.","OT exécution <1 mois":"Reduire l'age d'execution des OT (< 1 mois).","OT exécution >3 mois":"Traiter les OT avec execution > 3 mois.","OT LANC ESTIME":"Estimer les couts des OT lances.","Backlog préparation caractérisé":"Caracteriser le backlog de preparation.","Backlog planification caractérisé":"Caracteriser le backlog de planification.","OT CONFIME":"Confirmer les OT termines.","OT_COR_EGAL":"Rapprocher les couts reels et budgetes.","appel avis approuvé":"Creer un OT pour les avis sans ordre."}
+
     consignes = ["Port obligatoire des EPI avant toute intervention.","Port obligatoire du casque de securite.","Port obligatoire des lunettes de protection.","Port obligatoire des gants adaptes au travail.","Utiliser les protections auditives dans les zones bruyantes.","Verifier l'absence de tension avant toute intervention electrique.","Respecter la procedure de consignation et deconsignation.","Ne jamais intervenir sur un equipement en marche.","Baliser et securiser la zone de travail.","Maintenir le poste de travail propre et ordonne.","Verifier l'etat des outils avant utilisation.","Utiliser uniquement du materiel homologue.","Respecter les permis de travail en vigueur.","Identifier les risques avant de commencer une tache.","Signaler immediatement toute situation dangereuse.","Signaler tout incident ou presque accident.","Ne jamais neutraliser un dispositif de securite.","Verifier les detecteurs de gaz avant utilisation.","Verifier la bonne ventilation des zones de travail.","Respecter les regles des espaces confines.","Controler l'atmosphere avant d'entrer dans un espace confine.","Utiliser les points d'ancrage pour les travaux en hauteur.","Verifier l'etat des echafaudages avant utilisation.","Securiser les outils lors des travaux en hauteur.","Ne pas travailler seul lors d'operations a risque.","Controler les elingues avant chaque levage.","Respecter les limites de charge des equipements.","Verifier l'etat des appareils de levage.","Maintenir les voies de circulation degagees.","Respecter la signalisation de securite.","Verifier les extincteurs a proximite du chantier.","Connaitre les issues de secours les plus proches.","Respecter les procedures d'arret d'urgence.","Verifier les flexibles et raccords avant mise en service.","Controler les fuites avant demarrage d'un equipement.","Respecter les distances de securite.","Ne jamais contourner une procedure HSE.","Porter les EPI adaptes au risque identifie.","Prevenir son responsable avant toute intervention particuliere.","Analyser les risques avant chaque demarrage de chantier.","Verifier la stabilite des equipements.","Utiliser les bons outils pour la bonne tache.","Respecter les consignes specifiques du chantier.","Ne jamais prendre de raccourci au detriment de la securite.","Arreter immediatement les travaux en cas de danger.","Proteger l'environnement lors des interventions.","Collecter et trier correctement les dechets.","Eviter toute pollution accidentelle.","Respecter les consignes de stockage des produits dangereux.","Lire les fiches de securite avant manipulation.","Verifier les equipements avant chaque prise de poste.","S'assurer de la disponibilite des moyens de secours.","Communiquer clairement avec l'equipe avant intervention.","Respecter les regles de circulation des engins.","Garder une vigilance permanente sur son environnement.","Prendre le temps d'effectuer le travail en securite.","La securite est l'affaire de tous.","Chaque incident peut etre evite par la prevention.","Aucun travail n'est plus urgent que la securite.","Zero accident commence par un comportement sur."]
 
     if "hse_affiche" not in st.session_state: st.session_state.hse_affiche = False
@@ -342,14 +348,12 @@ def main():
                     try:
                         fv = float(str(v).replace('%','').replace('+','').strip())
                         if abs(fv) < 0.01: s = "v-zero"
-                        elif fv > 0:
-                            kpi_name = r.get("Indicateur", "")
-                            if is_lb(kpi_name): s = "v-neg"
-                            else: s = "v-pos"
                         else:
                             kpi_name = r.get("Indicateur", "")
-                            if is_lb(kpi_name): s = "v-pos"
-                            else: s = "v-neg"
+                            if is_lb(kpi_name):
+                                s = "v-pos" if fv < 0 else "v-neg"
+                            else:
+                                s = "v-pos" if fv > 0 else "v-neg"
                     except: pass
                 h += '<td class="%s">%s</td>' % (s, v)
             h += '</tr>'
@@ -442,12 +446,6 @@ def main():
         fig.update_traces(textposition='inside', textinfo='percent+label+value', textfont_size=9)
         fig.update_layout(margin=dict(t=40,b=10,l=10,r=10), height=450, autosize=True, title_font_size=11,
                           legend=dict(font_size=8, orientation="h", yanchor="bottom", y=-0.15))
-        return fig
-
-    def anl_bar_chart(data, x, y, title, color_col=None, color_discrete=None):
-        if data.empty: return None
-        fig = px.bar(data, x=x, y=y, title=title, color=color_col, color_discrete_sequence=color_discrete)
-        fig.update_layout(margin=dict(t=40,b=10,l=10,r=10), height=450, autosize=True, title_font_size=11)
         return fig
 
     def anl_html_table(df_out, pct_col=None, pct_thresh=(80,60)):
@@ -557,7 +555,7 @@ def main():
             res_d = calc_kpis(df_dash, avdf, now, vp)
             ckdf_d = res_d['ckdf']
 
-            # ===== VARIANCE ANALYSIS =====
+            # ===== VARIANCE ANALYSIS (qk et pk sont deja definis plus haut) =====
             all_kpis = list(ckdf.columns)
             var_df = pd.DataFrame(index=ckdf.index)
             for k in all_kpis:
@@ -566,7 +564,6 @@ def main():
                 var_df[k + "_delta"] = (ckdf[k] - ckdf_d[k]).round(2)
                 var_df[k + "_var%"] = np.where(ckdf_d[k].abs() < 0.01, 0, ((ckdf[k] - ckdf_d[k]) / ckdf_d[k].abs() * 100)).round(1)
 
-            # Variance globale par poste (somme des deltas absolus pondérés)
             poste_variance = {}
             for p in vp:
                 if p in var_df.index:
@@ -581,7 +578,6 @@ def main():
                 else:
                     poste_variance[p] = 0.0
 
-            # Variance globale par KPI
             kpi_variance = {}
             for k in all_kpis:
                 delta_col = k + "_delta"
@@ -590,9 +586,8 @@ def main():
                 else:
                     kpi_variance[k] = 0.0
 
-            # Top 5 / Bottom 5 variance par poste
             sorted_var = sorted(poste_variance.items(), key=lambda x: x[1], reverse=True)
-            # Trouver le KPI le plus impactant pour chaque poste
+
             def get_top_kpi_var(poste):
                 if poste not in var_df.index: return ""
                 best_k, best_v = "", 0
@@ -610,7 +605,6 @@ def main():
             top5_var = [{"poste": p, "variance": v, "kpi": get_top_kpi_var(p)} for p, v in sorted_var[:5]]
             bot5_var = [{"poste": p, "variance": v, "kpi": get_top_kpi_var(p)} for p, v in sorted_var[-5:]]
 
-            # Construction tables variance
             def build_variance_table(kpi_list, var_dataframe, label_type):
                 cols = ["Poste de travail", "Indicateur", "Valeur Periode", "Valeur Reference", "Δ Absolu", "Var%"]
                 rows = []
@@ -625,28 +619,21 @@ def main():
                             "Valeur Periode": vp_v, "Valeur Reference": vr_v,
                             "Δ Absolu": delta_v, "Var%": varp_v
                         })
-                # Total
                 tot_row = {"Poste de travail": "TOTAL", "Indicateur": "", "_t": "total"}
-                for k in kpi_list:
-                    dc = k + "_periode"
-                    rc = k + "_reference"
-                    dlc = k + "_delta"
-                    vc = k + "_var%"
-                    tot_row["Valeur Periode"] = round(var_dataframe[dc].mean(), 2) if len(rows) > 0 else 0
-                    tot_row["Valeur Reference"] = round(var_dataframe[rc].mean(), 2) if len(rows) > 0 else 0
-                    tot_row["Δ Absolu"] = round(var_dataframe[dlc].mean(), 2) if len(rows) > 0 else 0
-                    tot_row["Var%"] = ""
+                avg_per = np.mean([r["Valeur Periode"] for r in rows]) if rows else 0
+                avg_ref = np.mean([r["Valeur Reference"] for r in rows]) if rows else 0
+                avg_del = np.mean([r["Δ Absolu"] for r in rows]) if rows else 0
+                tot_row["Valeur Periode"] = round(avg_per, 2)
+                tot_row["Valeur Reference"] = round(avg_ref, 2)
+                tot_row["Δ Absolu"] = round(avg_del, 2)
+                tot_row["Var%"] = ""
                 rows.append(tot_row)
                 return cols, rows
 
             var_p_cols, var_p_rows = build_variance_table(qk, var_df, "P")
             var_q_cols, var_q_rows = build_variance_table(pk, var_df, "Q")
 
-            qk = ["TAUX_REALISATION_CORRECTIF/PT","OT préparation <1 mois","OT préparation >3 mois","OT préparation 1mois< <3mois","OT planification <1 mois","OT planification >3 mois","OT planification 1mois< <3mois","OT exécution <1 mois","OT exécution >3 mois","OT exécution 1mois< <3mois"]
-            pk = ["appel avis approuvé","OT LANC ESTIME","Backlog préparation caractérisé","Backlog planification caractérisé","OT CONFIME","OT_COR_EGAL"]
-            cible = {"TAUX_REALISATION_CORRECTIF/PT":85,"OT préparation <1 mois":80,"OT préparation >3 mois":5,"OT préparation 1mois< <3mois":15,"OT planification <1 mois":80,"OT planification >3 mois":5,"OT planification 1mois< <3mois":15,"OT exécution <1 mois":80,"OT exécution >3 mois":5,"OT exécution 1mois< <3mois":15,"appel avis approuvé":95,"OT LANC ESTIME":100,"Backlog préparation caractérisé":100,"Backlog planification caractérisé":100,"OT CONFIME":100,"OT_COR_EGAL":100}
-            act_map = {"TAUX_REALISATION_CORRECTIF/PT":"Ameliorer le taux de realisation des OT.","OT préparation <1 mois":"Reduire l'age de preparation des OT (< 1 mois).","OT préparation >3 mois":"Traiter les OT avec preparation > 3 mois.","OT planification <1 mois":"Reduire l'age de planification des OT (< 1 mois).","OT planification >3 mois":"Traiter les OT avec planification > 3 mois.","OT exécution <1 mois":"Reduire l'age d'execution des OT (< 1 mois).","OT exécution >3 mois":"Traiter les OT avec execution > 3 mois.","OT LANC ESTIME":"Estimer les couts des OT lances.","Backlog préparation caractérisé":"Caracteriser le backlog de preparation.","Backlog planification caractérisé":"Caracteriser le backlog de planification.","OT CONFIME":"Confirmer les OT termines.","OT_COR_EGAL":"Rapprocher les couts reels et budgetes.","appel avis approuvé":"Creer un OT pour les avis sans ordre."}
-
+            # ===== SCORES =====
             pscores = {}; qscores = {}
             for poste in ckdf.index:
                 r = ckdf.loc[poste]
@@ -663,7 +650,7 @@ def main():
             pa_d = {k: round(ckdf_d[k].mean(),2) for k in qk}
             qa_d = {k: round(ckdf_d[k].mean(),2) for k in pk}
 
-            # ANOMALIES
+            # ===== ANOMALIES =====
             all_ano = []
             sub_p = {"TAUX_REALISATION_CORRECTIF/PT":lambda d:d[(d["Nº appel pl.entret."].fillna(0)==0)&(~d["Statut OT"].isin(["CLOT","TCLO"]))],"OT préparation <1 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]!="<1 mois")],"OT préparation >3 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]==">3 mois")],"OT planification <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]!="<1 mois")],"OT planification >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]==">3 mois")],"OT exécution <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]!="<1 mois")],"OT exécution >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]==">3 mois")]}
             sub_q = {"OT LANC ESTIME":lambda d:d[(d["Statut OT"]=="LANC")&(d["OT LANC ESTIME"]=="NON")],"Backlog préparation caractérisé":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["Backlog preparation"]=="NON CARACTERISE")],"Backlog planification caractérisé":lambda d:d[(d["Statut OT"]=="LANC")&(d["Backlog planification"]=="NON CARACTERISE")],"OT CONFIME":lambda d:d[d["OT CONFIME"]=="NON"],"OT_COR_EGAL":lambda d:d[d["OT_COR_EGAL"]=="NON"]}
@@ -720,10 +707,6 @@ def main():
             pcols, prows = build_kpi(qk, pscores, "Score Performance")
             qcols, qrows = build_kpi(pk, qscores, "Score Qualite")
 
-            # Rebuild variance tables after qk/pk redefinition
-            var_p_cols, var_p_rows = build_variance_table(qk, var_df, "P")
-            var_q_cols, var_q_rows = build_variance_table(pk, var_df, "Q")
-
             save_kpis_to_excel(prows, pcols, qrows, qcols, ano_p_r, ano_p_c, ano_q_r, ano_q_c, var_p_r, var_p_c, var_q_r, var_q_c, fichier_date)
 
             df_sc_d = pd.DataFrame([{"Poste":p,"Perf":pscores_d[p],"Qual":qscores_d[p],"Metier":get_metier(p),"Atelier":get_atelier(p),"Division":get_division(p)} for p in vp if p in pscores_d])
@@ -756,14 +739,13 @@ def main():
             <div class="cc c3"><div class="cv">%.1f%%</div><div class="cl">Score Qualite</div></div>
             <div class="cc c4"><div class="cv">%s</div><div class="cl">Total Anomalies</div></div>
             <div class="cc c5"><div class="cv">%s%.1f</div><div class="cl">Variance Moyenne</div></div>
-            <div class="cc c6"><div class="cv">%s / %s</div><div class="cl">Postes Ameliores / Regresses</div></div>
+            <div class="cc c6"><div class="cv">%s / %s</div><div class="cl">Postes Amel. / Regr.</div></div>
             </div>""" % (total_ot, avg_p, avg_q, total_ano, "+" if avg_var>=0 else "", avg_var, pos_var, neg_var), unsafe_allow_html=True)
 
             tab0, tab1, tab2, tab3, tab4 = st.tabs(["📊 TABLEAU DE BORD", "📈 INDICATEURS PERFORMANCE", "✅ INDICATEUR QUALITE", "🔬 ANALYSE", "📉 VARIANCES & CHANGEMENT"])
 
             # ==================== TAB 0: DASHBOARD ====================
             with tab0:
-                # --- BACKLOG PLANIFICATION (repositionné en haut) ---
                 st.markdown('<div class="stl c">📋 Analyse du Backlog Planification</div>', unsafe_allow_html=True)
                 bp_total = len(bl_plan_data)
                 bp_car_pct = (len(bl_plan_car)/bp_total*100) if bp_total>0 else 0
@@ -795,7 +777,6 @@ def main():
                         fig_bpb.update_layout(height=450, autosize=True, margin=dict(t=40,b=10,l=10,r=10), title_font_size=11)
                         st.plotly_chart(fig_bpb, use_container_width=True)
 
-                # --- Vue d'ensemble par poste avec variance ---
                 st.markdown('<div class="stl p">📊 Vue d\'ensemble par poste (avec variance)</div>', unsafe_allow_html=True)
                 st.markdown(html_grouped_bars(vp, pscores_d, qscores_d, "Performance & Qualite par Poste de Travail", poste_variance), unsafe_allow_html=True)
 
@@ -854,7 +835,6 @@ def main():
             with tab3:
                 st.markdown('<div class="stl c">🔬 Analyse Detaillee</div>', unsafe_allow_html=True)
 
-                # Backlog Preparation
                 st.markdown('<div class="stl p" style="margin-top:8px">📦 Analyse Backlog Preparation</div>', unsafe_allow_html=True)
                 bl_prep_data = dfp[dfp["Statut OT"]=="CRÉÉ"].copy()
                 bl_prep_car = bl_prep_data[bl_prep_data["Backlog preparation"]=="CARACTERISE"]
@@ -885,7 +865,6 @@ def main():
                 else:
                     st.markdown('<div class="es">Aucun OT en statut CRÉÉ pour cette periode</div>', unsafe_allow_html=True)
 
-                # Age OT
                 st.markdown('<div class="stl p" style="margin-top:8px">⏳ Analyse Age des OT par Statut</div>', unsafe_allow_html=True)
                 for statut_label, statut_filter, age_col, kpi_list_age in [
                     ("Preparation (CRÉÉ)", dfp["Statut OT"]=="CRÉÉ", "ap",
@@ -903,11 +882,10 @@ def main():
                                          title=f"Repartition Age - {statut_label}",
                                          color_discrete_sequence=["#38a169","#ecc94b","#e53e3e"])
                         fig_age.update_traces(textposition='inside', textinfo='percent+label+value', textfont_size=9)
-                        fig_age.update_layout(height=450, autosize=True, margin=dict(t=40,b=10,l=10,r=10), title_font_size=11,
+                        fig_age.update_layout(height=450, autosize=True, margin=dict(t=40,b:10,l:10,r:10), title_font_size=11,
                                               legend=dict(font_size=8, orientation="h", yanchor="bottom", y=-0.15))
                         st.plotly_chart(fig_age, use_container_width=True)
 
-                # Detail anomalies
                 if all_ano:
                     st.markdown('<div class="stl a" style="margin-top:8px">🔍 Detail des Anomalies</div>', unsafe_allow_html=True)
                     ano_df = pd.DataFrame(all_ano)
@@ -939,7 +917,6 @@ def main():
                 <strong>Vert</strong> = amelioration, <strong>Rouge</strong> = regression (inverse pour les indicateurs "plus bas c'est mieux").
                 </div>""", unsafe_allow_html=True)
 
-                # Resume variance global
                 st.markdown('<div class="stl v" style="margin-top:4px">📊 Resume Global des Variances par KPI</div>', unsafe_allow_html=True)
                 kpi_var_rows = []
                 for k in qk + pk:
@@ -957,11 +934,9 @@ def main():
                 kpi_var_rows.append(tot_kpi)
                 st.markdown(html_variance_table(kpi_var_rows, ["Indicateur","Valeur Periode","Valeur Reference","Δ Absolu","Var%"]), unsafe_allow_html=True)
 
-                # Classement Top 5 / Bottom 5
                 st.markdown('<div class="stl v" style="margin-top:8px">🏆 Classement des Postes par Variance</div>', unsafe_allow_html=True)
                 st.markdown(html_variance_ranking(top5_var, bot5_var), unsafe_allow_html=True)
 
-                # Chart variance par poste
                 var_chart_data = pd.DataFrame([
                     {"Poste": p, "Variance": poste_variance.get(p,0), "Type": "Amelioration" if poste_variance.get(p,0)>=0 else "Regression"}
                     for p in vp
@@ -969,19 +944,16 @@ def main():
                 fig_var = px.bar(var_chart_data, x="Variance", y="Poste", orientation="h",
                                  title="Variance Globale par Poste (Periode vs Reference)",
                                  color="Type", color_discrete_map={"Amelioration":"#276749","Regression":"#e53e3e"})
-                fig_var.update_layout(height=max(450, len(vp)*18), autosize=True, margin=dict(t=40,b=10,l=10,r=10), title_font_size=11)
+                fig_var.update_layout(height=max(450, len(vp)*18), autosize=True, margin=dict(t=40,b:10,l:10,r:10), title_font_size=11)
                 fig_var.update_xaxes(zeroline=True, zerolinewidth=2, zerolinecolor="#718096")
                 st.plotly_chart(fig_var, use_container_width=True)
 
-                # Detail variance Performance
                 st.markdown('<div class="stl v" style="margin-top:8px">📈 Detail Variance - Indicateurs de Performance</div>', unsafe_allow_html=True)
                 st.markdown(html_variance_table(var_p_rows, var_p_cols), unsafe_allow_html=True)
 
-                # Detail variance Qualite
                 st.markdown('<div class="stl v" style="margin-top:8px">✅ Detail Variance - Indicateurs de Qualite</div>', unsafe_allow_html=True)
                 st.markdown(html_variance_table(var_q_rows, var_q_cols), unsafe_allow_html=True)
 
-                # Heatmap variance
                 st.markdown('<div class="stl v" style="margin-top:8px">🗺️ Carte de Chaleur des Variances</div>', unsafe_allow_html=True)
                 heat_data = []
                 for p in vp:
@@ -997,12 +969,11 @@ def main():
                                          title="Heatmap Variance (Vert=Amelioration, Rouge=Regression)",
                                          color_continuous_scale=["#c53030","#f7fafc","#276749"],
                                          aspect="auto", zmin=-50, zmax=50)
-                    fig_heat.update_layout(height=450, autosize=True, margin=dict(t=40,b=80,l=120,r=10), title_font_size=11)
+                    fig_heat.update_layout(height=450, autosize=True, margin=dict(t=40,b:80,l:120,r:10), title_font_size=11)
                     fig_heat.update_xaxes(tickangle=45, tickfont_size=8)
                     fig_heat.update_yaxes(tickfont_size=8)
                     st.plotly_chart(fig_heat, use_container_width=True)
 
-                # Export variance
                 st.markdown('<div class="stl v" style="margin-top:8px">📥 Export</div>', unsafe_allow_html=True)
                 var_export = pd.DataFrame(heat_data)
                 if not var_export.empty:

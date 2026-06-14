@@ -158,113 +158,114 @@ def inject_custom_css():
     </style>""", unsafe_allow_html=True)
 
 # ============================================================
-# -------- Lecture robuste des fichiers (local ou upload) --------
+# -------- Lecture robuste ULTIME (gère CSV renommés .xlsx, .xls, etc.) --------
 # ============================================================
 
 def is_xlsx_buffer(f):
-    """Vérifie si un file-like commence par la signature ZIP/PK (xlsx)."""
-    try:
-        pos = f.tell()
-    except Exception:
-        pos = None
     try:
         b = f.read(4)
         f.seek(0)
+        return b == b'PK\x03\x04'
     except Exception:
         return False
-    return b == b'PK\x03\x04'
 
 def read_any_excel(source, usecols=None, parse_dates=None):
     """
-    Lit un fichier Excel/CSV depuis un chemin (str) ou un UploadedFile/BytesIO.
-    Gère les fichiers .xls renommés en .xlsx, CSV renommés, etc.
+    Lit un fichier Excel/CSV de manière totalement robuste.
+    Gère : vrais .xlsx, .xls, CSV renommés en .xlsx, et divers encodages (utf-8, utf-16, latin1).
     """
-    last_err = None
+    errors_log = []
+
+    def try_read(read_func, label):
+        try:
+            return read_func()
+        except Exception as e:
+            errors_log.append(f"{label} -> {e}")
+            return None
 
     # ---- Cas 1 : chemin fichier (string) ----
     if isinstance(source, str):
         ext = os.path.splitext(source)[1].lower()
         
-        # 1) Si l'extension est .csv ou .txt, essayer CSV en priorité
-        if ext in (".csv", ".txt"):
-            for csv_sep in [";", ",", "\t", "|"]:
-                try:
-                    return pd.read_csv(source, usecols=usecols, parse_dates=parse_dates, sep=csv_sep, on_bad_lines='skip')
-                except Exception as e:
-                    last_err = e
+        # 1) Moteurs Excel
+        if ext in (".xls", ".xlsx"):
+            engines = ["xlrd", "openpyxl"] if ext == ".xls" else ["openpyxl", "xlrd"]
+            for eng in engines:
+                result = try_read(
+                    lambda e=eng: pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine=e),
+                    f"Excel ({eng})"
+                )
+                if result is not None: return result
 
-        # 2) Moteurs Excel selon l'extension
-        if ext == ".xls":
-            engines = ["xlrd", "openpyxl"]
-        elif ext == ".xlsx":
-            engines = ["openpyxl", "xlrd"]   # openpyxl en premier, xlrd en secours si renommé
-        else:
-            engines = ["openpyxl", "xlrd"]   # extension inconnue, tenter les deux
+        # 2) CSV : on teste séparateurs ET encodages (très courant pour les exports Excel)
+        csv_seps = [";", ",", "\t", "|"]
+        csv_encs = [None, "utf-8", "latin1", "utf-16", "utf-16-le", "cp1252"]
+        
+        for enc in csv_encs:
+            for csv_sep in csv_seps:
+                result = try_read(
+                    lambda s=csv_sep, e=enc: pd.read_csv(
+                        source, usecols=usecols, parse_dates=parse_dates, 
+                        sep=s, encoding=enc, on_bad_lines='skip', engine='python'
+                    ),
+                    f"CSV (sep='{s}', enc={enc})"
+                )
+                if result is not None and result.shape[1] > 1:
+                    return result
 
-        for eng in engines:
-            try:
-                return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine=eng)
-            except Exception as e:
-                last_err = e
-
-        # 3) Si tous les moteurs Excel ont échoué, tenter les séparateurs CSV courants
-        for csv_sep in [";", ",", "\t", "|"]:
-            try:
-                df = pd.read_csv(source, usecols=usecols, parse_dates=parse_dates, sep=csv_sep, on_bad_lines='skip')
-                if df.shape[1] > 1:
-                    return df
-            except Exception:
-                continue
-
-        raise ValueError(f"Impossible de lire le fichier '{source}': {last_err}")
+        detail = "\n".join(f"- {e}" for e in errors_log) if errors_log else "Aucune erreur capturée"
+        raise ValueError(f"Impossible de lire le fichier '{source}':\n{detail}")
 
     # ---- Cas 2 : file-like (Streamlit UploadedFile, BytesIO, etc.) ----
-    try:
-        source.seek(0)
-    except Exception:
-        pass
+    try: source.seek(0)
+    except Exception: pass
 
     # Essai 1 : xlsx (openpyxl) si signature PK..
     if is_xlsx_buffer(source):
-        try:
-            source.seek(0)
-            return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="openpyxl")
-        except Exception as e:
-            last_err = e
-            try:
-                source.seek(0)
-            except Exception:
-                pass
+        result = try_read(
+            lambda: pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="openpyxl"),
+            "Fichier Upload (openpyxl)"
+        )
+        if result is not None: return result
 
     # Essai 2 : xls legacy (xlrd)
-    try:
-        source.seek(0)
-        return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="xlrd")
-    except Exception as e:
-        last_err = e
-        try:
-            source.seek(0)
-        except Exception:
-            pass
+    try: source.seek(0)
+    except Exception: pass
+    result = try_read(
+        lambda: pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="xlrd"),
+        "Fichier Upload (xlrd)"
+    )
+    if result is not None: return result
 
-    # Essai 3 : csv avec séparateurs explicites (évite 'bad delimiter value')
-    for csv_sep in [";", ",", "\t", "|"]:
-        try:
-            source.seek(0)
-            df = pd.read_csv(source, usecols=usecols, parse_dates=parse_dates, sep=csv_sep, on_bad_lines='skip')
-            if df.shape[1] > 1:
-                return df
-        except Exception:
-            continue
+    # Essai 3 : CSV avec séparateurs ET encodages multiples
+    csv_seps = [";", ",", "\t", "|"]
+    csv_encs = [None, "utf-8", "latin1", "utf-16", "utf-16-le", "cp1252"]
+    
+    for enc in csv_encs:
+        for csv_sep in csv_seps:
+            try: source.seek(0)
+            except Exception: pass
+            result = try_read(
+                lambda s=csv_sep, e=enc: pd.read_csv(
+                    source, usecols=usecols, parse_dates=parse_dates, 
+                    sep=s, encoding=e, on_bad_lines='skip', engine='python'
+                ),
+                f"Upload CSV (sep='{s}', enc={enc})"
+            )
+            if result is not None and result.shape[1] > 1:
+                return result
 
-    # Essai 4 : dernier recours, forcer openpyxl
-    try:
-        source.seek(0)
-        return pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="openpyxl")
-    except Exception as e:
-        last_err = e
+    # Essai 4 : dernier recours openpyxl
+    try: source.seek(0)
+    except Exception: pass
+    result = try_read(
+        lambda: pd.read_excel(source, usecols=usecols, parse_dates=parse_dates, engine="openpyxl"),
+        "Upload (openpyxl forcé)"
+    )
+    if result is not None: return result
 
-    raise ValueError(f"Aucun moteur ne peut lire ce fichier. Derniere erreur: {last_err}")
+    detail = "\n".join(f"- {e}" for e in errors_log) if errors_log else "Aucune erreur capturée"
+    raise ValueError(f"Aucun moteur ne peut lire ce fichier.\n{detail}")
 
 
 # ============================================================
@@ -488,7 +489,7 @@ def main():
         for p in sp2:
             pv, qv = pscores.get(p,0), qscores.get(p,0)
             pw, qw = min(max(pv,0),100), min(max(qv,0),100)
-            h += '<div class="gbr"><div class="gbr-l">%s</div><div class="gbr-g"><div class="gbr-w"><div class="gbr-f gb-p" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div><div class="gbr-w"><div class="gbr-f gb-q" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div></div></div>' % (p, pw, pv, qw, qv)
+            h += '<div class="gbr"><div class="gbr-l">%s</div><div class="gbr-g"><div class="gbr-w"><div class="gbr-f gb-p" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div><div class="gbr-w"><div class="gbr-f gb-q" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div></div></div></div>' % (p, pw, pv, qw, qv)
         h += '</div>'; return h
 
     def anl_pie_chart(data, names_col, values_col, title, colors=None):
@@ -595,7 +596,7 @@ def main():
                     if "Sulfurique (PS)" in sa and "PS" in p: m = True
                     if "Phosphorique (PP)" in sa and "PP" in p: m = True
                     if "Engrais (TSP/REX)" in sa and ("TSP" in p or "REX" in p): m = True
-                    if "Feed (MCP/DCP)" in sa and ("MCP" in p or "DCP" in p): m = True
+                    if "Feed (MCP/DCP)" in sa and ("MCP" in p or "DCP" in p: m = True
                     if not m: return False
                 if "All" not in sd:
                     m = False
@@ -867,7 +868,7 @@ def main():
                     st.markdown(anl_html_table(ano_summary, pct_col=None), unsafe_allow_html=True)
 
                     st.markdown('<div class="stl a">📋 Detail par Poste</div>', unsafe_allow_html=True)
-                    ano_poste = ano_df.groupby("Poste").agg(Total=("Nb","sum"), KPIs=("KPI",lambda x:", ".join(x.unique()))).reset_index()
+                    ano_poste = ano_df.groupby("Poste").agg(Total=("Nb","sum"), KPIs=("KPI",lambda x:", ". ".join(x.unique()))).reset_index()
                     ano_poste = ano_poste.sort_values("Total", ascending=False)
                     st.markdown(anl_html_table(ano_poste, pct_col=None), unsafe_allow_html=True)
                 else:
@@ -906,7 +907,8 @@ def main():
 
         except Exception as e:
             st.error("Erreur lors du chargement des donnees: %s" % str(e))
-            st.markdown('<div class="es">Veuillez verifier que les fichiers ot.xlsx et avis.xlsx sont presents a la racine, ou uploader les fichiers via le panneau lateral.<br><br><b>Detail :</b> %s</div>' % str(e).replace("<","&lt;").replace(">","&gt;"), unsafe_allow_html=True)
+            detail = "\n".join(f"- {err}" for err in errors_log) if 'errors_log' in dir() else str(e)
+            st.markdown('<div class="es">Veuillez verifier que les fichiers ot.xlsx et avis.xlsx sont presents a la racine.<br><br><b>Detail :</b><pre style="text-align:left;font-size:11px;background:#f7fafc;padding:10px;border:1px solid #e2e8f0;border-radius:5px;overflow-x:auto;max-height:300px;white-space:pre-wrap;word-break:break-all">%s</pre></div>' % detail, unsafe_allow_html=True)
     else:
         if unf:
             st.markdown('<div class="es">📁 Veuillez uploader les fichiers OT et AVIS pour continuer.</div>', unsafe_allow_html=True)

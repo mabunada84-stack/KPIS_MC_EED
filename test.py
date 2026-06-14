@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -54,88 +55,81 @@ def inject_custom_css():
     :root{--p:#1e3a5f;--pl:#2c5282;--b:#e2e8f0;--r:10px}
     *{box-sizing:border-box;margin:0;padding:0}
     .stApp{background:#edf2f7;font-family:'Inter',sans-serif}
-    .main .block-container{
-        max-width: 100% !important;
-        width: 100% !important;
-        padding-left: 0.5rem !important;
-        padding-right: 0.5rem !important;
-        padding-top:.6rem;
-        padding-bottom:.6rem;
-    }
+    .main .block-container{padding-top:.6rem;padding-bottom:.6rem;max-width:100%!important;padding-left:.2rem;padding-right:.2rem}
     .stTabs,.stTabs>div,.stTabs [data-baseweb="tab-list"]{width:100%!important;max-width:100%!important}
     .mh{background:linear-gradient(135deg,var(--p),var(--pl));padding:10px 16px;border-radius:var(--r);margin-bottom:4px;box-shadow:0 6px 20px rgba(0,0,0,.1);overflow:hidden}
-    .mh h1{color:#fff;font-size:19px;font-weight:800;margin:0;display:inline}
-    .mh .db{float:right;background:rgba(255,255,255,.15);padding:2px 10px;border-radius:14px;color:#fff;font-size:13px;font-weight:500;border:1px solid rgba(255,255,255,.2);margin-top:2px}
+    .mh h1{color:#fff;font-size:16px;font-weight:800;margin:0;display:inline}
+    .mh .db{float:right;background:rgba(255,255,255,.15);padding:2px 10px;border-radius:14px;color:#fff;font-size:10px;font-weight:500;border:1px solid rgba(255,255,255,.2);margin-top:2px}
     .cr{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:4px}
     .cc{background:#fff;border-radius:var(--r);padding:8px 10px;box-shadow:0 2px 8px rgba(0,0,0,.04);border:1px solid var(--b);text-align:center}
-    .cc .cv{font-size:25px;font-weight:900;line-height:1}
-    .cc .cl{font-size:10px;color:#718096;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:1px}
+    .cc .cv{font-size:22px;font-weight:900;line-height:1}
+    .cc .cl{font-size:7px;color:#718096;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:1px}
     .cc.c1{border-top:3px solid #3182ce}.cc.c1 .cv{color:#2b6cb0}
     .cc.c2{border-top:3px solid #38a169}.cc.c2 .cv{color:#276749}
     .cc.c3{border-top:3px solid #805ad5}.cc.c3 .cv{color:#6b46c1}
     .cc.c4{border-top:3px solid #e53e3e}.cc.c4 .cv{color:#c53030}
-    .stl{font-size:14px;font-weight:700;color:var(--p);margin:4px 0 1px 0;padding-left:8px;border-left:3px solid var(--pl)}
+    .stl{font-size:11px;font-weight:700;color:var(--p);margin:4px 0 1px 0;padding-left:8px;border-left:3px solid var(--pl)}
     .stl.q{border-left-color:#3182ce}.stl.p{border-left-color:#38a169}.stl.a{border-left-color:#e53e3e}.stl.c{border-left-color:#805ad5}
-    .tw{width:100%;border-collapse:collapse;font-family:'Inter',sans-serif;font-size:11px;display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0}
-    .tw thead th{background:var(--p);color:#fff;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.3px;padding:3px;border:none;white-space:nowrap;position:sticky;top:0;z-index:10}
+    .tw{width:100%;border-collapse:collapse;font-family:'Inter',sans-serif;font-size:8px;display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0}
+    .tw thead th{background:var(--p);color:#fff;font-weight:700;font-size:7px;text-transform:uppercase;letter-spacing:.3px;padding:3px;border:none;white-space:nowrap;position:sticky;top:0;z-index:10}
     .tw.qt thead th{background:linear-gradient(135deg,#2b6cb0,#3182ce)}
     .tw.pt thead th{background:linear-gradient(135deg,#276749,#38a169)}
     .tw.at thead th{background:linear-gradient(135deg,#c53030,#e53e3e)}
     .tw tbody td{padding:2px 3px;border-bottom:1px solid #edf2f7;white-space:nowrap}
     .tw tbody tr:nth-child(even) td{background:#f7fafc}
     .tw tbody tr:hover td{background:#ebf8ff!important}
-    .cb td{background:#2b6cb0!important;color:#fff!important;font-weight:700!important;font-size:11px!important}
-    .tr td{background:#e2e8f0!important;font-weight:800!important;font-size:11px!important}
+    .cb td{background:#2b6cb0!important;color:#fff!important;font-weight:700!important;font-size:8px!important}
+    .tr td{background:#e2e8f0!important;font-weight:800!important;font-size:8px!important}
     .stTabs [data-baseweb="tab-list"]{gap:2px;background:#e2e8f0;padding:2px;border-radius:6px;margin-bottom:3px}
-    .stTabs [data-baseweb="tab"]{border-radius:5px;padding:5px 10px;font-weight:600;font-size:13px}
+    .stTabs [data-baseweb="tab"]{border-radius:5px;padding:5px 10px;font-weight:600;font-size:10px}
     .stTabs [aria-selected="true"]{background:#fff!important;color:var(--p)!important;box-shadow:0 2px 5px rgba(0,0,0,.07)}
-    .sr{display:flex;align-items:center;padding:4px 8px;background:#fff;border-radius:5px;margin-bottom:1px;border:1px solid var(--b);font-size:12px}
-    .sr .sn{font-weight:700;color:var(--p);min-width:200px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .sr .sc{padding:2px 7px;border-radius:12px;font-weight:800;font-size:13px;min-width:40px;text-align:center;margin:0 6px;color:#fff}
-    .sr .sa{color:#718096;font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .sr .stg{font-size:10px;color:#718096;min-width:50px;text-align:center;white-space:nowrap}
-    .sr .sb{font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;white-space:nowrap}
+    .sr{display:flex;align-items:center;padding:4px 8px;background:#fff;border-radius:5px;margin-bottom:1px;border:1px solid var(--b);font-size:9px}
+    .sr .sn{font-weight:700;color:var(--p);min-width:200px;font-size:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .sr .sc{padding:2px 7px;border-radius:12px;font-weight:800;font-size:10px;min-width:40px;text-align:center;margin:0 6px;color:#fff}
+    .sr .sa{color:#718096;font-size:8px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .sr .stg{font-size:7px;color:#718096;min-width:50px;text-align:center;white-space:nowrap}
+    .sr .sb{font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;white-space:nowrap}
     .ca{background:#fff;border-radius:var(--r);padding:8px;margin-top:2px;border:1px solid var(--b);box-shadow:0 1px 4px rgba(0,0,0,.02)}
-    .ca .ct{font-size:13px;font-weight:700;margin-bottom:4px;padding-bottom:3px;border-bottom:1px solid var(--b)}
-    .car{display:flex;align-items:center;margin-bottom:3px;font-size:11px}
+    .ca .ct{font-size:10px;font-weight:700;margin-bottom:4px;padding-bottom:3px;border-bottom:1px solid var(--b)}
+    .car{display:flex;align-items:center;margin-bottom:3px;font-size:8px}
     .car:last-child{margin-bottom:0}
     .car .cal{width:160px;font-weight:600;color:var(--p);text-align:right;padding-right:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .car .cab{flex:1;height:22px;background:#edf2f7;border-radius:4px;overflow:hidden}
     .car .caf{height:100%;border-radius:4px;transition:width .3s}
-    .car .cav-out{font-size:11px;font-weight:800;color:#1a202c;min-width:50px;text-align:right;padding-left:4px}
-    .gbr{display:flex;align-items:center;padding:2px 0;font-size:11px;border-bottom:1px solid #f7fafc}
+    .car .cav-out{font-size:8px;font-weight:800;color:#1a202c;min-width:50px;text-align:right;padding-left:4px}
+    .gbr{display:flex;align-items:center;padding:2px 0;font-size:8px;border-bottom:1px solid #f7fafc}
     .gbr:last-child{border:none}
-    .gbr-l{width:140px;font-weight:600;color:#1a202c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}
+    .gbr-l{width:140px;font-weight:600;color:#1a202c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:7px}
     .gbr-g{display:flex;align-items:center;gap:3px;flex:1}
     .gbr-w{flex:1;height:18px;background:#edf2f7;border-radius:3px;overflow:hidden}
     .gbr-f{height:100%;border-radius:3px}
     .gb-p{background:linear-gradient(90deg,#2b6cb0,#4299e1)}
     .gb-q{background:linear-gradient(90deg,#276749,#48bb78)}
-    .gbr-v{font-size:10px;font-weight:800;min-width:42px;text-align:right;color:#1a202c}
-    .gbr-legend{display:flex;gap:12px;margin-bottom:4px;font-size:11px;font-weight:700}
+    .gbr-v{font-size:7px;font-weight:800;min-width:42px;text-align:right;color:#1a202c}
+    .gbr-legend{display:flex;gap:12px;margin-bottom:4px;font-size:8px;font-weight:700}
     .gbr-legend span{display:flex;align-items:center;gap:4px}
     .gbr-legend i{display:inline-block;width:12px;height:12px;border-radius:2px}
     .cg{display:grid;grid-template-columns:1fr 1fr;gap:4px}
     .cg>div{background:#fff;border-radius:var(--r);padding:6px 8px;border:1px solid var(--b)}
-    .cg .ct{font-size:12px;font-weight:700;margin-bottom:2px;padding-bottom:2px;border-bottom:1px solid var(--b)}
-    .cgr{display:flex;align-items:center;padding:2px 0;font-size:11px;border-bottom:1px solid #f7fafc}
+    .cg .ct{font-size:9px;font-weight:700;margin-bottom:2px;padding-bottom:2px;border-bottom:1px solid var(--b)}
+    .cgr{display:flex;align-items:center;padding:2px 0;font-size:8px;border-bottom:1px solid #f7fafc}
     .cgr:last-child{border:none}
     .cgr .rk{width:14px;font-weight:800;text-align:center}
     .cgr .pn{flex:1;font-weight:600;color:#1a202c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .cgr .ps{font-weight:800;min-width:45px;text-align:right}
     .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
-    .stButton>button[kind="primary"]{background:linear-gradient(135deg,var(--p),var(--pl));border:none;border-radius:6px;padding:6px 12px;font-weight:700;font-size:14px;width:100%}
+    .stButton>button[kind="primary"]{background:linear-gradient(135deg,var(--p),var(--pl));border:none;border-radius:6px;padding:6px 12px;font-weight:700;font-size:11px;width:100%}
     ::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:#f1f1f1}::-webkit-scrollbar-thumb{background:#cbd5e0;border-radius:2px}
     div[data-testid="stSidebar"]{background:linear-gradient(180deg,var(--p),#0f2744)}
     div[data-testid="stSidebar"]*{color:rgba(255,255,255,.9)!important}
-    div[data-testid="stSidebar"] .stSelectbox label,div[data-testid="stSidebar"] .stMultiSelect label,div[data-testid="stSidebar"] .stDateInput label{color:rgba(255,255,255,.8)!important;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+    div[data-testid="stSidebar"] .stSelectbox label,div[data-testid="stSidebar"] .stMultiSelect label,div[data-testid="stSidebar"] .stDateInput label{color:rgba(255,255,255,.8)!important;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:.5px}
     div[data-testid="stSidebar"] div[data-testid="stWidget"]{background:rgba(255,255,255,.08);border-radius:6px;padding:2px 6px;margin-bottom:2px;border:1px solid rgba(255,255,255,.1)}
     div[data-testid="stSidebar"] .stSelectbox>div>div,div[data-testid="stSidebar"] .stMultiSelect>div>div,div[data-testid="stSidebar"] .stDateInput>div>div{background:rgba(255,255,255,.95)!important;border-radius:5px}
-    .es{text-align:center;padding:10px;color:#718096;font-size:13px}
+    .es{text-align:center;padding:10px;color:#718096;font-size:10px}
     .rh{display:flex;align-items:center;justify-content:space-between;margin-bottom:0}
     .rh .stl{margin:0}
-    .anl-tbl{width:100%;border-collapse:collapse;font-family:'Inter',sans-serif;font-size:12px;margin:0}
-    .anl-tbl thead th{background:var(--p);color:#fff;font-weight:700;font-size:11px;padding:5px 6px;border:none;white-space:nowrap;position:sticky;top:0}
+    .anl-tbl{width:100%;border-collapse:collapse;font-family:'Inter',sans-serif;font-size:9px;margin:0}
+    .anl-tbl thead th{background:var(--p);color:#fff;font-weight:700;font-size:8px;padding:5px 6px;border:none;white-space:nowrap;position:sticky;top:0}
     .anl-tbl tbody td{padding:4px 6px;border-bottom:1px solid #edf2f7}
     .anl-tbl tbody tr:nth-child(even) td{background:#f7fafc}
     .anl-tbl tbody tr:hover td{background:#ebf8ff!important}
@@ -143,7 +137,7 @@ def inject_custom_css():
     .g-green{background:#c6efce;color:#006100;font-weight:600}
     .g-yellow{background:#ffeb9c;color:#9c6500;font-weight:600}
     .g-red{background:#ffc7ce;color:#9c0006;font-weight:600}
-    @media(max-width:768px){.cr{grid-template-columns:repeat(2,1fr)}.mh h1{font-size:16px}.mh .db{float:none;display:block;margin-top:2px}.cg,.dgrid{grid-template-columns:1fr}.car .cal{width:100px}.gbr-l{width:90px}}
+    @media(max-width:768px){.cr{grid-template-columns:repeat(2,1fr)}.mh h1{font-size:13px}.mh .db{float:none;display:block;margin-top:2px}.cg,.dgrid{grid-template-columns:1fr}.car .cal{width:100px}.gbr-l{width:90px}}
     </style>""", unsafe_allow_html=True)
 
 def main():
@@ -161,10 +155,10 @@ def main():
         c = random.choice(consignes)
         st.markdown("""<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a365d,#2d3748,#1a365d);padding:40px">
         <div style="font-size:64px;margin-bottom:20px">🦺</div>
-        <h1 style="text-align:center;font-size:45px;color:#fff;font-weight:900;margin:0">HSE - CONSIGNE DE SECURITE</h1>
-        <p style="text-align:center;color:rgba(255,255,255,.6);font-size:21px;margin-top:8px;letter-spacing:3px;text-transform:uppercase">Securite - Sante - Environnement</p>
-        <div style="background:linear-gradient(135deg,#f6e05e,#ed8936);padding:36px 48px;border-radius:20px;font-size:31px;font-weight:700;text-align:center;margin:40px 0;color:#1a202c;max-width:800px;box-shadow:0 20px 60px rgba(0,0,0,.3)">⚠️ %s</div>
-        <h2 style="text-align:center;color:#48bb78;font-size:35px;font-weight:900">Aucun travail n'est plus urgent que la securite</h2>
+        <h1 style="text-align:center;font-size:42px;color:#fff;font-weight:900;margin:0">HSE - CONSIGNE DE SECURITE</h1>
+        <p style="text-align:center;color:rgba(255,255,255,.6);font-size:18px;margin-top:8px;letter-spacing:3px;text-transform:uppercase">Securite - Sante - Environnement</p>
+        <div style="background:linear-gradient(135deg,#f6e05e,#ed8936);padding:36px 48px;border-radius:20px;font-size:28px;font-weight:700;text-align:center;margin:40px 0;color:#1a202c;max-width:800px;box-shadow:0 20px 60px rgba(0,0,0,.3)">⚠️ %s</div>
+        <h2 style="text-align:center;color:#48bb78;font-size:32px;font-weight:900">Aucun travail n'est plus urgent que la securite</h2>
         <div style="margin-top:40px;width:200px;height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden"><div style="width:100%%;height:100%%;background:linear-gradient(90deg,#48bb78,#38a169);border-radius:2px;animation:ld 5.5s ease-in-out forwards"></div></div>
         <style>@keyframes ld{from{width:0}to{width:100%%}}</style></div>""" % c, unsafe_allow_html=True)
         time.sleep(6); st.session_state.hse_affiche = True; st.rerun(); st.stop()
@@ -263,18 +257,12 @@ def main():
     def ks(v, c):
         try: val = float(v)
         except: return ""
-        if c in ["OT préparation <1 mois","OT planification <1 mois","OT exécution <1 mois"]:
-            return "background:#c6efce;color:#006100;font-weight:600" if val>=80 else ("background:#ffeb9c;color:#9c6500;font-weight:600" if val>=75 else "background:#ffc7ce;color:#9c0006;font-weight:600")
-        if c in ["OT préparation 1mois< <3mois","OT planification 1mois< <3mois","OT exécution 1mois< <3mois"]:
-            return "background:#c6efce;color:#006100;font-weight:600" if val<=15 else "background:#ffc7ce;color:#9c0006;font-weight:600"
-        if c in ["OT préparation >3 mois","OT planification >3 mois","OT exécution >3 mois"]:
-            return "background:#c6efce;color:#006100;font-weight:600" if val<=5 else "background:#ffc7ce;color:#9c0006;font-weight:600"
-        if c == "TAUX_REALISATION_CORRECTIF/PT":
-            return "background:#c6efce;color:#006100;font-weight:600" if val>=85 else ("background:#ffeb9c;color:#9c6500;font-weight:600" if val>=80 else "background:#ffc7ce;color:#9c0006;font-weight:600")
-        if c == "appel avis approuvé":
-            return "background:#c6efce;color:#006100;font-weight:600" if val>=95 else ("background:#ffeb9c;color:#9c6500;font-weight:600" if val>=90 else "background:#ffc7ce;color:#9c0006;font-weight:600")
-        if c in ["OT LANC ESTIME","Backlog préparation caractérisé","Backlog planification caractérisé","OT CONFIME","OT_COR_EGAL"]:
-            return "background:#c6efce;color:#006100;font-weight:600" if val>=100 else ("background:#ffeb9c;color:#9c6500;font-weight:600" if val>=95 else "background:#ffc7ce;color:#9c0006;font-weight:600")
+        if c in ["OT préparation <1 mois","OT planification <1 mois","OT exécution <1 mois"]: return "background:#c6efce;color:#006100;font-weight:600" if val>=80 else ("background:#ffeb9c;color:#9c6500;font-weight:600" if val>=75 else "background:#ffc7ce;color:#9c0006;font-weight:600")
+        if c in ["OT préparation 1mois< <3mois","OT planification 1mois< <3mois","OT exécution 1mois< <3mois"]: return "background:#c6efce;color:#006100;font-weight:600" if val<=15 else "background:#ffc7ce;color:#9c0006;font-weight:600"
+        if c in ["OT préparation >3 mois","OT planification >3 mois","OT exécution >3 mois"]: return "background:#c6efce;color:#006100;font-weight:600" if val<=5 else "background:#ffc7ce;color:#9c0006;font-weight:600"
+        if c == "TAUX_REALISATION_CORRECTIF/PT": return "background:#c6efce;color:#006100;font-weight:600" if val>=85 else ("background:#ffeb9c;color:#9c6500;font-weight:600" if val>=80 else "background:#ffc7ce;color:#9c0006;font-weight:600")
+        if c == "appel avis approuvé": return "background:#c6efce;color:#006100;font-weight:600" if val>=95 else ("background:#ffeb9c;color:#9c6500;font-weight:600" if val>=90 else "background:#ffc7ce;color:#9c0006;font-weight:600")
+        if c in ["OT LANC ESTIME","Backlog préparation caractérisé","Backlog planification caractérisé","OT CONFIME","OT_COR_EGAL"]: return "background:#c6efce;color:#006100;font-weight:600" if val>=100 else ("background:#ffeb9c;color:#9c6500;font-weight:600" if val>=95 else "background:#ffc7ce;color:#9c0006;font-weight:600")
         return ""
     def cs(v):
         try: val = float(str(v).replace(' %','').strip())
@@ -338,11 +326,11 @@ def main():
         h = '<div class="cg"><div><div class="ct" style="color:#38a169">Top 5 — Objectif Atteint</div>'
         if t5:
             for i,(p,s) in enumerate(t5): h += '<div class="cgr"><span class="rk" style="color:%s">%s</span><span class="pn">%s</span><span class="ps" style="%s">%.2f%%</span></div>' % (accent,i+1,p,cs("%.2f"%s),s)
-        else: h += '<div style="padding:4px;font-size:11px;color:#718096">Aucun poste</div>'
+        else: h += '<div style="padding:4px;font-size:8px;color:#718096">Aucun poste</div>'
         h += '</div><div><div class="ct" style="color:#e53e3e">Bottom 5 — Non Atteint</div>'
         if b5:
             for i,(p,s) in enumerate(reversed(b5)): h += '<div class="cgr"><span class="rk" style="color:#e53e3e">%s</span><span class="pn">%s</span><span class="ps" style="%s">%.2f%%</span></div>' % (len(b5)-i,p,cs("%.2f"%s),s)
-        else: h += '<div style="padding:4px;font-size:11px;color:#38a169">Tous atteints</div>'
+        else: h += '<div style="padding:4px;font-size:8px;color:#38a169">Tous atteints</div>'
         h += '</div></div>'; return h
 
     def html_kpi_bars(kpi_list, actuals, targets, title, color_ok, color_fail):
@@ -376,7 +364,7 @@ def main():
         fig = px.pie(data, names=names_col, values=values_col, title=title,
                      color_discrete_sequence=colors or px.colors.qualitative.Set2)
         fig.update_traces(textposition='inside', textinfo='percent+label+value', textfont_size=9)
-        fig.update_layout(margin=dict(t=40, b=10, l=10, r=10), height=340, title_font_size=11,
+        fig.update_layout(margin=dict(t=40,b=10,l=10,r=10), height=340, title_font_size=11,
                           legend=dict(font_size=8, orientation="h", yanchor="bottom", y=-0.15))
         return fig
 
@@ -410,7 +398,7 @@ def main():
 
     # ===================== SIDEBAR =====================
     with st.sidebar:
-        st.markdown("""<div style="padding:10px 0 4px 0"><div style="font-size:18px;margin-bottom:2px">⚙️</div><div style="font-size:15px;font-weight:800;color:white">Filtres & Parametres</div><div style="font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Configuration</div></div>""", unsafe_allow_html=True)
+        st.markdown("""<div style="padding:10px 0 4px 0"><div style="font-size:18px;margin-bottom:2px">⚙️</div><div style="font-size:12px;font-weight:800;color:white">Filtres & Parametres</div><div style="font-size:8px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Configuration</div></div>""", unsafe_allow_html=True)
         st.markdown("---")
         unf = st.toggle("📁 Charger nouveaux fichiers", value=False, key="tf")
         ot_f = av_f = None; apm = []
@@ -423,7 +411,7 @@ def main():
                     _t = excr(pd.read_excel("ot.xlsx"))
                     apm = sorted(_t[_t["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"), na=False)]["Poste travail princ."].dropna().unique().tolist())
                 except: pass
-            st.markdown("""<div style="background:rgba(255,255,255,.1);padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.15)"><div style="font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Donnees</div><div style="font-size:13px;color:white;font-weight:600;margin-top:1px">📅 %s</div></div>""" % fichier_date, unsafe_allow_html=True)
+            st.markdown("""<div style="background:rgba(255,255,255,.1);padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.15)"><div style="font-size:7px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Donnees</div><div style="font-size:10px;color:white;font-weight:600;margin-top:1px">📅 %s</div></div>""" % fichier_date, unsafe_allow_html=True)
         st.markdown("---")
         st.markdown("**🎯 Postes**")
         sp = st.multiselect("Poste", ["All"]+apm, ["All"], key="sp")
@@ -577,7 +565,7 @@ def main():
             total_ot = len(df); avg_p = np.mean(list(pscores.values())) if pscores else 0
             avg_q = np.mean(list(qscores.values())) if qscores else 0; total_ano = sum(a["Nb"] for a in all_ano)
 
-            # Trouver colonne Designation
+            # === Trouver colonne Designation ===
             desig_col = None
             for cn in ["Désignation du travail","Designation du travail","Désignation","Designation","Description"]:
                 if cn in dfp.columns: desig_col = cn; break
@@ -622,181 +610,227 @@ def main():
                     with c2:
                         st.markdown(html_bars([(idx,row["Qual"]) for idx,row in by_div.iterrows()], "Qualite par Division", "#276749"), unsafe_allow_html=True)
 
-                st.markdown('<div class="stl c">🏆 Synthese Globale</div>', unsafe_allow_html=True)
-                st.markdown(html_synth(qk, pa, cible, act_map, "#3182ce"), unsafe_allow_html=True)
-                st.markdown(html_synth(pk, qa, cible, act_map, "#805ad5"), unsafe_allow_html=True)
+                st.markdown('<div class="stl p">📊 Synthese globale (sans filtre date)</div>', unsafe_allow_html=True)
+                st.markdown(html_synth(qk, pa_d, cible, act_map, "#2b6cb0"), unsafe_allow_html=True)
+                st.markdown(html_synth(pk, qa_d, cible, act_map, "#276749"), unsafe_allow_html=True)
 
-                st.markdown('<div class="stl p">📊 Classement Postes</div>', unsafe_allow_html=True)
-                st.markdown(html_classement(pscores, "#2b6cb0"), unsafe_allow_html=True)
+                st.markdown('<div class="stl p">🏆 Classement des postes</div>', unsafe_allow_html=True)
+                st.markdown(html_classement(pscores_d, "#2b6cb0"), unsafe_allow_html=True)
+                st.markdown(html_classement(qscores_d, "#276749"), unsafe_allow_html=True)
 
             # ==================== PERFORMANCE ====================
             with tab1:
-                st.markdown('<div class="stl p">📈 Indicateurs de Performance par Poste</div>', unsafe_allow_html=True)
-                st.markdown(html_table(prows, pcols, "pt"), unsafe_allow_html=True)
-
-                st.markdown('<div class="stl p">📊 Synthese Performance</div>', unsafe_allow_html=True)
-                st.markdown(html_synth(qk, pa, cible, act_map, "#3182ce"), unsafe_allow_html=True)
-
-                st.markdown('<div class="stl p">📏 Barres de Progression</div>', unsafe_allow_html=True)
-                st.markdown(html_kpi_bars(qk, pa, cible, "Progression Performance", "#2b6cb0", "#e53e3e"), unsafe_allow_html=True)
-
-                if ano_p_c and ano_p_r:
-                    st.markdown('<div class="stl a">⚠️ Anomalies Performance</div>', unsafe_allow_html=True)
-                    st.markdown(html_ano(ano_p_r, ano_p_c), unsafe_allow_html=True)
+                choix_p = st.radio("Choix d'affichage", ["📈 Indicateurs de Performance", "⚠️ Anomalies Performance"], horizontal=True, key="choix_p")
+                if choix_p == "📈 Indicateurs de Performance":
+                    st.markdown('<div class="rh"><div class="stl p">📈 Indicateurs de Performance par Poste</div></div>', unsafe_allow_html=True)
+                    st.markdown(html_table(prows, pcols, "pt", ["Score Performance"]), unsafe_allow_html=True)
                 else:
-                    st.markdown('<div class="es">✅ Aucune anomalie de performance detectee</div>', unsafe_allow_html=True)
+                    if ano_p_c:
+                        st.markdown('<div class="rh"><div class="stl a">⚠️ Anomalies Performance</div></div>', unsafe_allow_html=True)
+                        st.markdown(html_ano(ano_p_r, ano_p_c), unsafe_allow_html=True)
+                    else:
+                        st.markdown('<div class="es">✅ Aucune anomalie performance detectee.</div>', unsafe_allow_html=True)
+                st.markdown('<div class="stl p">📊 Synthese Performance</div>', unsafe_allow_html=True)
+                st.markdown(html_synth(qk, pa, cible, act_map, "#2b6cb0"), unsafe_allow_html=True)
+                st.markdown('<div class="stl p">📈 Barres de progression</div>', unsafe_allow_html=True)
+                st.markdown(html_kpi_bars(qk, pa, cible, "Performance Globale", "#2b6cb0", "#e53e3e"), unsafe_allow_html=True)
+                st.markdown('<div class="stl p">🏆 Classement</div>', unsafe_allow_html=True)
+                st.markdown(html_classement(pscores, "#2b6cb0"), unsafe_allow_html=True)
 
             # ==================== QUALITE ====================
             with tab2:
-                st.markdown('<div class="stl q">✅ Indicateurs de Qualite par Poste</div>', unsafe_allow_html=True)
-                st.markdown(html_table(qrows, qcols, "qt"), unsafe_allow_html=True)
-
-                st.markdown('<div class="stl q">📊 Synthese Qualite</div>', unsafe_allow_html=True)
-                st.markdown(html_synth(pk, qa, cible, act_map, "#805ad5"), unsafe_allow_html=True)
-
-                st.markdown('<div class="stl q">📏 Barres de Progression</div>', unsafe_allow_html=True)
-                st.markdown(html_kpi_bars(pk, qa, cible, "Progression Qualite", "#276749", "#e53e3e"), unsafe_allow_html=True)
-
-                if ano_q_c and ano_q_r:
-                    st.markdown('<div class="stl a">⚠️ Anomalies Qualite</div>', unsafe_allow_html=True)
-                    st.markdown(html_ano(ano_q_r, ano_q_c), unsafe_allow_html=True)
+                choix_q = st.radio("Choix d'affichage", ["✅ Indicateurs de Qualite", "⚠️ Anomalies Qualite"], horizontal=True, key="choix_q")
+                if choix_q == "✅ Indicateurs de Qualite":
+                    st.markdown('<div class="rh"><div class="stl q">✅ Indicateurs de Qualite par Poste</div></div>', unsafe_allow_html=True)
+                    st.markdown(html_table(qrows, qcols, "qt", ["Score Qualite"]), unsafe_allow_html=True)
                 else:
-                    st.markdown('<div class="es">✅ Aucune anomalie de qualite detectee</div>', unsafe_allow_html=True)
+                    if ano_q_c:
+                        st.markdown('<div class="rh"><div class="stl a">⚠️ Anomalies Qualite</div></div>', unsafe_allow_html=True)
+                        st.markdown(html_ano(ano_q_r, ano_q_c), unsafe_allow_html=True)
+                    else:
+                        st.markdown('<div class="es">✅ Aucune anomalie qualite detectee.</div>', unsafe_allow_html=True)
+                st.markdown('<div class="stl q">📊 Synthese Qualite</div>', unsafe_allow_html=True)
+                st.markdown(html_synth(pk, qa, cible, act_map, "#276749"), unsafe_allow_html=True)
+                st.markdown('<div class="stl q">📈 Barres de progression</div>', unsafe_allow_html=True)
+                st.markdown(html_kpi_bars(pk, qa, cible, "Qualite Globale", "#276749", "#e53e3e"), unsafe_allow_html=True)
+                st.markdown('<div class="stl q">🏆 Classement</div>', unsafe_allow_html=True)
+                st.markdown(html_classement(qscores, "#276749"), unsafe_allow_html=True)
 
             # ==================== ANALYSE ====================
             with tab3:
-                st.markdown('<div class="stl c">🔬 Analyse Detaillee</div>', unsafe_allow_html=True)
-
-                c1, c2 = st.columns(2)
-                with c1:
-                    if not df_sc_d.empty:
-                        fig1 = anl_pie_chart(df_sc_d, "Metier", "Perf", "Score Performance par Metier", ["#2b6cb0","#276749","#805ad5","#e53e3e","#dd6b20"])
-                        if fig1: st.plotly_chart(fig1, use_container_width=True)
-                with c2:
-                    if not df_sc_d.empty:
-                        fig2 = anl_pie_chart(df_sc_d, "Atelier", "Qual", "Score Qualite par Atelier", ["#2b6cb0","#276749","#805ad5","#e53e3e","#dd6b20"])
-                        if fig2: st.plotly_chart(fig2, use_container_width=True)
-
-                # Graphique Age Distribution
-                st.markdown('<div class="stl p">📅 Distribution Age des OT</div>', unsafe_allow_html=True)
-                if "ap" in dfp.columns:
-                    age_data = dfp[dfp["Statut OT"]=="CRÉÉ"]["ap"].dropna()
-                    if not age_data.empty:
-                        age_df = pd.DataFrame({"Age (mois)": age_data.round(1)})
-                        fig_age = px.histogram(age_df, x="Age (mois)", nbins=30, title="Distribution de l'age de preparation des OT (CRE)",
-                                              color_discrete_sequence=["#2b6cb0"])
-                        fig_age.update_layout(height=450, autosize=True, margin=dict(t=40, b=10, l=10, r=10), title_font_size=11,
-                                              legend=dict(font_size=8, orientation="h", yanchor="bottom", y=-0.15))
-                        fig_age.update_traces(marker_line_width=1, marker_line_color="white")
-                        st.plotly_chart(fig_age, use_container_width=True)
-
-                if "alp" in dfp.columns:
-                    age_lp_data = dfp[(dfp["Statut OT"]=="LANC") & (dfp["Contient SOPL"]==0)]["alp"].dropna()
-                    if not age_lp_data.empty:
-                        age_lp_df = pd.DataFrame({"Age (mois)": age_lp_data.round(1)})
-                        fig_age_lp = px.histogram(age_lp_df, x="Age (mois)", nbins=30, title="Distribution de l'age de planification des OT (LANC sans SOPL)",
-                                                 color_discrete_sequence=["#276749"])
-                        fig_age_lp.update_layout(height=450, autosize=True, margin=dict(t=40, b=10, l=10, r=10), title_font_size=11,
-                                                legend=dict(font_size=8, orientation="h", yanchor="bottom", y=-0.15))
-                        fig_age_lp.update_traces(marker_line_width=1, marker_line_color="white")
-                        st.plotly_chart(fig_age_lp, use_container_width=True)
-
-                if "aex" in dfp.columns:
-                    age_ex_data = dfp[(dfp["Statut OT"]=="LANC") & (dfp["Contient SOPL"]==1)]["aex"].dropna()
-                    if not age_ex_data.empty:
-                        age_ex_df = pd.DataFrame({"Age (mois)": age_ex_data.round(1)})
-                        fig_age_ex = px.histogram(age_ex_df, x="Age (mois)", nbins=30, title="Distribution de l'age d'execution des OT (LANC avec SOPL)",
-                                                 color_discrete_sequence=["#805ad5"])
-                        fig_age_ex.update_layout(height=450, autosize=True, margin=dict(t=40, b=10, l=10, r=10), title_font_size=11,
-                                                legend=dict(font_size=8, orientation="h", yanchor="bottom", y=-0.15))
-                        fig_age_ex.update_traces(marker_line_width=1, marker_line_color="white")
-                        st.plotly_chart(fig_age_ex, use_container_width=True)
-
-                # Repartition par statut
-                st.markdown('<div class="stl p">📊 Repartition par Statut OT</div>', unsafe_allow_html=True)
-                if "Statut OT" in dfp.columns:
-                    stat_counts = dfp["Statut OT"].value_counts().reset_index()
-                    stat_counts.columns = ["Statut", "Nombre"]
-                    stat_counts["Pourcentage"] = (stat_counts["Nombre"] / stat_counts["Nombre"].sum() * 100).round(1)
-                    fig_stat = px.pie(stat_counts, names="Statut", values="Nombre", title="Repartition par Statut OT",
-                                       color_discrete_sequence=["#38a169","#2b6cb0","#805ad5","#e53e3e","#dd6b20","#718096"])
-                    fig_stat.update_traces(textposition='inside', textinfo='percent+label+value', textfont_size=9)
-                    fig_stat.update_layout(height=400, margin=dict(t=40, b=10, l=10, r=10), title_font_size=11,
-                                           legend=dict(font_size=9, orientation="h", yanchor="bottom", y=-0.1))
-                    st.plotly_chart(fig_stat, use_container_width=True)
-
-                # Detail par Metier
-                st.markdown('<div class="stl p">📋 Detail par Metier</div>', unsafe_allow_html=True)
-                if not by_mt.empty:
-                    by_mt_out = by_mt.reset_index().rename(columns={"index":"Metier"})
-                    by_mt_out.columns = ["Metier","Performance (%)","Qualite (%)"]
-                    st.markdown(anl_html_table(by_mt_out, None), unsafe_allow_html=True)
-
-                # Detail par Atelier
-                st.markdown('<div class="stl p">📋 Detail par Atelier</div>', unsafe_allow_html=True)
-                if not by_at.empty:
-                    by_at_out = by_at.reset_index().rename(columns={"index":"Atelier"})
-                    by_at_out.columns = ["Atelier","Performance (%)","Qualite (%)"]
-                    st.markdown(anl_html_table(by_at_out, None), unsafe_allow_html=True)
-
-                # Detail par Division
-                st.markdown('<div class="stl p">📋 Detail par Division</div>', unsafe_allow_html=True)
-                if not by_div.empty:
-                    by_div_out = by_div.reset_index().rename(columns={"index":"Division"})
-                    by_div_out.columns = ["Division","Performance (%)","Qualite (%)"]
-                    st.markdown(anl_html_table(by_div_out, None), unsafe_allow_html=True)
-
-                # Tableau Complet des KPIs
-                st.markdown('<div class="stl c">📋 Tableau Complet des KPIs</div>', unsafe_allow_html=True)
-                all_cols = ["Poste de travail"] + qk + pk + ["Score Performance","Score Qualite"]
-                all_rows = []
-                for p in sorted(ckdf.index):
-                    r = {"Poste de travail": p}
-                    for k in qk + pk:
-                        r[k] = round(ckdf.loc[p, k], 2) if p in ckdf.index and k in ckdf.columns else ""
-                    r["Score Performance"] = round(pscores.get(p, 0), 2)
-                    r["Score Qualite"] = round(qscores.get(p, 0), 2)
-                    all_rows.append(r)
-                if all_rows:
-                    full_df = pd.DataFrame(all_rows)
-                    st.markdown(anl_html_table(full_df, None), unsafe_allow_html=True)
-
-                # Top anomalies detaillees
-                if all_ano:
-                    st.markdown('<div class="stl a">⚠️ Detail des Anomalies par Poste</div>', unsafe_allow_html=True)
-                    ano_detail_cols = ["Poste de travail"] + sorted(set(a["KPI"] for a in all_ano)) + ["Total"]
-                    ano_detail_rows = []
-                    ano_full = pd.DataFrame(all_ano)
-                    ano_pv = ano_full.pivot_table(index="Poste", columns="KPI", values="Nb", aggfunc="sum", fill_value=0).astype(int)
-                    ano_pv["Total"] = ano_pv.sum(axis=1)
-                    for idx in ano_pv.index:
-                        r = {"Poste de travail": idx}
-                        for c in ano_pv.columns:
-                            r[c] = ano_pv.loc[idx, c]
-                        ano_detail_rows.append(r)
-                    tr = {"Poste de travail": "TOTAL"}
-                    for c in ano_pv.columns:
-                        tr[c] = int(ano_pv[c].sum())
-                    ano_detail_rows.append(tr)
-                    if ano_detail_rows:
-                        st.markdown(anl_html_table(pd.DataFrame(ano_detail_rows), None), unsafe_allow_html=True)
+                # --- 1. OT OMS ---
+                st.markdown('<div class="stl c">1. Analyse des OT OMS</div>', unsafe_allow_html=True)
+                if desig_col:
+                    oms_df = dfp[dfp[desig_col].astype(str).str.contains("OMS", case=False, na=False)]
+                    if not oms_df.empty:
+                        oms_pv = pd.pivot_table(oms_df, index="Poste travail princ.", columns="Statut OT", values="Ordre", aggfunc="count", fill_value=0)
+                        oms_pv["Total"] = oms_pv.sum(axis=1)
+                        oms_pv = oms_pv.sort_values("Total", ascending=False)
+                        oms_tot = oms_pv.sum()
+                        oms_tot.name = "TOTAL"
+                        oms_pv = pd.concat([oms_pv, oms_tot.to_frame().T])
+                        oms_export = oms_pv.reset_index().rename(columns={"index":"Poste de Travail"} if "index" in oms_pv.reset_index().columns else {"Poste travail princ.":"Poste de Travail"})
+                        c1, c2 = st.columns([1.2, 1])
+                        with c1:
+                            st.markdown(anl_html_table(oms_pv.reset_index().rename(columns={"Poste travail princ.":"Poste de Travail"})), unsafe_allow_html=True)
+                            export_btn(oms_export, "analyse_oms.xlsx")
+                        with c2:
+                            oms_pie = oms_df["Statut OT"].value_counts().reset_index()
+                            oms_pie.columns = ["Statut", "Nombre"]
+                            fig = anl_pie_chart(oms_pie, "Statut", "Nombre", "Repartition OT OMS par Statut")
+                            if fig: st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        st.markdown('<div class="es">Aucun OT OMS trouve.</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div class="es">Colonne "Designation du travail" non trouvee dans les donnees.</div>', unsafe_allow_html=True)
 
                 st.markdown("---")
-                st.markdown('<div class="stl c">📥 Export</div>', unsafe_allow_html=True)
-                ec1, ec2 = st.columns(2)
-                with ec1:
-                    export_btn(ckdf.reset_index().rename(columns={"index":"Poste"}), "kpis_detailles.xlsx")
-                with ec2:
-                    if all_ano:
-                        export_btn(pd.DataFrame(all_ano), "anomalies_detailles.xlsx")
+
+                # --- 2. OT Thermographiques ---
+                st.markdown('<div class="stl c">2. Analyse des OT Thermographiques</div>', unsafe_allow_html=True)
+                if desig_col:
+                    thermo_df = dfp[dfp[desig_col].astype(str).str.contains("THERMO", case=False, na=False)]
+                    if not thermo_df.empty:
+                        th_pv = pd.pivot_table(thermo_df, index="Poste travail princ.", columns="Statut OT", values="Ordre", aggfunc="count", fill_value=0)
+                        th_pv["Total"] = th_pv.sum(axis=1)
+                        th_pv = th_pv.sort_values("Total", ascending=False)
+                        th_tot = th_pv.sum()
+                        th_tot.name = "TOTAL"
+                        th_pv = pd.concat([th_pv, th_tot.to_frame().T])
+                        th_export = th_pv.reset_index().rename(columns={"Poste travail princ.":"Poste de Travail"})
+                        c1, c2 = st.columns([1.2, 1])
+                        with c1:
+                            st.markdown(anl_html_table(th_export), unsafe_allow_html=True)
+                            export_btn(th_export, "analyse_thermo.xlsx")
+                        with c2:
+                            th_pie = thermo_df["Statut OT"].value_counts().reset_index()
+                            th_pie.columns = ["Statut", "Nombre"]
+                            fig = anl_pie_chart(th_pie, "Statut", "Nombre", "Repartition OT Thermographiques par Statut")
+                            if fig: st.plotly_chart(fig, use_container_width=True)
                     else:
-                        st.markdown('<div class="es">Aucune anomalie a exporter</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="es">Aucun OT Thermographique trouve.</div>', unsafe_allow_html=True)
+
+                st.markdown("---")
+
+                # --- 3. Backlog Preparation ---
+                st.markdown('<div class="stl c">3. Analyse du Backlog Preparation</div>', unsafe_allow_html=True)
+                bl_prep = dfp[dfp["Statut OT"]=="CRÉÉ"]
+                if not bl_prep.empty:
+                    bl_p_pv = pd.pivot_table(bl_prep, index="Poste travail princ.", columns="Backlog preparation", values="Ordre", aggfunc="count", fill_value=0)
+                    for c in ["CARACTERISE","NON CARACTERISE"]: 
+                        if c not in bl_p_pv.columns: bl_p_pv[c] = 0
+                    bl_p_pv["Total"] = bl_p_pv.sum(axis=1)
+                    bl_p_pv["% Caracterisation"] = np.where(bl_p_pv["Total"]==0, 0, (bl_p_pv.get("CARACTERISE",0)/bl_p_pv["Total"]*100)).round(1)
+                    bl_p_pv = bl_p_pv[["CARACTERISE","NON CARACTERISE","Total","% Caracterisation"]]
+                    bl_p_pv = bl_p_pv.sort_values("Total", ascending=False)
+                    bl_p_tot = bl_p_pv.sum()
+                    bl_p_tot["% Caracterisation"] = round(bl_p_tot["CARACTERISE"]/bl_p_tot["Total"]*100, 1) if bl_p_tot["Total"] > 0 else 0
+                    bl_p_tot.name = "TOTAL"
+                    bl_p_pv = pd.concat([bl_p_pv, bl_p_tot.to_frame().T])
+                    bl_p_export = bl_p_pv.reset_index().rename(columns={"Poste travail princ.":"Poste de Travail"})
+                    c1, c2 = st.columns([1.2, 1])
+                    with c1:
+                        st.markdown(anl_html_table(bl_p_export, "% Caracterisation", (80, 60)), unsafe_allow_html=True)
+                        export_btn(bl_p_export, "analyse_backlog_prep.xlsx")
+                    with c2:
+                        mp_types = ["CRPR ATPD","CRPR ATMR","CRPR ATER","CRPR ATRS","CRPR ATMO","ATPD","ATMR","ATER","ATRS","ATMO"]
+                        def get_caract_prep(su):
+                            s = str(su).upper()
+                            for t in mp_types:
+                                if t in s: return t
+                            return "NON CARACTERISE"
+                        bl_p_caract = bl_prep.copy()
+                        bl_p_caract["Type Caract."] = bl_p_caract["Statut utilisateur"].apply(get_caract_prep)
+                        bp_pie = bl_p_caract["Type Caract."].value_counts().reset_index()
+                        bp_pie.columns = ["Caracterisation", "Nombre"]
+                        fig = anl_pie_chart(bp_pie, "Caracterisation", "Nombre", "Types de Caracterisation Backlog Prep.")
+                        if fig: st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.markdown('<div class="es">Aucun OT en backlog preparation.</div>', unsafe_allow_html=True)
+
+                st.markdown("---")
+
+                # --- 4. Backlog Planification ---
+                st.markdown('<div class="stl c">4. Analyse du Backlog Planification</div>', unsafe_allow_html=True)
+                bl_plan = dfp[dfp["Statut OT"]=="LANC"]
+                if not bl_plan.empty:
+                    bl_pl_pv = pd.pivot_table(bl_plan, index="Poste travail princ.", columns="Backlog planification", values="Ordre", aggfunc="count", fill_value=0)
+                    for c in ["CARACTERISE","NON CARACTERISE"]:
+                        if c not in bl_pl_pv.columns: bl_pl_pv[c] = 0
+                    bl_pl_pv["Total"] = bl_pl_pv.sum(axis=1)
+                    bl_pl_pv["% Caracterisation"] = np.where(bl_pl_pv["Total"]==0, 0, (bl_pl_pv.get("CARACTERISE",0)/bl_pl_pv["Total"]*100)).round(1)
+                    bl_pl_pv = bl_pl_pv[["CARACTERISE","NON CARACTERISE","Total","% Caracterisation"]]
+                    bl_pl_pv = bl_pl_pv.sort_values("Total", ascending=False)
+                    bl_pl_tot = bl_pl_pv.sum()
+                    bl_pl_tot["% Caracterisation"] = round(bl_pl_tot["CARACTERISE"]/bl_pl_tot["Total"]*100, 1) if bl_pl_tot["Total"] > 0 else 0
+                    bl_pl_tot.name = "TOTAL"
+                    bl_pl_pv = pd.concat([bl_pl_pv, bl_pl_tot.to_frame().T])
+                    bl_pl_export = bl_pl_pv.reset_index().rename(columns={"Poste travail princ.":"Poste de Travail"})
+                    c1, c2 = st.columns([1.2, 1])
+                    with c1:
+                        st.markdown(anl_html_table(bl_pl_export, "% Caracterisation", (80, 60)), unsafe_allow_html=True)
+                        export_btn(bl_pl_export, "analyse_backlog_plan.xlsx")
+                    with c2:
+                        mplan_types = ["ATPL ATEI","ATPL ATAL","ATPL ATER","ATPL AGAR","ATPL ATHS","ATEI","ATAL","ATAS","AGAR","ATHS"]
+                        def get_caract_plan(su):
+                            s = str(su).upper()
+                            for t in mplan_types:
+                                if t in s: return t
+                            return "NON CARACTERISE"
+                        bl_pl_caract = bl_plan.copy()
+                        bl_pl_caract["Type Caract."] = bl_pl_caract["Statut utilisateur"].apply(get_caract_plan)
+                        bpl_pie = bl_pl_caract["Type Caract."].value_counts().reset_index()
+                        bpl_pie.columns = ["Caracterisation", "Nombre"]
+                        fig = anl_pie_chart(bpl_pie, "Caracterisation", "Nombre", "Types de Caracterisation Backlog Plan.")
+                        if fig: st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.markdown('<div class="es">Aucun OT en backlog planification.</div>', unsafe_allow_html=True)
+
+                st.markdown("---")
+
+                # --- 5. Backlog Execution ---
+                st.markdown('<div class="stl c">5. Analyse du Backlog Execution</div>', unsafe_allow_html=True)
+                if not dfp.empty:
+                    def calc_exec_stats(data):
+                        lanc_ns = data[(data["Statut OT"]=="LANC") & (data["Contient SOPL"]==0)].shape[0]
+                        sopl = data[(data["Statut OT"]=="LANC") & (data["Contient SOPL"]==1)].shape[0]
+                        clot = data[data["Statut OT"]=="CLOT"].shape[0]
+                        tclo = data[data["Statut OT"]=="TCLO"].shape[0]
+                        total = len(data)
+                        pct_cloture = round((clot+tclo)/total*100, 1) if total > 0 else 0
+                        return pd.Series({"LANC":lanc_ns,"SOPL":sopl,"CLOT":clot,"TCLO":tclo,"Total":total,"% Cloture":pct_cloture})
+                    bl_ex = dfp.groupby("Poste travail princ.").apply(calc_exec_stats).astype(int)
+                    bl_ex["% Cloture"] = dfp.groupby("Poste travail princ.").apply(calc_exec_stats)["% Cloture"]
+                    bl_ex = bl_ex.sort_values("Total", ascending=False)
+                    bl_ex_tot = bl_ex.sum()
+                    bl_ex_tot["% Cloture"] = round((bl_ex_tot["CLOT"]+bl_ex_tot["TCLO"])/bl_ex_tot["Total"]*100, 1) if bl_ex_tot["Total"] > 0 else 0
+                    bl_ex_tot.name = "TOTAL"
+                    bl_ex = pd.concat([bl_ex, bl_ex_tot.to_frame().T])
+                    bl_ex_export = bl_ex.reset_index().rename(columns={"Poste travail princ.":"Poste de Travail"})
+                    c1, c2 = st.columns([1.2, 1])
+                    with c1:
+                        st.markdown(anl_html_table(bl_ex_export, "% Cloture", (80, 60)), unsafe_allow_html=True)
+                        export_btn(bl_ex_export, "analyse_backlog_exec.xlsx")
+                    with c2:
+                        ex_pie_data = pd.DataFrame({
+                            "Statut": ["LANC","SOPL","CLOT","TCLO"],
+                            "Nombre": [int(bl_ex_tot["LANC"]),int(bl_ex_tot["SOPL"]),int(bl_ex_tot["CLOT"]),int(bl_ex_tot["TCLO"])]
+                        })
+                        ex_pie_data = ex_pie_data[ex_pie_data["Nombre"]>0]
+                        if not ex_pie_data.empty:
+                            fig = anl_pie_chart(ex_pie_data, "Statut", "Nombre", "Repartition Backlog Execution",
+                                                ["#4299e1","#48bb78","#38a169","#2b6cb0"])
+                            if fig: st.plotly_chart(fig, use_container_width=True)
+                        else:
+                            st.markdown('<div class="es">Aucune donnee.</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div class="es">Aucune donnee disponible.</div>', unsafe_allow_html=True)
 
         except Exception as e:
-            st.error(f"Erreur de chargement : {str(e)}")
-            st.markdown('<div class="es">Veuillez verifier vos fichiers de donnees (ot.xlsx et avis.xlsx) ou charger de nouveaux fichiers via la sidebar.</div>', unsafe_allow_html=True)
+            st.error(f"Erreur de chargement: {str(e)}")
+            import traceback; st.code(traceback.format_exc())
     else:
-        st.markdown('<div class="es">📁 Veuillez charger les fichiers OT et AVIS via la sidebar pour demarrer.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="es">📁 Veuillez charger les fichiers OT et AVIS pour commencer.</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()

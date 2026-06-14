@@ -17,10 +17,25 @@ def excr(df):
         return df
     return df[~df["Poste travail princ."].astype(str).str.contains("cresseur", case=False, na=False)].copy()
 
+def read_excel_safe(file, ext=None):
+    """Détecte automatiquement le format (.xls ou .xlsx) et utilise le bon moteur"""
+    if ext is None:
+        if hasattr(file, 'name'): # Cas des fichiers uploadés via Streamlit
+            ext = os.path.splitext(file.name)[1].lower()
+        elif isinstance(file, str): # Cas des chemins locaux
+            ext = os.path.splitext(file)[1].lower()
+        else:
+            ext = '.xlsx'
+            
+    if ext == '.xls':
+        return pd.read_excel(file, engine='xlrd')
+    else: # .xlsx, .xlsm
+        return pd.read_excel(file, engine='openpyxl')
+
 @st.cache_data(ttl=3600)
 def load_excel_cached(filepath):
-    """Cache le chargement des fichiers Excel locaux (TTL 1h)"""
-    return pd.read_excel(filepath, engine="openpyxl")  # CORRECTION ENGINE
+    """Cache le chargement des fichiers Excel locaux (TTL 1h) avec détection auto du format"""
+    return read_excel_safe(filepath)
 
 @st.cache_data
 def excr_cached(df):
@@ -429,12 +444,13 @@ def main():
         unf = st.toggle("📁 Charger nouveaux fichiers", value=False, key="tf")
         ot_f = av_f = None; apm = []
         if unf:
-            ot_f = st.file_uploader("Fichier OT", type=["xlsx"], key="uot")
-            av_f = st.file_uploader("Fichier AVIS", type=["xlsx"], key="uav")
+            ot_f = st.file_uploader("Fichier OT", type=["xls", "xlsx"], key="uot")
+            av_f = st.file_uploader("Fichier AVIS", type=["xls", "xlsx"], key="uav")
         else:
-            if os.path.exists("ot.xlsx"):
+            if os.path.exists("ot.xlsx") or os.path.exists("ot.xls"):
                 try:
-                    _t = excr_cached(load_excel_cached("ot.xlsx"))
+                    f_ot = "ot.xlsx" if os.path.exists("ot.xlsx") else "ot.xls"
+                    _t = excr_cached(load_excel_cached(f_ot))
                     apm = sorted(_t[_t["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"), na=False)]["Poste travail princ."].dropna().unique().tolist())
                 except: pass
             st.markdown("""<div style="background:rgba(255,255,255,.1);padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.15)"><div style="font-size:7px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Donnees</div><div style="font-size:10px;color:white;font-weight:600;margin-top:1px">📅 %s</div></div>""" % fichier_date, unsafe_allow_html=True)
@@ -452,11 +468,15 @@ def main():
     if not unf or (ot_f is not None and av_f is not None):
         try:
             if unf:
-                raw_ot = pd.read_excel(ot_f, engine="openpyxl") # CORRECTION ENGINE
-                raw_av = pd.read_excel(av_f, engine="openpyxl") # CORRECTION ENGINE
+                # Utilise la fonction intelligente pour les fichiers uploadés
+                raw_ot = read_excel_safe(ot_f)
+                raw_av = read_excel_safe(av_f)
             else:
-                raw_ot = load_excel_cached("ot.xlsx")
-                raw_av = load_excel_cached("avis.xlsx")
+                # Utilise la fonction intelligente pour les fichiers locaux
+                f_ot = "ot.xlsx" if os.path.exists("ot.xlsx") else "ot.xls"
+                f_av = "avis.xlsx" if os.path.exists("avis.xlsx") else "avis.xls"
+                raw_ot = load_excel_cached(f_ot)
+                raw_av = load_excel_cached(f_av)
 
             raw_ot = excr_cached(raw_ot)
             raw_av = excr_cached(raw_av)

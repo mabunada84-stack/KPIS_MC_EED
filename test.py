@@ -2,52 +2,105 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import io, locale, random, time, os
+import io, locale, random, time, os, json, hashlib
 from datetime import datetime
-import plotly.express as px
-from openpyxl import load_workbook, Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
-def get_date_from_file():
-    if os.path.exists("date.txt"):
+HISTORY_FILE = "kpi_history.json"
+
+def load_kpi_history():
+    if os.path.exists(HISTORY_FILE):
         try:
-            with open("date.txt", "r", encoding="utf-8") as f:
-                return f.read().strip()
-        except: pass
-    return datetime.now().strftime("%d/%m/%Y")
+            with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
 
-def save_kpis_to_excel(prows, pcols, qrows, qcols, ano_p_r, ano_p_c, ano_q_r, ano_q_c, sheet_name):
-    kpis_dir = "kpis"
-    os.makedirs(kpis_dir, exist_ok=True)
-    filepath = os.path.join(kpis_dir, "indicateurs_kpis.xlsx")
-    sn = str(sheet_name).replace("/","-").replace("\\","-").replace("*","").replace("?","").replace("[","").replace("]","")[:31]
-    hf = Font(bold=True, color="FFFFFF", size=10)
-    hfl = PatternFill(start_color="1E3A5F", end_color="1E3A5F", fill_type="solid")
-    tf = Font(bold=True, size=12, color="1E3A5F")
-    tb = Border(left=Side(style='thin'),right=Side(style='thin'),top=Side(style='thin'),bottom=Side(style='thin'))
-    try: wb = load_workbook(filepath)
-    except:
-        wb = Workbook()
-        if "Sheet" in wb.sheetnames: del wb["Sheet"]
-    if sn in wb.sheetnames: del wb[sn]
-    ws = wb.create_sheet(sn)
-    rn = 1
-    def ws_section(title, cols, rows, sr):
-        ws.cell(row=sr, column=1, value=title).font = tf; sr += 1
-        for j, c in enumerate(cols, 1):
-            cl = ws.cell(row=sr, column=j, value=c); cl.font = hf; cl.fill = hfl; cl.alignment = Alignment(horizontal='center'); cl.border = tb
-        sr += 1
-        for r in rows:
-            for j, c in enumerate(cols, 1):
-                cl = ws.cell(row=sr, column=j, value=r.get(c, "")); cl.border = tb; cl.alignment = Alignment(horizontal='center')
-            sr += 1
-        return sr + 1
-    rn = ws_section("INDICATEURS DE PERFORMANCE", pcols, prows, rn)
-    if ano_p_c and ano_p_r: rn = ws_section("ANOMALIES PERFORMANCE", ano_p_c, ano_p_r, rn)
-    rn = ws_section("INDICATEURS DE QUALITE", qcols, qrows, rn)
-    if ano_q_c and ano_q_r: rn = ws_section("ANOMALIES QUALITE", ano_q_c, ano_q_r, rn)
-    try: wb.save(filepath)
-    except: pass
+def save_kpi_history(history):
+    try:
+        with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
+            json.dump(history, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"WARNING: Impossible de sauvegarder l'historique KPI: {e}")
+
+def compute_data_hash(df_ot, df_av):
+    h = hashlib.md5()
+    h.update(str(df_ot.shape).encode())
+    h.update(str(df_av.shape).encode())
+    if "Ordre" in df_ot.columns:
+        h.update(str(int(df_ot["Ordre"].sum())).encode())
+    if "Statut système" in df_ot.columns:
+        h.update(str(df_ot["Statut système"].value_counts().to_dict()).encode())
+    if "Avis" in df_av.columns:
+        h.update(str(df_av["Avis"].value_counts().to_dict()).encode())
+    if "Poste travail princ." in df_ot.columns:
+        h.update(str(sorted(df_ot["Poste travail princ."].dropna().unique())[:20]).encode())
+    return h.hexdigest()[:16]
+
+def save_current_kpis(ckdf, qk, pk, pscores, qscores, pa, qa, data_hash=None):
+    history = load_kpi_history()
+    if data_hash:
+        last_hash = history.get("__meta__", {}).get("data_hash")
+        if last_hash == data_hash:
+            return history
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    MAX_H = 20
+    def add_entry(key, val):
+        if val is None or (isinstance(val, float) and np.isnan(val)): return
+        fv = round(float(val), 2)
+        if key not in history: history[key] = []
+        if (history[key] and history[key][-1]["date"][:13] == now_str[:13] and abs(history[key][-1]["value"] - fv) < 0.01):
+            return
+        history[key].append({"date": now_str, "value": fv})
+        if len(history[key]) > MAX_H: history[key] = history[key][-MAX_H:]
+    for poste in ckdf.index:
+        for k in qk + pk:
+            if k in ckdf.columns:
+                v = ckdf.loc[poste, k]
+                if pd.notna(v): add_entry(f"{poste}__{k}", v)
+        if poste in pscores: add_entry(f"{poste}__Score Performance", pscores[poste])
+        if poste in qscores: add_entry(f"{poste}__Score Qualite", qscores[poste])
+    for k in qk: add_entry(f"__total__{k}", pa.get(k))
+    for k in pk: add_entry(f"__total__{k}", qa.get(k))
+    add_entry("__total__Score Performance", float(np.mean(list(pscores.values()))) if pscores else 0.0)
+    add_entry("__total__Score Qualite", float(np.mean(list(qscores.values()))) if qscores else 0.0)
+    if data_hash:
+        if "__meta__" not in history: history["__meta__"] = {}
+        history["__meta__"]["data_hash"] = data_hash
+        history["__meta__"]["last_update"] = now_str
+    save_kpi_history(history)
+    return history
+
+def generate_sparkline(values):
+    if not values or len(values) < 2: return ""
+    blocks = ['\u2581','\u2582','\u2583','\u2584','\u2585','\u2586','\u2587','\u2588']
+    vals = [float(v) for v in values if v is not None]
+    if len(vals) < 2: return ""
+    dv = vals[-8:]; mn, mx = min(dv), max(dv)
+    if mx == mn: return '\u2584' * len(dv)
+    norm = [(v - mn) / (mx - mn) * 7 for v in dv]
+    return ''.join(blocks[min(7, max(0, int(round(n))))] for n in norm)
+
+def get_trend_info(values, lower_better=False):
+    if len(values) < 2: return "", ""
+    prev, curr = float(values[-2]), float(values[-1])
+    diff = curr - prev
+    if abs(diff) < 0.5: return "\u27a1\ufe0f", "stable"
+    if lower_better: return ("\U0001f4c8","amelioration") if diff < 0 else ("\U0001f4c9","degradation")
+    else: return ("\U0001f4c8","amelioration") if diff > 0 else ("\U0001f4c9","degradation")
+
+def build_kpi_cell(value_str, hist_entries, lower_better=False):
+    if not hist_entries or len(hist_entries) < 2: return value_str
+    values = [h["value"] for h in hist_entries if h.get("value") is not None]
+    if len(values) < 2: return value_str
+    spark = generate_sparkline(values)
+    trend_icon, trend_label = get_trend_info(values, lower_better)
+    curr, prev = hist_entries[-1], hist_entries[-2]
+    cv, pv = curr.get("value","N/A"), prev.get("value","N/A")
+    diff = (float(cv) - float(pv)) if isinstance(cv,(int,float)) and isinstance(pv,(int,float)) else 0
+    lines = ["Valeur actuelle : %s"%cv,"Valeur precedente : %s"%pv,"Ecart : %+.2f"%diff,"Date actuelle : %s"%curr.get('date','N/A'),"Date precedente : %s"%prev.get('date','N/A'),"Tendance : %s"%trend_label,"Historique : %s point(s)"%len(hist_entries)]
+    tooltip = "&#10;".join(lines)
+    return '<span title="%s" class="kc"><span class="kt">%s</span><span class="ks">%s</span><span class="kv">%s</span></span>' % (tooltip, trend_icon, spark, value_str)
 
 def inject_custom_css():
     st.markdown("""<style>
@@ -80,6 +133,10 @@ def inject_custom_css():
     .tw tbody tr:hover td{background:#ebf8ff!important}
     .cb td{background:#2b6cb0!important;color:#fff!important;font-weight:700!important;font-size:8px!important}
     .tr td{background:#e2e8f0!important;font-weight:800!important;font-size:8px!important}
+    .kc{display:inline-flex;align-items:center;gap:1px;white-space:nowrap;cursor:help}
+    .kc .kt{font-size:8px;line-height:1}
+    .kc .ks{font-size:5px;letter-spacing:-1px;line-height:1;opacity:.85}
+    .kc .kv{font-size:7px;font-weight:700}
     .stTabs [data-baseweb="tab-list"]{gap:2px;background:#e2e8f0;padding:2px;border-radius:6px;margin-bottom:3px}
     .stTabs [data-baseweb="tab"]{border-radius:5px;padding:5px 10px;font-weight:600;font-size:10px}
     .stTabs [aria-selected="true"]{background:#fff!important;color:var(--p)!important;box-shadow:0 2px 5px rgba(0,0,0,.07)}
@@ -128,15 +185,6 @@ def inject_custom_css():
     .es{text-align:center;padding:10px;color:#718096;font-size:10px}
     .rh{display:flex;align-items:center;justify-content:space-between;margin-bottom:0}
     .rh .stl{margin:0}
-    .anl-tbl{width:100%;border-collapse:collapse;font-family:'Inter',sans-serif;font-size:9px;margin:0}
-    .anl-tbl thead th{background:var(--p);color:#fff;font-weight:700;font-size:8px;padding:5px 6px;border:none;white-space:nowrap;position:sticky;top:0}
-    .anl-tbl tbody td{padding:4px 6px;border-bottom:1px solid #edf2f7}
-    .anl-tbl tbody tr:nth-child(even) td{background:#f7fafc}
-    .anl-tbl tbody tr:hover td{background:#ebf8ff!important}
-    .anl-tbl .tot td{background:#2b6cb0!important;color:#fff!important;font-weight:700!important}
-    .g-green{background:#c6efce;color:#006100;font-weight:600}
-    .g-yellow{background:#ffeb9c;color:#9c6500;font-weight:600}
-    .g-red{background:#ffc7ce;color:#9c0006;font-weight:600}
     @media(max-width:768px){.cr{grid-template-columns:repeat(2,1fr)}.mh h1{font-size:13px}.mh .db{float:none;display:block;margin-top:2px}.cg,.dgrid{grid-template-columns:1fr}.car .cal{width:100px}.gbr-l{width:90px}}
     </style>""", unsafe_allow_html=True)
 
@@ -146,7 +194,6 @@ def main():
         try: locale.setlocale(locale.LC_ALL, 'fr_FR')
         except: pass
     inject_custom_css()
-    fichier_date = get_date_from_file()
 
     consignes = ["Port obligatoire des EPI avant toute intervention.","Port obligatoire du casque de securite.","Port obligatoire des lunettes de protection.","Port obligatoire des gants adaptes au travail.","Utiliser les protections auditives dans les zones bruyantes.","Verifier l'absence de tension avant toute intervention electrique.","Respecter la procedure de consignation et deconsignation.","Ne jamais intervenir sur un equipement en marche.","Baliser et securiser la zone de travail.","Maintenir le poste de travail propre et ordonne.","Verifier l'etat des outils avant utilisation.","Utiliser uniquement du materiel homologue.","Respecter les permis de travail en vigueur.","Identifier les risques avant de commencer une tache.","Signaler immediatement toute situation dangereuse.","Signaler tout incident ou presque accident.","Ne jamais neutraliser un dispositif de securite.","Verifier les detecteurs de gaz avant utilisation.","Verifier la bonne ventilation des zones de travail.","Respecter les regles des espaces confines.","Controler l'atmosphere avant d'entrer dans un espace confine.","Utiliser les points d'ancrage pour les travaux en hauteur.","Verifier l'etat des echafaudages avant utilisation.","Securiser les outils lors des travaux en hauteur.","Ne pas travailler seul lors d'operations a risque.","Controler les elingues avant chaque levage.","Respecter les limites de charge des equipements.","Verifier l'etat des appareils de levage.","Maintenir les voies de circulation degagees.","Respecter la signalisation de securite.","Verifier les extincteurs a proximite du chantier.","Connaitre les issues de secours les plus proches.","Respecter les procedures d'arret d'urgence.","Verifier les flexibles et raccords avant mise en service.","Controler les fuites avant demarrage d'un equipement.","Respecter les distances de securite.","Ne jamais contourner une procedure HSE.","Porter les EPI adaptes au risque identifie.","Prevenir son responsable avant toute intervention particuliere.","Analyser les risques avant chaque demarrage de chantier.","Verifier la stabilite des equipements.","Utiliser les bons outils pour la bonne tache.","Respecter les consignes specifiques du chantier.","Ne jamais prendre de raccourci au detriment de la securite.","Arreter immediatement les travaux en cas de danger.","Proteger l'environnement lors des interventions.","Collecter et trier correctement les dechets.","Eviter toute pollution accidentelle.","Respecter les consignes de stockage des produits dangereux.","Lire les fiches de securite avant manipulation.","Verifier les equipements avant chaque prise de poste.","S'assurer de la disponibilite des moyens de secours.","Communiquer clairement avec l'equipe avant intervention.","Respecter les regles de circulation des engins.","Garder une vigilance permanente sur son environnement.","Prendre le temps d'effectuer le travail en securite.","La securite est l'affaire de tous.","Chaque incident peut etre evite par la prevention.","Aucun travail n'est plus urgent que la securite.","Zero accident commence par un comportement sur."]
 
@@ -286,7 +333,7 @@ def main():
         return 0
     def is_lb(k): return k in ["OT préparation >3 mois","OT planification >3 mois","OT exécution >3 mois","OT préparation 1mois< <3mois","OT planification 1mois< <3mois","OT exécution 1mois< <3mois"]
 
-    def html_table(rows, cols, tc, sc_col=None):
+    def html_table(rows, cols, tc, sc_col=None, kpi_history=None, kpi_cols_set=None, lb_map=None):
         h = '<table class="tw %s"><thead><tr>' % tc + ''.join('<th>%s</th>' % c for c in cols) + '</tr></thead><tbody>'
         for r in rows:
             rc = "cb" if r.get("_t")=="cible" else ("tr" if r.get("_t")=="total" else "")
@@ -296,7 +343,13 @@ def main():
                 if r.get("_t")=="cible": h += '<td>%s</td>' % v
                 else:
                     s = cs(v) if sc_col and c in sc_col else ks(v, c)
-                    h += '<td style="%s">%s</td>' % (s or "", v)
+                    display_v = str(v)
+                    if kpi_history and kpi_cols_set and c in kpi_cols_set:
+                        key = "__total__%s" % c if r.get("_t")=="total" else "%s__%s" % (r.get('Poste de travail',''), c)
+                        hist = kpi_history.get(key, [])
+                        lb = lb_map.get(c, False) if lb_map else False
+                        display_v = build_kpi_cell(str(v), hist, lb)
+                    h += '<td style="%s">%s</td>' % (s or "", display_v)
             h += '</tr>'
         return h + '</tbody></table>'
 
@@ -319,6 +372,15 @@ def main():
             h += '<div class="sr"><div class="sn">%s</div><div class="sc" style="background:%s">%.1f%%</div><div class="stg">Cible: %s%%</div><div class="sb" style="color:%s;background:%s">%s</div><div class="sa">%s</div></div>' % (k, scbg, av, tv, sclr, sbg, "ATTEINT" if met else "NON ATTEINT", act)
         return h
 
+    def html_cat(kpi_list, actuals, targets, col_ok, col_fail):
+        h = '<div class="ca">'
+        for k in kpi_list:
+            av, tv = actuals.get(k,0), targets.get(k,100)
+            met = av <= tv if is_lb(k) else av >= tv
+            bw = min(max(av,3),100); bg = col_ok if met else col_fail
+            h += '<div class="car"><div class="cal">%s</div><div class="cab"><div class="caf" style="width:%s%%;background:%s"></div></div><div class="cav-out">%.1f%% / %s%%</div></div>' % (k, bw, bg, av, tv)
+        h += '</div>'; return h
+
     def html_classement(scores, accent):
         sp = sorted(scores.items(), key=lambda x: x[1], reverse=True)
         met_p, not_p = [(p,s) for p,s in sp if s>=80], [(p,s) for p,s in sp if s<80]
@@ -333,13 +395,17 @@ def main():
         else: h += '<div style="padding:4px;font-size:8px;color:#38a169">Tous atteints</div>'
         h += '</div></div>'; return h
 
-    def html_kpi_bars(kpi_list, actuals, targets, title, color_ok, color_fail):
+    def html_kpi_bars(kpi_list, actuals, targets, title, color_ok, color_fail, kpi_history=None):
         h = '<div class="ca"><div class="ct" style="color:%s">%s</div>' % (color_ok, title)
         for k in kpi_list:
             av, tv = actuals.get(k,0), targets.get(k,100)
             met = av <= tv if is_lb(k) else av >= tv
             bw = min(max(av,0),100); bg = color_ok if met else color_fail
-            h += '<div class="car"><div class="cal" style="width:240px">%s</div><div class="cab"><div class="caf" style="width:%s%%;background:%s"></div></div><div class="cav-out">%.1f%%</div></div>' % (k, bw, bg, av)
+            spark_html = ""
+            if kpi_history:
+                hist = kpi_history.get("__total__%s" % k, [])
+                if len(hist) >= 2: spark_html = build_kpi_cell("", hist, is_lb(k))
+            h += '<div class="car"><div class="cal" style="width:240px">%s %s</div><div class="cab"><div class="caf" style="width:%s%%;background:%s"></div></div><div class="cav-out">%.1f%%</div></div>' % (k, spark_html, bw, bg, av)
         h += '</div>'; return h
 
     def html_bars(data, title, color):
@@ -359,59 +425,30 @@ def main():
             h += '<div class="gbr"><div class="gbr-l">%s</div><div class="gbr-g"><div class="gbr-w"><div class="gbr-f gb-p" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div><div class="gbr-w"><div class="gbr-f gb-q" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div></div></div>' % (p, pw, pv, qw, qv)
         h += '</div>'; return h
 
-    def anl_pie_chart(data, names_col, values_col, title, colors=None):
-        if data.empty: return None
-        fig = px.pie(data, names=names_col, values=values_col, title=title,
-                     color_discrete_sequence=colors or px.colors.qualitative.Set2)
-        fig.update_traces(textposition='inside', textinfo='percent+label+value', textfont_size=9)
-        fig.update_layout(margin=dict(t=40,b=10,l=10,r=10), height=340, title_font_size=11,
-                          legend=dict(font_size=8, orientation="h", yanchor="bottom", y=-0.15))
-        return fig
-
-    def anl_html_table(df_out, pct_col=None, pct_thresh=(80,60)):
-        h = '<table class="anl-tbl"><thead><tr>'
-        for c in df_out.columns: h += '<th>%s</th>' % c
-        h += '</tr></thead><tbody>'
-        for idx, row in df_out.iterrows():
-            is_tot = str(idx) == "TOTAL" or row.iloc[0] == "TOTAL"
-            rc = "tot" if is_tot else ""
-            h += '<tr class="%s">' % rc
-            for c in df_out.columns:
-                v = row[c]
-                s = ""
-                if pct_col and c == pct_col and not is_tot:
-                    try:
-                        pv = float(str(v).replace('%','').strip())
-                        s = "g-green" if pv >= pct_thresh[0] else ("g-yellow" if pv >= pct_thresh[1] else "g-red")
-                    except: pass
-                if isinstance(v, float): v = round(v, 1)
-                h += '<td class="%s">%s</td>' % (s, v)
-            h += '</tr>'
-        return h + '</tbody></table>'
-
-    def export_btn(df, filename):
-        buf = io.BytesIO()
-        df.to_excel(buf, index=False, engine='openpyxl')
-        buf.seek(0)
-        st.download_button("📥 Exporter Excel", data=buf, file_name=filename,
-                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-
     # ===================== SIDEBAR =====================
     with st.sidebar:
         st.markdown("""<div style="padding:10px 0 4px 0"><div style="font-size:18px;margin-bottom:2px">⚙️</div><div style="font-size:12px;font-weight:800;color:white">Filtres & Parametres</div><div style="font-size:8px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Configuration</div></div>""", unsafe_allow_html=True)
         st.markdown("---")
         unf = st.toggle("📁 Charger nouveaux fichiers", value=False, key="tf")
-        ot_f = av_f = None; apm = []
+        ot_f = av_f = None
+        apm = []
+
         if unf:
             ot_f = st.file_uploader("Fichier OT", type=["xlsx"], key="uot")
             av_f = st.file_uploader("Fichier AVIS", type=["xlsx"], key="uav")
         else:
-            if os.path.exists("ot.xlsx"):
-                try:
+            # Lecture silencieuse pour peupler la liste des postes
+            try:
+                if os.path.exists("ot.xlsx"):
                     _t = excr(pd.read_excel("ot.xlsx"))
                     apm = sorted(_t[_t["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"), na=False)]["Poste travail princ."].dropna().unique().tolist())
-                except: pass
-            st.markdown("""<div style="background:rgba(255,255,255,.1);padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.15)"><div style="font-size:7px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Donnees</div><div style="font-size:10px;color:white;font-weight:600;margin-top:1px">📅 %s</div></div>""" % fichier_date, unsafe_allow_html=True)
+                    df_dt = datetime.fromtimestamp(os.path.getmtime("ot.xlsx")).strftime("%d/%m/%Y")
+                    st.markdown("""<div style="background:rgba(255,255,255,.1);padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.15)"><div style="font-size:7px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Donnees</div><div style="font-size:10px;color:white;font-weight:600;margin-top:1px">📅 %s</div></div>""" % df_dt, unsafe_allow_html=True)
+                else:
+                    st.markdown("""<div style="background:rgba(229,62,62,.2);padding:8px 10px;border-radius:6px;border:1px solid rgba(229,62,62,.4);margin-bottom:6px"><div style="font-size:10px;color:#fc8181;font-weight:700">⚠️ Fichier ot.xlsx manquant</div><div style="font-size:8px;color:rgba(255,255,255,.5);margin-top:4px">→ Activez le toggle ci-dessus</div></div>""", unsafe_allow_html=True)
+            except Exception as e:
+                st.error(f"Erreur lecture: {e}")
+
         st.markdown("---")
         st.markdown("**🎯 Postes**")
         sp = st.multiselect("Poste", ["All"]+apm, ["All"], key="sp")
@@ -423,414 +460,259 @@ def main():
         st.markdown("**📅 Periode**")
         dr = st.date_input("Date debut planifiee", value=(datetime(2025,1,1).date(), datetime.today().date()), format="DD/MM/YYYY", key="dr")
 
-    if not unf or (ot_f is not None and av_f is not None):
-        try:
-            if unf:
-                raw_ot = pd.read_excel(ot_f); raw_av = pd.read_excel(av_f)
-            else:
-                raw_ot = pd.read_excel("ot.xlsx"); raw_av = pd.read_excel("avis.xlsx")
-            raw_ot = excr(raw_ot); raw_av = excr(raw_av)
-            for c in ["Créé le","Date de début planifiée","Date de clôture","Début réel","Fin réelle"]:
-                if c in raw_ot.columns: raw_ot[c] = pd.to_datetime(raw_ot[c], errors="coerce")
-            for c in ["Créé le","Début souhaité","Date de la clôture"]:
-                if c in raw_av.columns: raw_av[c] = pd.to_datetime(raw_av[c], errors="coerce")
-            if not apm: apm = sorted(raw_ot[raw_ot["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"), na=False)]["Poste travail princ."].dropna().unique().tolist())
-            if "All" in sp or not sp: sp = apm
-            if "All" in sa or not sa: sa = ["All"]
-            if "All" in sd or not sd: sd = ["All"]
-            sdt = pd.to_datetime(dr[0]) if len(dr)==2 else pd.to_datetime(datetime(2025,1,1))
-            edt = pd.to_datetime(dr[1]) if len(dr)==2 else pd.to_datetime(datetime.today())
-
-            def mf(poste):
-                p = str(poste).upper()
-                if "All" not in sa:
-                    m = False
-                    if "Sulfurique (PS)" in sa and "PS" in p: m = True
-                    if "Phosphorique (PP)" in sa and "PP" in p: m = True
-                    if "Engrais (TSP/REX)" in sa and ("TSP" in p or "REX" in p): m = True
-                    if "Feed (MCP/DCP)" in sa and ("MCP" in p or "DCP" in p): m = True
-                    if not m: return False
-                if "All" not in sd:
-                    m = False
-                    if "SF1" in sd and "SF1" in p: m = True
-                    if "SF2" in sd and "SF2" in p: m = True
-                    if not m: return False
-                return True
-
-            vp = [p for p in apm if mf(p) and p in sp]
-
-            df = raw_ot[(raw_ot["Poste travail princ."].isin(vp)) & (raw_ot["Date de début planifiée"].between(sdt, edt))].copy()
-            avdf = raw_av[raw_av["Poste travail princ."].isin(vp)].copy()
-            df = excr(df[df["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"), na=False)].drop_duplicates())
-            avdf = excr(avdf[(avdf["Ordre"].isna())|(avdf["Ordre"].astype(str).str.strip().eq(""))].drop_duplicates())
-            if "Statut système" in df.columns: df["Statut OT"] = df["Statut système"].fillna("").astype(str).str.strip().str.split().str[0]
-
-            df_dash = raw_ot[raw_ot["Poste travail princ."].isin(vp)].copy()
-            df_dash = excr(df_dash[df_dash["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"), na=False)].drop_duplicates())
-            if "Statut système" in df_dash.columns: df_dash["Statut OT"] = df_dash["Statut système"].fillna("").astype(str).str.strip().str.split().str[0]
-
-            now = pd.Timestamp.now()
-            res = calc_kpis(df, avdf, now, vp)
-            ckdf = res['ckdf']; dfp = res['dfp']
-            res_d = calc_kpis(df_dash, avdf, now, vp)
-            ckdf_d = res_d['ckdf']
-
-            qk = ["TAUX_REALISATION_CORRECTIF/PT","OT préparation <1 mois","OT préparation >3 mois","OT préparation 1mois< <3mois","OT planification <1 mois","OT planification >3 mois","OT planification 1mois< <3mois","OT exécution <1 mois","OT exécution >3 mois","OT exécution 1mois< <3mois"]
-            pk = ["appel avis approuvé","OT LANC ESTIME","Backlog préparation caractérisé","Backlog planification caractérisé","OT CONFIME","OT_COR_EGAL"]
-            cible = {"TAUX_REALISATION_CORRECTIF/PT":85,"OT préparation <1 mois":80,"OT préparation >3 mois":5,"OT préparation 1mois< <3mois":15,"OT planification <1 mois":80,"OT planification >3 mois":5,"OT planification 1mois< <3mois":15,"OT exécution <1 mois":80,"OT exécution >3 mois":5,"OT exécution 1mois< <3mois":15,"appel avis approuvé":95,"OT LANC ESTIME":100,"Backlog préparation caractérisé":100,"Backlog planification caractérisé":100,"OT CONFIME":100,"OT_COR_EGAL":100}
-            act_map = {"TAUX_REALISATION_CORRECTIF/PT":"Ameliorer le taux de realisation des OT.","OT préparation <1 mois":"Reduire l'age de preparation des OT (< 1 mois).","OT préparation >3 mois":"Traiter les OT avec preparation > 3 mois.","OT planification <1 mois":"Reduire l'age de planification des OT (< 1 mois).","OT planification >3 mois":"Traiter les OT avec planification > 3 mois.","OT exécution <1 mois":"Reduire l'age d'execution des OT (< 1 mois).","OT exécution >3 mois":"Traiter les OT avec execution > 3 mois.","OT LANC ESTIME":"Estimer les couts des OT lances.","Backlog préparation caractérisé":"Caracteriser le backlog de preparation.","Backlog planification caractérisé":"Caracteriser le backlog de planification.","OT CONFIME":"Confirmer les OT termines.","OT_COR_EGAL":"Rapprocher les couts reels et budgetes.","appel avis approuvé":"Creer un OT pour les avis sans ordre."}
-
-            pscores = {}; qscores = {}
-            for poste in ckdf.index:
-                r = ckdf.loc[poste]
-                pscores[poste] = (sum(gscore(k,r[k],cible[k]) for k in qk if k in r.index)/len(qk)*100) if qk else 0
-                qscores[poste] = (sum(gscore(k,r[k],cible[k]) for k in pk if k in r.index)/len(pk)*100) if pk else 0
-            pa = {k: round(ckdf[k].mean(),2) for k in qk}
-            qa = {k: round(ckdf[k].mean(),2) for k in pk}
-
-            pscores_d = {}; qscores_d = {}
-            for poste in ckdf_d.index:
-                r = ckdf_d.loc[poste]
-                pscores_d[poste] = (sum(gscore(k,r[k],cible[k]) for k in qk if k in r.index)/len(qk)*100) if qk else 0
-                qscores_d[poste] = (sum(gscore(k,r[k],cible[k]) for k in pk if k in r.index)/len(pk)*100) if pk else 0
-            pa_d = {k: round(ckdf_d[k].mean(),2) for k in qk}
-            qa_d = {k: round(ckdf_d[k].mean(),2) for k in pk}
-
-            # ANOMALIES
-            all_ano = []
-            sub_p = {"TAUX_REALISATION_CORRECTIF/PT":lambda d:d[(d["Nº appel pl.entret."].fillna(0)==0)&(~d["Statut OT"].isin(["CLOT","TCLO"]))],"OT préparation <1 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]!="<1 mois")],"OT préparation >3 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]==">3 mois")],"OT planification <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]!="<1 mois")],"OT planification >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]==">3 mois")],"OT exécution <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]!="<1 mois")],"OT exécution >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]==">3 mois")]}
-            sub_q = {"OT LANC ESTIME":lambda d:d[(d["Statut OT"]=="LANC")&(d["OT LANC ESTIME"]=="NON")],"Backlog préparation caractérisé":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["Backlog preparation"]=="NON CARACTERISE")],"Backlog planification caractérisé":lambda d:d[(d["Statut OT"]=="LANC")&(d["Backlog planification"]=="NON CARACTERISE")],"OT CONFIME":lambda d:d[d["OT CONFIME"]=="NON"],"OT_COR_EGAL":lambda d:d[d["OT_COR_EGAL"]=="NON"]}
-            for poste in vp:
-                if poste not in dfp["Poste travail princ."].values: continue
-                dp = dfp[dfp["Poste travail princ."]==poste]
-                for kn, sf in sub_p.items():
-                    vk = ckdf.loc[poste, kn] if poste in ckdf.index else 100
-                    if pd.notna(vk) and vk < cible[kn]:
-                        cnt = len(sf(dp))
-                        if cnt > 0: all_ano.append({"Poste":poste,"KPI":kn,"Nb":cnt,"Type":"P"})
-                for kn, sf in sub_q.items():
-                    vk = ckdf.loc[poste, kn] if poste in ckdf.index else 100
-                    if pd.notna(vk) and vk < cible[kn]:
-                        cnt = len(sf(dp))
-                        if cnt > 0: all_ano.append({"Poste":poste,"KPI":kn,"Nb":cnt,"Type":"Q"})
-                vk_av = ckdf.loc[poste, "appel avis approuvé"] if poste in ckdf.index else 100
-                if pd.notna(vk_av) and vk_av < cible["appel avis approuvé"]:
-                    cnt = len(res['avf'][res['avf']["Poste travail princ."]==poste])
-                    if cnt > 0: all_ano.append({"Poste":poste,"KPI":"appel avis approuvé","Nb":cnt,"Type":"Q"})
-
-            def build_ano(ano_list, kpi_list):
-                if not ano_list: return [], []
-                adf = pd.DataFrame(ano_list)
-                pv = adf.pivot_table(index="Poste", columns="KPI", values="Nb", aggfunc="sum", fill_value=0).astype(int)
-                pv["Total"] = pv.sum(axis=1); tot = pv.sum()
-                cols = [c for c in kpi_list if c in pv.columns] + ["Total"]; rows = []
-                for idx in pv.index:
-                    r = {"_t":"n","Poste de travail":idx}
-                    for c in cols: r[c] = pv.loc[idx, c]
-                    rows.append(r)
-                tr = {"_t":"total","Poste de travail":"Total general"}
-                for c in cols: tr[c] = int(tot[c])
-                rows.append(tr); return ["Poste de travail"]+cols, rows
-
-            ano_p_c, ano_p_r = build_ano([a for a in all_ano if a["Type"]=="P"], qk)
-            ano_q_c, ano_q_r = build_ano([a for a in all_ano if a["Type"]=="Q"], pk)
-
-            def build_kpi(kpi_list, scores, sname):
-                sp2 = sorted(scores.keys(), key=lambda x: scores[x], reverse=True)
-                cols = ["Poste de travail"]+kpi_list+[sname]; rows = []
-                cr = {"_t":"cible","Poste de travail":"CIBLE"}
-                for k in kpi_list: cr[k] = cible[k]
-                cr[sname] = "100.00 %"; rows.append(cr)
-                for p in sp2:
-                    r = {"_t":"n","Poste de travail":p}
-                    for k in kpi_list: r[k] = round(ckdf.loc[p, k], 2) if p in ckdf.index else ""
-                    r[sname] = "%.2f %%" % scores[p]; rows.append(r)
-                tr = {"_t":"total","Poste de travail":"Total general"}
-                for k in kpi_list: tr[k] = round(ckdf[k].mean(), 2)
-                tr[sname] = "%.2f %%" % (np.mean(list(scores.values())) if scores else 0)
-                rows.append(tr); return cols, rows
-
-            pcols, prows = build_kpi(qk, pscores, "Score Performance")
-            qcols, qrows = build_kpi(pk, qscores, "Score Qualite")
-
-            # Sauvegarde Excel
-            save_kpis_to_excel(prows, pcols, qrows, qcols, ano_p_r, ano_p_c, ano_q_r, ano_q_c, fichier_date)
-
-            # Donnees dashboard
-            df_sc_d = pd.DataFrame([{"Poste":p,"Perf":pscores_d[p],"Qual":qscores_d[p],"Metier":get_metier(p),"Atelier":get_atelier(p),"Division":get_division(p)} for p in vp if p in pscores_d])
-            by_at = df_sc_d.groupby("Atelier")[["Perf","Qual"]].mean().round(1) if not df_sc_d.empty else pd.DataFrame()
-            by_mt = df_sc_d.groupby("Metier")[["Perf","Qual"]].mean().round(1) if not df_sc_d.empty else pd.DataFrame()
-            by_div = df_sc_d.groupby("Division")[["Perf","Qual"]].mean().round(1) if not df_sc_d.empty else pd.DataFrame()
-
-            total_ot = len(df); avg_p = np.mean(list(pscores.values())) if pscores else 0
-            avg_q = np.mean(list(qscores.values())) if qscores else 0; total_ano = sum(a["Nb"] for a in all_ano)
-
-            # === Trouver colonne Designation ===
-            desig_col = None
-            for cn in ["Désignation du travail","Designation du travail","Désignation","Designation","Description"]:
-                if cn in dfp.columns: desig_col = cn; break
-
-            # RENDER
-            st.markdown('<div class="mh"><h1>📊 KPI Dashboard MC & FEED</h1><div class="db">📅 %s</div></div>' % fichier_date, unsafe_allow_html=True)
-            st.markdown("""<div class="cr">
-            <div class="cc c1"><div class="cv">%s</div><div class="cl">Total OT Analyses</div></div>
-            <div class="cc c2"><div class="cv">%.1f%%</div><div class="cl">Score Performance</div></div>
-            <div class="cc c3"><div class="cv">%.1f%%</div><div class="cl">Score Qualite</div></div>
-            <div class="cc c4"><div class="cv">%s</div><div class="cl">Total Anomalies</div></div>
-            </div>""" % (total_ot, avg_p, avg_q, total_ano), unsafe_allow_html=True)
-
-            tab0, tab1, tab2, tab3 = st.tabs(["📊 TABLEAU DE BORD", "📈 INDICATEURS PERFORMANCE", "✅ INDICATEUR QUALITE", "🔬 ANALYSE"])
-
-            # ==================== DASHBOARD ====================
-            with tab0:
-                st.markdown('<div class="stl p">📊 Vue d\'ensemble par poste</div>', unsafe_allow_html=True)
-                st.markdown(html_grouped_bars(vp, pscores_d, qscores_d, "Performance & Qualite par Poste de Travail"), unsafe_allow_html=True)
-
-                st.markdown('<div class="stl p">🏭 Par Atelier</div>', unsafe_allow_html=True)
-                if not by_at.empty:
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        st.markdown(html_bars([(idx,row["Perf"]) for idx,row in by_at.iterrows()], "Performance par Atelier", "#2b6cb0"), unsafe_allow_html=True)
-                    with c2:
-                        st.markdown(html_bars([(idx,row["Qual"]) for idx,row in by_at.iterrows()], "Qualite par Atelier", "#276749"), unsafe_allow_html=True)
-
-                st.markdown('<div class="stl p">🔧 Par Metier</div>', unsafe_allow_html=True)
-                if not by_mt.empty:
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        st.markdown(html_bars([(idx,row["Perf"]) for idx,row in by_mt.iterrows()], "Performance par Metier", "#2b6cb0"), unsafe_allow_html=True)
-                    with c2:
-                        st.markdown(html_bars([(idx,row["Qual"]) for idx,row in by_mt.iterrows()], "Qualite par Metier", "#276749"), unsafe_allow_html=True)
-
-                st.markdown('<div class="stl p">🏢 Par Division</div>', unsafe_allow_html=True)
-                if not by_div.empty:
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        st.markdown(html_bars([(idx,row["Perf"]) for idx,row in by_div.iterrows()], "Performance par Division", "#2b6cb0"), unsafe_allow_html=True)
-                    with c2:
-                        st.markdown(html_bars([(idx,row["Qual"]) for idx,row in by_div.iterrows()], "Qualite par Division", "#276749"), unsafe_allow_html=True)
-
-                st.markdown('<div class="stl p">📊 Synthese globale (sans filtre date)</div>', unsafe_allow_html=True)
-                st.markdown(html_synth(qk, pa_d, cible, act_map, "#2b6cb0"), unsafe_allow_html=True)
-                st.markdown(html_synth(pk, qa_d, cible, act_map, "#276749"), unsafe_allow_html=True)
-
-                st.markdown('<div class="stl p">🏆 Classement des postes</div>', unsafe_allow_html=True)
-                st.markdown(html_classement(pscores_d, "#2b6cb0"), unsafe_allow_html=True)
-                st.markdown(html_classement(qscores_d, "#276749"), unsafe_allow_html=True)
-
-            # ==================== PERFORMANCE ====================
-            with tab1:
-                choix_p = st.radio("Choix d'affichage", ["📈 Indicateurs de Performance", "⚠️ Anomalies Performance"], horizontal=True, key="choix_p")
-                if choix_p == "📈 Indicateurs de Performance":
-                    st.markdown('<div class="rh"><div class="stl p">📈 Indicateurs de Performance par Poste</div></div>', unsafe_allow_html=True)
-                    st.markdown(html_table(prows, pcols, "pt", ["Score Performance"]), unsafe_allow_html=True)
-                else:
-                    if ano_p_c:
-                        st.markdown('<div class="rh"><div class="stl a">⚠️ Anomalies Performance</div></div>', unsafe_allow_html=True)
-                        st.markdown(html_ano(ano_p_r, ano_p_c), unsafe_allow_html=True)
-                    else:
-                        st.markdown('<div class="es">✅ Aucune anomalie performance detectee.</div>', unsafe_allow_html=True)
-                st.markdown('<div class="stl p">📊 Synthese Performance</div>', unsafe_allow_html=True)
-                st.markdown(html_synth(qk, pa, cible, act_map, "#2b6cb0"), unsafe_allow_html=True)
-                st.markdown('<div class="stl p">📈 Barres de progression</div>', unsafe_allow_html=True)
-                st.markdown(html_kpi_bars(qk, pa, cible, "Performance Globale", "#2b6cb0", "#e53e3e"), unsafe_allow_html=True)
-                st.markdown('<div class="stl p">🏆 Classement</div>', unsafe_allow_html=True)
-                st.markdown(html_classement(pscores, "#2b6cb0"), unsafe_allow_html=True)
-
-            # ==================== QUALITE ====================
-            with tab2:
-                choix_q = st.radio("Choix d'affichage", ["✅ Indicateurs de Qualite", "⚠️ Anomalies Qualite"], horizontal=True, key="choix_q")
-                if choix_q == "✅ Indicateurs de Qualite":
-                    st.markdown('<div class="rh"><div class="stl q">✅ Indicateurs de Qualite par Poste</div></div>', unsafe_allow_html=True)
-                    st.markdown(html_table(qrows, qcols, "qt", ["Score Qualite"]), unsafe_allow_html=True)
-                else:
-                    if ano_q_c:
-                        st.markdown('<div class="rh"><div class="stl a">⚠️ Anomalies Qualite</div></div>', unsafe_allow_html=True)
-                        st.markdown(html_ano(ano_q_r, ano_q_c), unsafe_allow_html=True)
-                    else:
-                        st.markdown('<div class="es">✅ Aucune anomalie qualite detectee.</div>', unsafe_allow_html=True)
-                st.markdown('<div class="stl q">📊 Synthese Qualite</div>', unsafe_allow_html=True)
-                st.markdown(html_synth(pk, qa, cible, act_map, "#276749"), unsafe_allow_html=True)
-                st.markdown('<div class="stl q">📈 Barres de progression</div>', unsafe_allow_html=True)
-                st.markdown(html_kpi_bars(pk, qa, cible, "Qualite Globale", "#276749", "#e53e3e"), unsafe_allow_html=True)
-                st.markdown('<div class="stl q">🏆 Classement</div>', unsafe_allow_html=True)
-                st.markdown(html_classement(qscores, "#276749"), unsafe_allow_html=True)
-
-            # ==================== ANALYSE ====================
-            with tab3:
-                # --- 1. OT OMS ---
-                st.markdown('<div class="stl c">1. Analyse des OT OMS</div>', unsafe_allow_html=True)
-                if desig_col:
-                    oms_df = dfp[dfp[desig_col].astype(str).str.contains("OMS", case=False, na=False)]
-                    if not oms_df.empty:
-                        oms_pv = pd.pivot_table(oms_df, index="Poste travail princ.", columns="Statut OT", values="Ordre", aggfunc="count", fill_value=0)
-                        oms_pv["Total"] = oms_pv.sum(axis=1)
-                        oms_pv = oms_pv.sort_values("Total", ascending=False)
-                        oms_tot = oms_pv.sum()
-                        oms_tot.name = "TOTAL"
-                        oms_pv = pd.concat([oms_pv, oms_tot.to_frame().T])
-                        oms_export = oms_pv.reset_index().rename(columns={"index":"Poste de Travail"} if "index" in oms_pv.reset_index().columns else {"Poste travail princ.":"Poste de Travail"})
-                        c1, c2 = st.columns([1.2, 1])
-                        with c1:
-                            st.markdown(anl_html_table(oms_pv.reset_index().rename(columns={"Poste travail princ.":"Poste de Travail"})), unsafe_allow_html=True)
-                            export_btn(oms_export, "analyse_oms.xlsx")
-                        with c2:
-                            oms_pie = oms_df["Statut OT"].value_counts().reset_index()
-                            oms_pie.columns = ["Statut", "Nombre"]
-                            fig = anl_pie_chart(oms_pie, "Statut", "Nombre", "Repartition OT OMS par Statut")
-                            if fig: st.plotly_chart(fig, use_container_width=True)
-                    else:
-                        st.markdown('<div class="es">Aucun OT OMS trouve.</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown('<div class="es">Colonne "Designation du travail" non trouvee dans les donnees.</div>', unsafe_allow_html=True)
-
-                st.markdown("---")
-
-                # --- 2. OT Thermographiques ---
-                st.markdown('<div class="stl c">2. Analyse des OT Thermographiques</div>', unsafe_allow_html=True)
-                if desig_col:
-                    thermo_df = dfp[dfp[desig_col].astype(str).str.contains("THERMO", case=False, na=False)]
-                    if not thermo_df.empty:
-                        th_pv = pd.pivot_table(thermo_df, index="Poste travail princ.", columns="Statut OT", values="Ordre", aggfunc="count", fill_value=0)
-                        th_pv["Total"] = th_pv.sum(axis=1)
-                        th_pv = th_pv.sort_values("Total", ascending=False)
-                        th_tot = th_pv.sum()
-                        th_tot.name = "TOTAL"
-                        th_pv = pd.concat([th_pv, th_tot.to_frame().T])
-                        th_export = th_pv.reset_index().rename(columns={"Poste travail princ.":"Poste de Travail"})
-                        c1, c2 = st.columns([1.2, 1])
-                        with c1:
-                            st.markdown(anl_html_table(th_export), unsafe_allow_html=True)
-                            export_btn(th_export, "analyse_thermo.xlsx")
-                        with c2:
-                            th_pie = thermo_df["Statut OT"].value_counts().reset_index()
-                            th_pie.columns = ["Statut", "Nombre"]
-                            fig = anl_pie_chart(th_pie, "Statut", "Nombre", "Repartition OT Thermographiques par Statut")
-                            if fig: st.plotly_chart(fig, use_container_width=True)
-                    else:
-                        st.markdown('<div class="es">Aucun OT Thermographique trouve.</div>', unsafe_allow_html=True)
-
-                st.markdown("---")
-
-                # --- 3. Backlog Preparation ---
-                st.markdown('<div class="stl c">3. Analyse du Backlog Preparation</div>', unsafe_allow_html=True)
-                bl_prep = dfp[dfp["Statut OT"]=="CRÉÉ"]
-                if not bl_prep.empty:
-                    bl_p_pv = pd.pivot_table(bl_prep, index="Poste travail princ.", columns="Backlog preparation", values="Ordre", aggfunc="count", fill_value=0)
-                    for c in ["CARACTERISE","NON CARACTERISE"]: 
-                        if c not in bl_p_pv.columns: bl_p_pv[c] = 0
-                    bl_p_pv["Total"] = bl_p_pv.sum(axis=1)
-                    bl_p_pv["% Caracterisation"] = np.where(bl_p_pv["Total"]==0, 0, (bl_p_pv.get("CARACTERISE",0)/bl_p_pv["Total"]*100)).round(1)
-                    bl_p_pv = bl_p_pv[["CARACTERISE","NON CARACTERISE","Total","% Caracterisation"]]
-                    bl_p_pv = bl_p_pv.sort_values("Total", ascending=False)
-                    bl_p_tot = bl_p_pv.sum()
-                    bl_p_tot["% Caracterisation"] = round(bl_p_tot["CARACTERISE"]/bl_p_tot["Total"]*100, 1) if bl_p_tot["Total"] > 0 else 0
-                    bl_p_tot.name = "TOTAL"
-                    bl_p_pv = pd.concat([bl_p_pv, bl_p_tot.to_frame().T])
-                    bl_p_export = bl_p_pv.reset_index().rename(columns={"Poste travail princ.":"Poste de Travail"})
-                    c1, c2 = st.columns([1.2, 1])
-                    with c1:
-                        st.markdown(anl_html_table(bl_p_export, "% Caracterisation", (80, 60)), unsafe_allow_html=True)
-                        export_btn(bl_p_export, "analyse_backlog_prep.xlsx")
-                    with c2:
-                        mp_types = ["CRPR ATPD","CRPR ATMR","CRPR ATER","CRPR ATRS","CRPR ATMO","ATPD","ATMR","ATER","ATRS","ATMO"]
-                        def get_caract_prep(su):
-                            s = str(su).upper()
-                            for t in mp_types:
-                                if t in s: return t
-                            return "NON CARACTERISE"
-                        bl_p_caract = bl_prep.copy()
-                        bl_p_caract["Type Caract."] = bl_p_caract["Statut utilisateur"].apply(get_caract_prep)
-                        bp_pie = bl_p_caract["Type Caract."].value_counts().reset_index()
-                        bp_pie.columns = ["Caracterisation", "Nombre"]
-                        fig = anl_pie_chart(bp_pie, "Caracterisation", "Nombre", "Types de Caracterisation Backlog Prep.")
-                        if fig: st.plotly_chart(fig, use_container_width=True)
-                else:
-                    st.markdown('<div class="es">Aucun OT en backlog preparation.</div>', unsafe_allow_html=True)
-
-                st.markdown("---")
-
-                # --- 4. Backlog Planification ---
-                st.markdown('<div class="stl c">4. Analyse du Backlog Planification</div>', unsafe_allow_html=True)
-                bl_plan = dfp[dfp["Statut OT"]=="LANC"]
-                if not bl_plan.empty:
-                    bl_pl_pv = pd.pivot_table(bl_plan, index="Poste travail princ.", columns="Backlog planification", values="Ordre", aggfunc="count", fill_value=0)
-                    for c in ["CARACTERISE","NON CARACTERISE"]:
-                        if c not in bl_pl_pv.columns: bl_pl_pv[c] = 0
-                    bl_pl_pv["Total"] = bl_pl_pv.sum(axis=1)
-                    bl_pl_pv["% Caracterisation"] = np.where(bl_pl_pv["Total"]==0, 0, (bl_pl_pv.get("CARACTERISE",0)/bl_pl_pv["Total"]*100)).round(1)
-                    bl_pl_pv = bl_pl_pv[["CARACTERISE","NON CARACTERISE","Total","% Caracterisation"]]
-                    bl_pl_pv = bl_pl_pv.sort_values("Total", ascending=False)
-                    bl_pl_tot = bl_pl_pv.sum()
-                    bl_pl_tot["% Caracterisation"] = round(bl_pl_tot["CARACTERISE"]/bl_pl_tot["Total"]*100, 1) if bl_pl_tot["Total"] > 0 else 0
-                    bl_pl_tot.name = "TOTAL"
-                    bl_pl_pv = pd.concat([bl_pl_pv, bl_pl_tot.to_frame().T])
-                    bl_pl_export = bl_pl_pv.reset_index().rename(columns={"Poste travail princ.":"Poste de Travail"})
-                    c1, c2 = st.columns([1.2, 1])
-                    with c1:
-                        st.markdown(anl_html_table(bl_pl_export, "% Caracterisation", (80, 60)), unsafe_allow_html=True)
-                        export_btn(bl_pl_export, "analyse_backlog_plan.xlsx")
-                    with c2:
-                        mplan_types = ["ATPL ATEI","ATPL ATAL","ATPL ATER","ATPL AGAR","ATPL ATHS","ATEI","ATAL","ATAS","AGAR","ATHS"]
-                        def get_caract_plan(su):
-                            s = str(su).upper()
-                            for t in mplan_types:
-                                if t in s: return t
-                            return "NON CARACTERISE"
-                        bl_pl_caract = bl_plan.copy()
-                        bl_pl_caract["Type Caract."] = bl_pl_caract["Statut utilisateur"].apply(get_caract_plan)
-                        bpl_pie = bl_pl_caract["Type Caract."].value_counts().reset_index()
-                        bpl_pie.columns = ["Caracterisation", "Nombre"]
-                        fig = anl_pie_chart(bpl_pie, "Caracterisation", "Nombre", "Types de Caracterisation Backlog Plan.")
-                        if fig: st.plotly_chart(fig, use_container_width=True)
-                else:
-                    st.markdown('<div class="es">Aucun OT en backlog planification.</div>', unsafe_allow_html=True)
-
-                st.markdown("---")
-
-                # --- 5. Backlog Execution ---
-                st.markdown('<div class="stl c">5. Analyse du Backlog Execution</div>', unsafe_allow_html=True)
-                if not dfp.empty:
-                    def calc_exec_stats(data):
-                        lanc_ns = data[(data["Statut OT"]=="LANC") & (data["Contient SOPL"]==0)].shape[0]
-                        sopl = data[(data["Statut OT"]=="LANC") & (data["Contient SOPL"]==1)].shape[0]
-                        clot = data[data["Statut OT"]=="CLOT"].shape[0]
-                        tclo = data[data["Statut OT"]=="TCLO"].shape[0]
-                        total = len(data)
-                        pct_cloture = round((clot+tclo)/total*100, 1) if total > 0 else 0
-                        return pd.Series({"LANC":lanc_ns,"SOPL":sopl,"CLOT":clot,"TCLO":tclo,"Total":total,"% Cloture":pct_cloture})
-                    bl_ex = dfp.groupby("Poste travail princ.").apply(calc_exec_stats).astype(int)
-                    bl_ex["% Cloture"] = dfp.groupby("Poste travail princ.").apply(calc_exec_stats)["% Cloture"]
-                    bl_ex = bl_ex.sort_values("Total", ascending=False)
-                    bl_ex_tot = bl_ex.sum()
-                    bl_ex_tot["% Cloture"] = round((bl_ex_tot["CLOT"]+bl_ex_tot["TCLO"])/bl_ex_tot["Total"]*100, 1) if bl_ex_tot["Total"] > 0 else 0
-                    bl_ex_tot.name = "TOTAL"
-                    bl_ex = pd.concat([bl_ex, bl_ex_tot.to_frame().T])
-                    bl_ex_export = bl_ex.reset_index().rename(columns={"Poste travail princ.":"Poste de Travail"})
-                    c1, c2 = st.columns([1.2, 1])
-                    with c1:
-                        st.markdown(anl_html_table(bl_ex_export, "% Cloture", (80, 60)), unsafe_allow_html=True)
-                        export_btn(bl_ex_export, "analyse_backlog_exec.xlsx")
-                    with c2:
-                        ex_pie_data = pd.DataFrame({
-                            "Statut": ["LANC","SOPL","CLOT","TCLO"],
-                            "Nombre": [int(bl_ex_tot["LANC"]),int(bl_ex_tot["SOPL"]),int(bl_ex_tot["CLOT"]),int(bl_ex_tot["TCLO"])]
-                        })
-                        ex_pie_data = ex_pie_data[ex_pie_data["Nombre"]>0]
-                        if not ex_pie_data.empty:
-                            fig = anl_pie_chart(ex_pie_data, "Statut", "Nombre", "Repartition Backlog Execution",
-                                                ["#4299e1","#48bb78","#38a169","#2b6cb0"])
-                            if fig: st.plotly_chart(fig, use_container_width=True)
-                        else:
-                            st.markdown('<div class="es">Aucune donnee.</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown('<div class="es">Aucune donnee disponible.</div>', unsafe_allow_html=True)
-
-        except Exception as e:
-            st.error(f"Erreur de chargement: {str(e)}")
-            import traceback; st.code(traceback.format_exc())
+    # ===================== GARDIEN PRINCIPAL (HORS SIDEBAR) =====================
+    if unf:
+        if not (ot_f and av_f):
+            st.markdown("""<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;background:#fff;border-radius:12px;border:2px dashed #cbd5e0;margin:10px;padding:40px">
+            <div style="font-size:56px;margin-bottom:16px">📁</div>
+            <h2 style="color:#1e3a5f;font-size:22px;font-weight:800;margin:0">Chargement en cours...</h2>
+            <p style="color:#718096;font-size:13px;margin-top:8px;text-align:center">Veuillez charger les deux fichiers dans la barre laterale :<br><b>ot.xlsx</b> et <b>avis.xlsx</b></p>
+            </div>""", unsafe_allow_html=True)
+            st.stop()
     else:
-        st.markdown('<div class="es">📁 Veuillez charger les fichiers OT et AVIS pour commencer.</div>', unsafe_allow_html=True)
+        if not (os.path.exists("ot.xlsx") and os.path.exists("avis.xlsx")):
+            st.markdown("""<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;background:#fff;border-radius:12px;border:2px dashed #e53e3e;margin:10px;padding:40px">
+            <div style="font-size:56px;margin-bottom:16px">❌</div>
+            <h2 style="color:#c53030;font-size:22px;font-weight:800;margin:0">Fichiers de donnees introuvables</h2>
+            <p style="color:#718096;font-size:13px;margin-top:8px;text-align:center">Le programme recherche par defaut les fichiers :<br>
+            <code style="background:#edf2f7;padding:2px 8px;border-radius:4px;font-weight:700">ot.xlsx</code> et
+            <code style="background:#edf2f7;padding:2px 8px;border-radius:4px;font-weight:700">avis.xlsx</code><br><br>
+            <b>Deux solutions :</b><br>
+            1. Placez ces fichiers a cote de ce script (.py)<br>
+            2. Activez <b>"Charger nouveaux fichiers"</b> dans la barre laterale</p>
+            </div>""", unsafe_allow_html=True)
+            st.stop()
+
+    # ===================== TRAITEMENT PRINCIPAL =====================
+    try:
+        if unf:
+            raw_ot = pd.read_excel(ot_f); raw_av = pd.read_excel(av_f); df_dt = datetime.now().strftime("%d/%m/%Y")
+        else:
+            raw_ot = pd.read_excel("ot.xlsx"); raw_av = pd.read_excel("avis.xlsx")
+            
+        raw_ot = excr(raw_ot); raw_av = excr(raw_av)
+        for c in ["Créé le","Date de début planifiée","Date de clôture","Début réel","Fin réelle"]:
+            if c in raw_ot.columns: raw_ot[c] = pd.to_datetime(raw_ot[c], errors="coerce")
+        for c in ["Créé le","Début souhaité","Date de la clôture"]:
+            if c in raw_av.columns: raw_av[c] = pd.to_datetime(raw_av[c], errors="coerce")
+        if not apm: apm = sorted(raw_ot[raw_ot["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"), na=False)]["Poste travail princ."].dropna().unique().tolist())
+        if "All" in sp or not sp: sp = apm
+        if "All" in sa or not sa: sa = ["All"]
+        if "All" in sd or not sd: sd = ["All"]
+        sdt = pd.to_datetime(dr[0]) if len(dr)==2 else pd.to_datetime(datetime(2025,1,1))
+        edt = pd.to_datetime(dr[1]) if len(dr)==2 else pd.to_datetime(datetime.today())
+
+        def mf(poste):
+            p = str(poste).upper()
+            if "All" not in sa:
+                m = False
+                if "Sulfurique (PS)" in sa and "PS" in p: m = True
+                if "Phosphorique (PP)" in sa and "PP" in p: m = True
+                if "Engrais (TSP/REX)" in sa and ("TSP" in p or "REX" in p): m = True
+                if "Feed (MCP/DCP)" in sa and ("MCP" in p or "DCP" in p): m = True
+                if not m: return False
+            if "All" not in sd:
+                m = False
+                if "SF1" in sd and "SF1" in p: m = True
+                if "SF2" in sd and "SF2" in p: m = True
+                if not m: return False
+            return True
+
+        vp = [p for p in apm if mf(p) and p in sp]
+
+        if not vp:
+            st.markdown("""<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:40vh;background:#fff;border-radius:12px;border:2px dashed #cbd5e0;margin:10px;padding:40px">
+            <div style="font-size:48px;margin-bottom:12px">🔍</div>
+            <h2 style="color:#1e3a5f;font-size:20px;font-weight:800;margin:0">Aucun poste trouve</h2>
+            <p style="color:#718096;font-size:13px;margin-top:8px">Modifiez les filtres pour selectionner au moins un poste.</p>
+            </div>""", unsafe_allow_html=True)
+            st.stop()
+
+        df = raw_ot[(raw_ot["Poste travail princ."].isin(vp)) & (raw_ot["Date de début planifiée"].between(sdt, edt))].copy()
+        avdf = raw_av[raw_av["Poste travail princ."].isin(vp)].copy()
+        df = excr(df[df["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"), na=False)].drop_duplicates())
+        avdf = excr(avdf[(avdf["Ordre"].isna())|(avdf["Ordre"].astype(str).str.strip().eq(""))].drop_duplicates())
+        if "Statut système" in df.columns: df["Statut OT"] = df["Statut système"].fillna("").astype(str).str.strip().str.split().str[0]
+
+        df_dash = raw_ot[raw_ot["Poste travail princ."].isin(vp)].copy()
+        df_dash = excr(df_dash[df_dash["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"), na=False)].drop_duplicates())
+        if "Statut système" in df_dash.columns: df_dash["Statut OT"] = df_dash["Statut système"].fillna("").astype(str).str.strip().str.split().str[0]
+
+        now = pd.Timestamp.now()
+
+        res = calc_kpis(df, avdf, now, vp)
+        ckdf = res['ckdf']; dfp = res['dfp']
+
+        res_d = calc_kpis(df_dash, avdf, now, vp)
+        ckdf_d = res_d['ckdf']
+
+        qk = ["TAUX_REALISATION_CORRECTIF/PT","OT préparation <1 mois","OT préparation >3 mois","OT préparation 1mois< <3mois","OT planification <1 mois","OT planification >3 mois","OT planification 1mois< <3mois","OT exécution <1 mois","OT exécution >3 mois","OT exécution 1mois< <3mois"]
+        pk = ["appel avis approuvé","OT LANC ESTIME","Backlog préparation caractérisé","Backlog planification caractérisé","OT CONFIME","OT_COR_EGAL"]
+        cible = {"TAUX_REALISATION_CORRECTIF/PT":85,"OT préparation <1 mois":80,"OT préparation >3 mois":5,"OT préparation 1mois< <3mois":15,"OT planification <1 mois":80,"OT planification >3 mois":5,"OT planification 1mois< <3mois":15,"OT exécution <1 mois":80,"OT exécution >3 mois":5,"OT exécution 1mois< <3mois":15,"appel avis approuvé":95,"OT LANC ESTIME":100,"Backlog préparation caractérisé":100,"Backlog planification caractérisé":100,"OT CONFIME":100,"OT_COR_EGAL":100}
+        act_map = {"TAUX_REALISATION_CORRECTIF/PT":"Ameliorer le taux de realisation des OT.","OT préparation <1 mois":"Reduire l'age de preparation des OT (< 1 mois).","OT préparation >3 mois":"Traiter les OT avec preparation > 3 mois.","OT planification <1 mois":"Reduire l'age de planification des OT (< 1 mois).","OT planification >3 mois":"Traiter les OT avec planification > 3 mois.","OT exécution <1 mois":"Reduire l'age d'execution des OT (< 1 mois).","OT exécution >3 mois":"Traiter les OT avec execution > 3 mois.","OT LANC ESTIME":"Estimer les couts des OT lances.","Backlog préparation caractérisé":"Caracteriser le backlog de preparation.","Backlog planification caractérisé":"Caracteriser le backlog de planification.","OT CONFIME":"Confirmer les OT termines.","OT_COR_EGAL":"Rapprocher les couts reels et budgetes.","appel avis approuvé":"Creer un OT pour les avis sans ordre."}
+
+        pscores = {}; qscores = {}
+        for poste in ckdf.index:
+            r = ckdf.loc[poste]
+            pscores[poste] = (sum(gscore(k,r[k],cible[k]) for k in qk if k in r.index)/len(qk)*100) if qk else 0
+            qscores[poste] = (sum(gscore(k,r[k],cible[k]) for k in pk if k in r.index)/len(pk)*100) if pk else 0
+        pa = {k: round(ckdf[k].mean(),2) for k in qk}
+        qa = {k: round(ckdf[k].mean(),2) for k in pk}
+
+        pscores_d = {}; qscores_d = {}
+        for poste in ckdf_d.index:
+            r = ckdf_d.loc[poste]
+            pscores_d[poste] = (sum(gscore(k,r[k],cible[k]) for k in qk if k in r.index)/len(qk)*100) if qk else 0
+            qscores_d[poste] = (sum(gscore(k,r[k],cible[k]) for k in pk if k in r.index)/len(pk)*100) if pk else 0
+        pa_d = {k: round(ckdf_d[k].mean(),2) for k in qk}
+        qa_d = {k: round(ckdf_d[k].mean(),2) for k in pk}
+
+        data_hash = compute_data_hash(raw_ot, raw_av)
+        kpi_history = save_current_kpis(ckdf, qk, pk, pscores, qscores, pa, qa, data_hash=data_hash)
+
+        all_ano = []
+        sub_p = {"TAUX_REALISATION_CORRECTIF/PT":lambda d:d[(d["Nº appel pl.entret."].fillna(0)==0)&(~d["Statut OT"].isin(["CLOT","TCLO"]))],"OT préparation <1 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]!="<1 mois")],"OT préparation >3 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]==">3 mois")],"OT planification <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]!="<1 mois")],"OT planification >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]==">3 mois")],"OT exécution <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]!="<1 mois")],"OT exécution >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]==">3 mois")]}
+        sub_q = {"OT LANC ESTIME":lambda d:d[(d["Statut OT"]=="LANC")&(d["OT LANC ESTIME"]=="NON")],"Backlog préparation caractérisé":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["Backlog preparation"]=="NON CARACTERISE")],"Backlog planification caractérisé":lambda d:d[(d["Statut OT"]=="LANC")&(d["Backlog planification"]=="NON CARACTERISE")],"OT CONFIME":lambda d:d[d["OT CONFIME"]=="NON"],"OT_COR_EGAL":lambda d:d[d["OT_COR_EGAL"]=="NON"]}
+        for poste in vp:
+            if poste not in dfp["Poste travail princ."].values: continue
+            dp = dfp[dfp["Poste travail princ."]==poste]
+            for kn, sf in sub_p.items():
+                vk = ckdf.loc[poste, kn] if poste in ckdf.index else 100
+                if pd.notna(vk) and vk < cible[kn]:
+                    cnt = len(sf(dp))
+                    if cnt > 0: all_ano.append({"Poste":poste,"KPI":kn,"Nb":cnt,"Type":"P"})
+            for kn, sf in sub_q.items():
+                vk = ckdf.loc[poste, kn] if poste in ckdf.index else 100
+                if pd.notna(vk) and vk < cible[kn]:
+                    cnt = len(sf(dp))
+                    if cnt > 0: all_ano.append({"Poste":poste,"KPI":kn,"Nb":cnt,"Type":"Q"})
+            vk_av = ckdf.loc[poste, "appel avis approuvé"] if poste in ckdf.index else 100
+            if pd.notna(vk_av) and vk_av < cible["appel avis approuvé"]:
+                cnt = len(res['avf'][res['avf']["Poste travail princ."]==poste])
+                if cnt > 0: all_ano.append({"Poste":poste,"KPI":"appel avis approuvé","Nb":cnt,"Type":"Q"})
+
+        def build_ano(ano_list, kpi_list):
+            if not ano_list: return [], []
+            adf = pd.DataFrame(ano_list)
+            pv = adf.pivot_table(index="Poste", columns="KPI", values="Nb", aggfunc="sum", fill_value=0).astype(int)
+            pv["Total"] = pv.sum(axis=1); tot = pv.sum()
+            cols = [c for c in kpi_list if c in pv.columns] + ["Total"]; rows = []
+            for idx in pv.index:
+                r = {"_t":"n","Poste de travail":idx}
+                for c in cols: r[c] = pv.loc[idx, c]
+                rows.append(r)
+            tr = {"_t":"total","Poste de travail":"Total general"}
+            for c in cols: tr[c] = int(tot[c])
+            rows.append(tr); return ["Poste de travail"]+cols, rows
+
+        ano_p_c, ano_p_r = build_ano([a for a in all_ano if a["Type"]=="P"], qk)
+        ano_q_c, ano_q_r = build_ano([a for a in all_ano if a["Type"]=="Q"], pk)
+
+        def build_kpi(kpi_list, scores, sname):
+            sp2 = sorted(scores.keys(), key=lambda x: scores[x], reverse=True)
+            cols = ["Poste de travail"]+kpi_list+[sname]; rows = []
+            cr = {"_t":"cible","Poste de travail":"CIBLE"}
+            for k in kpi_list: cr[k] = cible[k]
+            cr[sname] = "100.00 %"; rows.append(cr)
+            for p in sp2:
+                r = {"_t":"n","Poste de travail":p}
+                for k in kpi_list: r[k] = round(ckdf.loc[p, k], 2) if p in ckdf.index else ""
+                r[sname] = "%.2f %%" % scores[p]; rows.append(r)
+            tr = {"_t":"total","Poste de travail":"Total general"}
+            for k in kpi_list: tr[k] = round(ckdf[k].mean(), 2)
+            tr[sname] = "%.2f %%" % (np.mean(list(scores.values())) if scores else 0)
+            rows.append(tr); return cols, rows
+
+        pcols, prows = build_kpi(qk, pscores, "Score Performance")
+        qcols, qrows = build_kpi(pk, qscores, "Score Qualite")
+        kpi_cols_p = set(qk + ["Score Performance"]); lb_map_p = {k: is_lb(k) for k in qk}; lb_map_p["Score Performance"] = False
+        kpi_cols_q = set(pk + ["Score Qualite"]); lb_map_q = {k: is_lb(k) for k in pk}; lb_map_q["Score Qualite"] = False
+
+        df_sc_d = pd.DataFrame([{"Poste":p,"Perf":pscores_d[p],"Qual":qscores_d[p],"Metier":get_metier(p),"Atelier":get_atelier(p),"Division":get_division(p)} for p in vp if p in pscores_d])
+        by_at = df_sc_d.groupby("Atelier")[["Perf","Qual"]].mean().round(1) if not df_sc_d.empty else pd.DataFrame()
+        by_mt = df_sc_d.groupby("Metier")[["Perf","Qual"]].mean().round(1) if not df_sc_d.empty else pd.DataFrame()
+        by_div = df_sc_d.groupby("Division")[["Perf","Qual"]].mean().round(1) if not df_sc_d.empty else pd.DataFrame()
+        sf1_p = [p for p in vp if str(p).upper().startswith("SF1") and p in pscores_d]
+        sf2_p = [p for p in vp if str(p).upper().startswith("SF2") and p in pscores_d]
+
+        total_ot = len(df); avg_p = np.mean(list(pscores.values())) if pscores else 0
+        avg_q = np.mean(list(qscores.values())) if qscores else 0; total_ano = sum(a["Nb"] for a in all_ano)
+
+        st.markdown('<div class="mh"><h1>📊 KPI Dashboard MC & FEED</h1><div class="db">📅 %s</div></div>' % df_dt, unsafe_allow_html=True)
+        st.markdown("""<div class="cr">
+        <div class="cc c1"><div class="cv">%s</div><div class="cl">Total OT Analyses</div></div>
+        <div class="cc c2"><div class="cv">%.1f%%</div><div class="cl">Score Performance</div></div>
+        <div class="cc c3"><div class="cv">%.1f%%</div><div class="cl">Score Qualite</div></div>
+        <div class="cc c4"><div class="cv">%s</div><div class="cl">Total Anomalies</div></div>
+        </div>""" % (total_ot, avg_p, avg_q, total_ano), unsafe_allow_html=True)
+
+        tab0, tab1, tab2 = st.tabs(["📊 TABLEAU DE BORD", "📈 INDICATEURS DE PERFORMANCE", "✅ INDICATEUR QUALITE"])
+
+        with tab0:
+            st.markdown('<p class="stl p">📊 Vue d\'ensemble par Atelier</p>', unsafe_allow_html=True)
+            if not by_at.empty:
+                st.markdown(html_grouped_bars([p for p in vp if p in pscores_d], pscores_d, qscores_d, "Performance vs Qualite par Poste"), unsafe_allow_html=True)
+                st.markdown('<div class="dgrid">', unsafe_allow_html=True)
+                st.markdown(html_bars([(a, by_at.loc[a,"Perf"]) for a in by_at.index], "Performance par Atelier", "#2b6cb0"), unsafe_allow_html=True)
+                st.markdown(html_bars([(a, by_at.loc[a,"Qual"]) for a in by_at.index], "Qualite par Atelier", "#276749"), unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+            else:
+                st.markdown('<div class="es">Aucune donnee disponible</div>', unsafe_allow_html=True)
+
+            st.markdown('<p class="stl c">🏗️ Par Metier</p>', unsafe_allow_html=True)
+            if not by_mt.empty:
+                st.markdown('<div class="dgrid">', unsafe_allow_html=True)
+                st.markdown(html_bars([(m, by_mt.loc[m,"Perf"]) for m in by_mt.index], "Performance par Metier", "#2b6cb0"), unsafe_allow_html=True)
+                st.markdown(html_bars([(m, by_mt.loc[m,"Qual"]) for m in by_mt.index], "Qualite par Metier", "#276749"), unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+
+            st.markdown('<p class="stl">🏢 Par Division</p>', unsafe_allow_html=True)
+            if not by_div.empty:
+                st.markdown('<div class="dgrid">', unsafe_allow_html=True)
+                st.markdown(html_bars([(d, by_div.loc[d,"Perf"]) for d in by_div.index], "Performance par Division", "#2b6cb0"), unsafe_allow_html=True)
+                st.markdown(html_bars([(d, by_div.loc[d,"Qual"]) for d in by_div.index], "Qualite par Division", "#276749"), unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+
+            st.markdown('<p class="stl p">🏆 Classement General</p>', unsafe_allow_html=True)
+            st.markdown(html_classement(pscores_d, "#2b6cb0"), unsafe_allow_html=True)
+
+            st.markdown('<p class="stl p">📈 Synthese Performance Globale</p>', unsafe_allow_html=True)
+            st.markdown(html_kpi_bars(qk, pa_d, cible, "Indicateurs de Performance (tous postes confondus)", "#2b6cb0", "#e53e3e", kpi_history), unsafe_allow_html=True)
+
+            st.markdown('<p class="stl q">📈 Synthese Qualite Globale</p>', unsafe_allow_html=True)
+            st.markdown(html_kpi_bars(pk, qa_d, cible, "Indicateurs de Qualite (tous postes confondus)", "#276749", "#e53e3e", kpi_history), unsafe_allow_html=True)
+
+        with tab1:
+            st.markdown('<p class="stl p">📈 Indicateurs de Performance par Poste</p>', unsafe_allow_html=True)
+            st.markdown(html_table(prows, pcols, "qt", sc_col=["Score Performance"], kpi_history=kpi_history, kpi_cols_set=kpi_cols_p, lb_map=lb_map_p), unsafe_allow_html=True)
+            st.markdown('<p class="stl p">📊 Synthese Performance</p>', unsafe_allow_html=True)
+            st.markdown(html_synth(qk, pa, cible, act_map, "#2b6cb0"), unsafe_allow_html=True)
+            st.markdown('<p class="stl p">📊 Detail par categorie</p>', unsafe_allow_html=True)
+            st.markdown('<div class="dgrid">', unsafe_allow_html=True)
+            st.markdown(html_cat(["OT préparation <1 mois","OT planification <1 mois","OT exécution <1 mois"], pa, cible, "#2b6cb0", "#e53e3e"), unsafe_allow_html=True)
+            st.markdown(html_cat(["OT préparation >3 mois","OT planification >3 mois","OT exécution >3 mois"], pa, cible, "#2b6cb0", "#e53e3e"), unsafe_allow_html=True)
+            st.markdown(html_cat(["OT préparation 1mois< <3mois","OT planification 1mois< <3mois","OT exécution 1mois< <3mois"], pa, cible, "#2b6cb0", "#e53e3e"), unsafe_allow_html=True)
+            st.markdown(html_cat(["TAUX_REALISATION_CORRECTIF/PT"], pa, cible, "#2b6cb0", "#e53e3e"), unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+            if ano_p_r:
+                st.markdown('<p class="stl a">⚠️ Anomalies Performance</p>', unsafe_allow_html=True)
+                st.markdown(html_ano(ano_p_r, ano_p_c), unsafe_allow_html=True)
+
+        with tab2:
+            st.markdown('<p class="stl q">✅ Indicateurs de Qualite par Poste</p>', unsafe_allow_html=True)
+            st.markdown(html_table(qrows, qcols, "pt", sc_col=["Score Qualite"], kpi_history=kpi_history, kpi_cols_set=kpi_cols_q, lb_map=lb_map_q), unsafe_allow_html=True)
+            st.markdown('<p class="stl q">📊 Synthese Qualite</p>', unsafe_allow_html=True)
+            st.markdown(html_synth(pk, qa, cible, act_map, "#276749"), unsafe_allow_html=True)
+            st.markdown('<p class="stl q">📊 Detail par indicateur</p>', unsafe_allow_html=True)
+            st.markdown(html_cat(pk, qa, cible, "#276749", "#e53e3e"), unsafe_allow_html=True)
+            if ano_q_r:
+                st.markdown('<p class="stl a">⚠️ Anomalies Qualite</p>', unsafe_allow_html=True)
+                st.markdown(html_ano(ano_q_r, ano_q_c), unsafe_allow_html=True)
+
+    except Exception as e:
+        st.error(f"Erreur lors du traitement des donnees : {e}")
+        import traceback
+        st.code(traceback.format_exc())
 
 if __name__ == "__main__":
     main()

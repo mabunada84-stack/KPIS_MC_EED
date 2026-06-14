@@ -30,6 +30,7 @@ def read_excel_safe(file, ext=None):
             ext = os.path.splitext(file)[1].lower()
         else:
             ext = ""
+            
     # si c'est un upload (file-like) on garde les bytes pour réutiliser
     try:
         if hasattr(file, "read"):
@@ -55,35 +56,22 @@ def read_excel_safe(file, ext=None):
         except Exception as e:
             return e
 
-    # si extension explicite
+    # L'ordre est crucial : calamine lit TOUT (xls, xlsx, xlsb) de façon ultra rapide
     if ext == ".xls":
-        res = try_engine("xlrd")
-        if isinstance(res, Exception):
-            raise RuntimeError(f"Erreur lecture .xls avec xlrd: {res}")
-        return res
-    if ext in (".xlsx", ".xlsm", ".xlsb"):
-        # essayer openpyxl, fallback xlrd (pour cas ou contenu ancien)
-        res = try_engine("openpyxl")
-        if not isinstance(res, Exception): return res
-        # fallback: essayer xlrd (au cas où le fichier est en BIFF malgré extension .xlsx)
-        res2 = try_engine("xlrd")
-        if not isinstance(res2, Exception): return res2
-        # dernier recours: tenter engine=None (pandas devine) ou lever erreur claire
-        try:
-            if raw is not None:
-                return pd.read_excel(io.BytesIO(raw))
-            elif isinstance(file, str):
-                return pd.read_excel(file)
-            else:
-                return pd.read_excel(file)
-        except Exception as e:
-            raise RuntimeError(f"Impossible de lire le fichier Excel (tried openpyxl, xlrd): {res}; {res2}; {e}")
-    # si extension inconnue, essayer plusieurs moteurs
-    for eng in ("openpyxl","xlrd"):
-        r = try_engine(eng)
-        if not isinstance(r, Exception):
-            return r
-    raise RuntimeError("Impossible de détecter/ouvrir le fichier Excel (vérifiez extension et format).")
+        engines = ["calamine", "xlrd", "openpyxl"]
+    elif ext in (".xlsx", ".xlsm", ".xlsb"):
+        engines = ["calamine", "openpyxl", "xlrd"]
+    else:
+        engines = ["calamine", "openpyxl", "xlrd"]
+
+    errors = []
+    for eng in engines:
+        res = try_engine(eng)
+        if not isinstance(res, Exception):
+            return res
+        errors.append(f"{eng} ({res})")
+
+    raise RuntimeError(f"Impossible de lire le fichier Excel. Détails : {' | '.join(errors)}")
 
 def excr(df):
     """Exclut les compresseurs du DataFrame"""

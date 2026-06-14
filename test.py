@@ -58,13 +58,7 @@ def inject_custom_css():
     :root{--p:#1e3a5f;--pl:#2c5282;--b:#e2e8f0;--r:10px}
     *{box-sizing:border-box;margin:0;padding:0}
     .stApp{background:#edf2f7;font-family:'Inter',sans-serif}
-    .main .block-container{
-        max-width: 100% !important;
-        width: 100% !important;
-        padding-left: 0.5rem !important;
-        padding-right: 0.5rem !important;
-        padding-top:.6rem;padding-bottom:.6rem;
-    }
+    .main .block-container{max-width:100%!important;width:100%!important;padding-left:0.5rem!important;padding-right:0.5rem!important;padding-top:.6rem;padding-bottom:.6rem}
     .stTabs,.stTabs>div,.stTabs [data-baseweb="tab-list"]{width:100%!important;max-width:100%!important}
     .mh{background:linear-gradient(135deg,var(--p),var(--pl));padding:10px 16px;border-radius:var(--r);margin-bottom:4px;box-shadow:0 6px 20px rgba(0,0,0,.1);overflow:hidden}
     .mh h1{font-size:24px;color:#fff;font-weight:800;margin:0;display:inline}
@@ -140,8 +134,6 @@ def inject_custom_css():
     div[data-testid="stSidebar"] div[data-testid="stWidget"]{background:rgba(255,255,255,.08);border-radius:6px;padding:2px 6px;margin-bottom:2px;border:1px solid rgba(255,255,255,.1)}
     div[data-testid="stSidebar"] .stSelectbox>div>div,div[data-testid="stSidebar"] .stMultiSelect>div>div,div[data-testid="stSidebar"] .stDateInput>div>div{background:rgba(255,255,255,.95)!important;border-radius:5px}
     .es{text-align:center;padding:10px;color:#718096;font-size:10px}
-    .rh{display:flex;align-items:center;justify-content:space-between;margin-bottom:0}
-    .rh .stl{margin:0}
     .anl-tbl{width:100%;border-collapse:collapse;font-family:'Inter',sans-serif;font-size:12px;margin:0}
     .anl-tbl thead th{background:var(--p);color:#fff;font-weight:700;font-size:12px;padding:5px 6px;border:none;white-space:nowrap;position:sticky;top:0}
     .anl-tbl tbody td{padding:4px 6px;border-bottom:1px solid #edf2f7}
@@ -424,12 +416,11 @@ def main():
             h += '</div></div>'
         h += '</div>'; return h
 
-    def anl_pie_chart(data, names_col, values_col, title, colors=None):
+    def anl_pie_chart(data, names_col, values_col, title, colors=None, mg=None):
         if data.empty: return None
         fig = px.pie(data, names=names_col, values=values_col, title=title,
                      color_discrete_sequence=colors or px.colors.qualitative.Set2)
         fig.update_traces(textposition='inside', textinfo='percent+label+value', textfont_size=9)
-        mg = {"t": 40, "b": 10, "l": 10, "r": 10}
         fig.update_layout(margin=mg, height=450, autosize=True, title_font_size=11,
                           legend=dict(font_size=8, orientation="h", yanchor="bottom", y=-0.15))
         return fig
@@ -702,7 +693,7 @@ def main():
             bl_plan_by_poste = bl_plan_data.groupby("Poste travail princ.").size().to_dict()
             bl_plan_car_by_poste = bl_plan_car.groupby("Poste travail princ.").size().to_dict()
 
-            # VARIABLE DE MARGE SECURISEE POUR EVITER LE BUG D'EDITEUR
+            # VARIABLES DE MARGE ISOLEES POUR EVITER LE BUG D'EDITEUR
             mg_std = {"t": 40, "b": 10, "l": 10, "r": 10}
             mg_heat = {"t": 40, "b": 80, "l": 120, "r": 10}
 
@@ -736,7 +727,7 @@ def main():
                             "Nombre": [len(bl_plan_car), len(bl_plan_ncar)]
                         })
                         fig_bp = anl_pie_chart(bp_pie_data, "Statut", "Nombre", "Repartition Backlog Planification",
-                                              colors=["#276749","#e53e3e"])
+                                              colors=["#276749","#e53e3e"], mg=mg_std)
                         if fig_bp: st.plotly_chart(fig_bp, use_container_width=True)
                 with c3:
                     if bl_plan_by_poste:
@@ -747,7 +738,12 @@ def main():
                         fig_bpb = px.bar(bp_bar_data, x="Total", y="Poste", orientation="h",
                                          title="Top 10 Postes - Backlog Planification",
                                          color="Caracterise", color_discrete_sequence=["#276749","#e53e3e"])
-                        fig_bpb.update_layout(height=450, autosize=True, margin=mg_std, title_font_size=11)
+                        fig_bpb.update_layout(
+                            height=450,
+                            autosize=True,
+                            margin=mg_std,
+                            title_font_size=11
+                        )
                         st.plotly_chart(fig_bpb, use_container_width=True)
 
                 st.markdown('<div class="stl p">📊 Vue d\'ensemble par poste (avec variance)</div>', unsafe_allow_html=True)
@@ -770,7 +766,7 @@ def main():
                     with c1:
                         st.markdown(html_bars([(idx,row["Perf"]) for idx,row in by_mt.iterrows()], "Performance par Metier", "#2b6cb0"), unsafe_allow_html=True)
                     with c2:
-                        st.markdown(html_bars([(idx,row["Qual"]) for idx,row in by_mt.iterrows()], "Qualite par Metier", "#276749"), unsafe_allow_html=True)
+                        st.markdown(html_bars([(idx,row["Qual"]) for idx,row in by_mt.iterrows()], "Qualite par Metier", "#27649"), unsafe_allow_html=True)
 
                 st.markdown('<div class="stl p">🏢 Par Division</div>', unsafe_allow_html=True)
                 if not by_div.empty:
@@ -817,7 +813,7 @@ def main():
                             "Statut": ["Caracterise (%d)" % len(bl_prep_car), "Non Caracterise (%d)" % len(bl_prep_ncar)],
                             "Nombre": [len(bl_prep_car), len(bl_prep_ncar)]
                         })
-                        fig_pp = anl_pie_chart(bp_prep_pie, "Statut", "Nombre", "Backlog Preparation", ["#38a169","#e53e3e"])
+                        fig_pp = anl_pie_chart(bp_prep_pie, "Statut", "Nombre", "Backlog Preparation", ["#38a169","#e53e3e"], mg=mg_std)
                         if fig_pp: st.plotly_chart(fig_pp, use_container_width=True)
                     with c2:
                         prep_by_poste = bl_prep_data.groupby("Poste travail princ.").size().sort_values(ascending=False).head(10)
@@ -830,7 +826,12 @@ def main():
                         fig_pb = px.bar(prep_df, x="Total", y="Poste", orientation="h",
                                         title="Top 10 Postes - Backlog Preparation",
                                         color="Caracterise", color_discrete_sequence=["#38a169","#e53e3e"])
-                        fig_pb.update_layout(height=450, autosize=True, margin=mg_std, title_font_size=11)
+                        fig_pb.update_layout(
+                            height=450,
+                            autosize=True,
+                            margin=mg_std,
+                            title_font_size=11
+                        )
                         st.plotly_chart(fig_pb, use_container_width=True)
                 else:
                     st.markdown('<div class="es">Aucun OT en statut CRÉÉ pour cette periode</div>', unsafe_allow_html=True)
@@ -852,8 +853,13 @@ def main():
                                          title=f"Repartition Age - {statut_label}",
                                          color_discrete_sequence=["#38a169","#ecc94b","#e53e3e"])
                         fig_age.update_traces(textposition='inside', textinfo='percent+label+value', textfont_size=9)
-                        fig_age.update_layout(height=450, autosize=True, margin=mg_std, title_font_size=11,
-                                              legend=dict(font_size=8, orientation="h", yanchor="bottom", y=-0.15))
+                        fig_age.update_layout(
+                            height=450,
+                            autosize=True,
+                            margin=mg_std,
+                            title_font_size=11,
+                            legend=dict(font_size=8, orientation="h", yanchor="bottom", y=-0.15)
+                        )
                         st.plotly_chart(fig_age, use_container_width=True)
 
                 if all_ano:
@@ -913,7 +919,12 @@ def main():
                 fig_var = px.bar(var_chart_data, x="Variance", y="Poste", orientation="h",
                                  title="Variance Globale par Poste (Periode vs Reference)",
                                  color="Type", color_discrete_map={"Amelioration":"#276749","Regression":"#e53e3e"})
-                fig_var.update_layout(height=max(450, len(vp)*18), autosize=True, margin=mg_std, title_font_size=11)
+                fig_var.update_layout(
+                    height=max(450, len(vp)*18),
+                    autosize=True,
+                    margin=mg_std,
+                    title_font_size=11
+                )
                 fig_var.update_xaxes(zeroline=True, zerolinewidth=2, zerolinecolor="#718096")
                 st.plotly_chart(fig_var, use_container_width=True)
 
@@ -938,7 +949,12 @@ def main():
                                          title="Heatmap Variance (Vert=Amelioration, Rouge=Regression)",
                                          color_continuous_scale=["#c53030","#f7fafc","#276749"],
                                          aspect="auto", zmin=-50, zmax=50)
-                    fig_heat.update_layout(height=450, autosize=True, margin=mg_heat, title_font_size=11)
+                    fig_heat.update_layout(
+                        height=450,
+                        autosize=True,
+                        margin=mg_heat,
+                        title_font_size=11
+                    )
                     fig_heat.update_xaxes(tickangle=45, tickfont_size=8)
                     fig_heat.update_yaxes(tickfont_size=8)
                     st.plotly_chart(fig_heat, use_container_width=True)

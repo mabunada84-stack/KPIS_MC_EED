@@ -762,7 +762,8 @@ def main():
                     jh+='</tbody></table>'
                     st.markdown(jh,unsafe_allow_html=True)
 
-            # ===================== TAB 1 : PERFORMANCE =====================
+      
+                        # ===================== TAB 1 : PERFORMANCE =====================
             with tabs[1]:
                 st.markdown('<div class="stl p">Indicateurs de Performance par Poste travail princ.</div>',unsafe_allow_html=True)
                 st.markdown(html_table(prows,pcols,"pt",sc_col=set(QK+["Score Performance"])),unsafe_allow_html=True)

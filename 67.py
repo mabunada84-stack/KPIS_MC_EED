@@ -1002,8 +1002,16 @@ def main():
                     jh+='</tbody></table>'
                     st.markdown(jh,unsafe_allow_html=True)
 
-            # ===================== TAB 1 : INDICATEURS DE PERFORMANCE =====================
-                           if ano_p_rows:
+                      # ===================== TAB 1 : INDICATEURS DE PERFORMANCE =====================
+            with tabs[1]:
+                st.markdown('<div class="stl p">Indicateurs de Performance par Poste travail princ.</div>',unsafe_allow_html=True)
+                st.markdown(html_table(prows,pcols,"pt",sc_col=set(QK+["Score Performance"])),unsafe_allow_html=True)
+
+                st.markdown('<div class="stl a" style="margin-top:12px">🛠️ Actions — Performance</div>',unsafe_allow_html=True)
+                st.markdown(html_actions_table(QK, pa, CIBLE, ACT_MAP),unsafe_allow_html=True)
+                st.markdown(html_kpi_bars(QK,pa,CIBLE,"Progression par Indicateurs — Performance","#38a169","#e53e3e"),unsafe_allow_html=True)
+
+                if ano_p_rows:
                     st.markdown('<div class="stl a" style="margin-top:10px">⚠️ Anomalies Performance</div>',unsafe_allow_html=True)
                     st.markdown(html_ano_transpose(ano_p_rows, vp, "Performance", "#e53e3e"),unsafe_allow_html=True)
                     fig_ano_p1, fig_ano_p2 = ano_charts(ano_p_rows, vp, "Performance")
@@ -1013,9 +1021,16 @@ def main():
                             st.plotly_chart(fig_ano_p1, use_container_width=True)
                         with col_c2:
                             st.plotly_chart(fig_ano_p2, use_container_width=True)
+                       # ===================== TAB 2 : INDICATEURS DE QUALITE =====================
+            with tabs[2]:
+                st.markdown('<div class="stl q">Indicateurs de Qualité par Poste travail princ.</div>',unsafe_allow_html=True)
+                st.markdown(html_table(qrows,qcols,"qt",sc_col=set(PK+["Score Qualite"])),unsafe_allow_html=True)
 
-            # ===================== TAB 2 : INDICATEURS DE QUALITE =====================
-                          if ano_q_rows:
+                st.markdown('<div class="stl a" style="margin-top:12px">🛠️ Actions — Qualité</div>',unsafe_allow_html=True)
+                st.markdown(html_actions_table(PK, qa, CIBLE, ACT_MAP),unsafe_allow_html=True)
+                st.markdown(html_kpi_bars(PK,qa,CIBLE,"Progression par Indicateurs — Qualité","#3182ce","#e53e3e"),unsafe_allow_html=True)
+
+                if ano_q_rows:
                     st.markdown('<div class="stl a" style="margin-top:10px">⚠️ Anomalies Qualité</div>',unsafe_allow_html=True)
                     st.markdown(html_ano_transpose(ano_q_rows, vp, "Qualité", "#e53e3e"),unsafe_allow_html=True)
                     fig_ano_q1, fig_ano_q2 = ano_charts(ano_q_rows, vp, "Qualité")
@@ -1025,7 +1040,6 @@ def main():
                             st.plotly_chart(fig_ano_q1, use_container_width=True)
                         with col_c2:
                             st.plotly_chart(fig_ano_q2, use_container_width=True)
-
             # ===================== TAB 3 : OMS & THERMOGRAPHIE (MEME DASH) =====================
             with tabs[3]:
                 st.markdown('<div class="dgrid">')

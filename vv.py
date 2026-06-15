@@ -165,7 +165,6 @@ def calculate_variations(hist_df):
                     try: cv=float(curr_d.loc[poste,kpi])
                     except Exception: continue
                     diff=cv-pv; pct=(diff/pv*100) if pv!=0 else (100 if cv!=0 else 0)
-                    trend="hausse" if abs(diff)>0.5 else ("baisse" if abs(diff)>0.5 else "stabilite")
                     if abs(diff)<=0.5: trend="stabilite"
                     elif diff>0.5: trend="hausse"
                     else: trend="baisse"
@@ -185,11 +184,7 @@ def calculate_rankings(var_df):
     if var_df.empty: return pd.DataFrame(),pd.DataFrame()
     scores={}
     for poste in var_df["Poste"].unique():
-        pv=var_df[var_df["Poste"]==poste].copy(); total=0
-        for _,r in pv.iterrows():
-            ec=r["Ecart %"]
-            total -= ec if r["KPI"] in LOWER_BETTER else -ec
-            total += ec if r["KPI"] not in LOWER_BETTER else -ec
+        pv=var_df[var_df["Poste"]==poste].copy()
         scores[poste]=sum((-r["Ecart %"] if r["KPI"] in LOWER_BETTER else r["Ecart %"]) for _,r in pv.iterrows())
     ranked=sorted(scores.items(),key=lambda x:x[1],reverse=True)
     return pd.DataFrame(ranked[:5],columns=["Poste","Score variation"]),pd.DataFrame(ranked[-5:][::-1],columns=["Poste","Score variation"])
@@ -331,9 +326,6 @@ def inject_custom_css():
     .rank-row .rank-num{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;color:#fff;margin-right:10px;flex-shrink:0}
     .rank-row .rank-name{flex:1;font-weight:600;color:#1a202c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .rank-row .rank-score{font-weight:900;min-width:70px;text-align:right}
-    .sub-radio{display:flex;gap:4px;margin-bottom:8px}
-    .sub-radio label{padding:6px 16px;border-radius:6px;font-weight:600;font-size:13px;cursor:pointer;border:2px solid var(--b);background:#fff;transition:all .15s}
-    .sub-radio label:hover{border-color:var(--pl)}
     @media(max-width:768px){.cr{grid-template-columns:repeat(2,1fr)}.mh h1{font-size:17px}.cg,.dgrid{grid-template-columns:1fr}.car .cal{width:120px}.gbr-l{width:100px}.spark-grid{grid-template-columns:1fr}}
     </style>""",unsafe_allow_html=True)
 
@@ -461,7 +453,7 @@ def main():
         if c in ["OT préparation 1mois< <3mois","OT planification 1mois< <3mois","OT exécution 1mois< <3mois"]:
             return "background:#c6efce;color:#006100;font-weight:600" if val<=15 else "background:#ffc7ce;color:#9c0006;font-weight:600"
         if c in ["OT préparation >3 mois","OT planification >3 mois","OT exécution >3 mois"]:
-            return "background:#c6efce;color:#006100;font-weight:600" if val<=5 else "background:#ffc7ce;color:#9c0006;font-weight:600")
+            return "background:#c6efce;color:#006100;font-weight:600" if val<=5 else "background:#ffc7ce;color:#9c0006;font-weight:600"
         if c=="TAUX_REALISATION_CORRECTIF/PT":
             return "background:#c6efce;color:#006100;font-weight:600" if val>=85 else ("background:#ffeb9c;color:#9c6500;font-weight:600" if val>=80 else "background:#ffc7ce;color:#9c0006;font-weight:600")
         if c=="appel avis approuvé":
@@ -828,27 +820,19 @@ def main():
                 st.markdown('<div class="mh" style="margin-bottom:8px"><h1>📋 Analyse Backlog Préparation</h1></div>',unsafe_allow_html=True)
                 prep_df=dfp[dfp["Statut OT"]=="CRÉÉ"].copy() if "Statut OT" in dfp.columns else pd.DataFrame()
                 if not prep_df.empty:
-                    prep_by_poste=prep_df.groupby("Poste travail princ.").agg(
-                        Total=("Ordre","count"),
-                        Caracterise=("Backlog preparation",lambda x:(x=="CARACTERISE").sum())
-                    ).reset_index()
+                    prep_by_poste=prep_df.groupby("Poste travail princ.").agg(Total=("Ordre","count"),Caracterise=("Backlog preparation",lambda x:(x=="CARACTERISE").sum())).reset_index()
                     prep_by_poste["% Caractérisé"]=(prep_by_poste["Caracterise"]/prep_by_poste["Total"]*100).round(1)
                     prep_by_poste.columns=["Poste de travail","Total Backlog Préparation","Backlog Caractérisé","% Caractérisé"]
-                    tot_r={"Poste de travail":"TOTAL","Total Backlog Préparation":int(prep_by_poste["Total Backlog Préparation"].sum()),
-                           "Backlog Caractérisé":int(prep_by_poste["Backlog Caractérisé"].sum()),
-                           "% Caractérisé":round(prep_by_poste["Backlog Caractérisé"].sum()/prep_by_poste["Total Backlog Préparation"].sum()*100,1) if prep_by_poste["Total Backlog Préparation"].sum()>0 else 0}
-                    tbc,tbr=[],[]
-                    for _,r in prep_by_poste.iterrows(): tbr.append({"Poste de travail":r["Poste de travail"],"Total Backlog Préparation":int(r["Total Backlog Préparation"]),"Backlog Caractérisé":int(r["Backlog Caractérisé"]),"% Caractérisé":r["% Caractérisé"]})
-                    tbr.append({"_t":"total","Poste de travail":"TOTAL","Total Backlog Préparation":tot_r["Total Backlog Préparation"],"Backlog Caractérisé":tot_r["Backlog Caractérisé"],"% Caractérisé":tot_r["% Caractérisé"]})
+                    tbr=[{"Poste de travail":r["Poste de travail"],"Total Backlog Préparation":int(r["Total Backlog Préparation"]),"Backlog Caractérisé":int(r["Backlog Caractérisé"]),"% Caractérisé":r["% Caractérisé"]} for _,r in prep_by_poste.iterrows()]
+                    tbr.append({"_t":"total","Poste de travail":"TOTAL","Total Backlog Préparation":int(prep_by_poste["Total Backlog Préparation"].sum()),"Backlog Caractérisé":int(prep_by_poste["Backlog Caractérisé"].sum()),"% Caractérisé":round(prep_by_poste["Backlog Caractérisé"].sum()/prep_by_poste["Total Backlog Préparation"].sum()*100,1) if prep_by_poste["Total Backlog Préparation"].sum()>0 else 0})
                     tbc=["Poste de travail","Total Backlog Préparation","Backlog Caractérisé","% Caractérisé"]
                     ac1,ac2=st.columns([0.6,0.4])
                     with ac1: st.markdown(html_table(tbr,tbc,"pt"),unsafe_allow_html=True)
                     with ac2:
-                        total_c=int(tot_r["Backlog Caractérisé"]); total_nc=int(tot_r["Total Backlog Préparation"])-total_c
-                        if tot_r["Total Backlog Préparation"]>0:
+                        total_c=int(prep_by_poste["Backlog Caractérisé"].sum()); total_nc=int(prep_by_poste["Total Backlog Préparation"].sum())-total_c
+                        if prep_by_poste["Total Backlog Préparation"].sum()>0:
                             fig_pc=create_pie_of_pie(["Caractérisé","Non Caractérisé"],[total_c,total_nc],"Taux de caractérisation Préparation")
                             if fig_pc: st.plotly_chart(fig_pc,use_container_width=True)
-                    # Types de caractérisation
                     prep_caract=prep_df[prep_df["Backlog preparation"]=="CARACTERISE"].copy()
                     if not prep_caract.empty and "Statut utilisateur" in prep_caract.columns:
                         prep_caract["Type"]=prep_caract["Statut utilisateur"].apply(lambda x:get_caract_type(x,MP_KW))
@@ -864,24 +848,17 @@ def main():
                 st.markdown('<div class="mh" style="margin-bottom:8px"><h1>📋 Analyse Backlog Planification</h1></div>',unsafe_allow_html=True)
                 plan_df=dfp[dfp["Statut OT"]=="LANC"].copy() if "Statut OT" in dfp.columns else pd.DataFrame()
                 if not plan_df.empty:
-                    plan_by_poste=plan_df.groupby("Poste travail princ.").agg(
-                        Total=("Ordre","count"),
-                        Caracterise=("Backlog planification",lambda x:(x=="CARACTERISE").sum())
-                    ).reset_index()
+                    plan_by_poste=plan_df.groupby("Poste travail princ.").agg(Total=("Ordre","count"),Caracterise=("Backlog planification",lambda x:(x=="CARACTERISE").sum())).reset_index()
                     plan_by_poste["% Caractérisé"]=(plan_by_poste["Caracterise"]/plan_by_poste["Total"]*100).round(1)
                     plan_by_poste.columns=["Poste de travail","Total Backlog Planification","Backlog Caractérisé","% Caractérisé"]
-                    tot_rp={"Poste de travail":"TOTAL","Total Backlog Planification":int(plan_by_poste["Total Backlog Planification"].sum()),
-                            "Backlog Caractérisé":int(plan_by_poste["Backlog Caractérisé"].sum()),
-                            "% Caractérisé":round(plan_by_poste["Backlog Caractérisé"].sum()/plan_by_poste["Total Backlog Planification"].sum()*100,1) if plan_by_poste["Total Backlog Planification"].sum()>0 else 0}
-                    tbr2=[]
-                    for _,r in plan_by_poste.iterrows(): tbr2.append({"Poste de travail":r["Poste de travail"],"Total Backlog Planification":int(r["Total Backlog Planification"]),"Backlog Caractérisé":int(r["Backlog Caractérisé"]),"% Caractérisé":r["% Caractérisé"]})
-                    tbr2.append({"_t":"total","Poste de travail":"TOTAL","Total Backlog Planification":tot_rp["Total Backlog Planification"],"Backlog Caractérisé":tot_rp["Backlog Caractérisé"],"% Caractérisé":tot_rp["% Caractérisé"]})
+                    tbr2=[{"Poste de travail":r["Poste de travail"],"Total Backlog Planification":int(r["Total Backlog Planification"]),"Backlog Caractérisé":int(r["Backlog Caractérisé"]),"% Caractérisé":r["% Caractérisé"]} for _,r in plan_by_poste.iterrows()]
+                    tbr2.append({"_t":"total","Poste de travail":"TOTAL","Total Backlog Planification":int(plan_by_poste["Total Backlog Planification"].sum()),"Backlog Caractérisé":int(plan_by_poste["Backlog Caractérisé"].sum()),"% Caractérisé":round(plan_by_poste["Backlog Caractérisé"].sum()/plan_by_poste["Total Backlog Planification"].sum()*100,1) if plan_by_poste["Total Backlog Planification"].sum()>0 else 0})
                     tbc2=["Poste de travail","Total Backlog Planification","Backlog Caractérisé","% Caractérisé"]
                     ac1,ac2=st.columns([0.6,0.4])
                     with ac1: st.markdown(html_table(tbr2,tbc2,"pt"),unsafe_allow_html=True)
                     with ac2:
-                        total_c2=int(tot_rp["Backlog Caractérisé"]); total_nc2=int(tot_rp["Total Backlog Planification"])-total_c2
-                        if tot_rp["Total Backlog Planification"]>0:
+                        total_c2=int(plan_by_poste["Backlog Caractérisé"].sum()); total_nc2=int(plan_by_poste["Total Backlog Planification"].sum())-total_c2
+                        if plan_by_poste["Total Backlog Planification"].sum()>0:
                             fig_pc2=create_pie_of_pie(["Caractérisé","Non Caractérisé"],[total_c2,total_nc2],"Taux de caractérisation Planification")
                             if fig_pc2: st.plotly_chart(fig_pc2,use_container_width=True)
                     plan_caract=plan_df[plan_df["Backlog planification"]=="CARACTERISE"].copy()
@@ -902,16 +879,10 @@ def main():
                     if not oms_df.empty:
                         oms_ps=oms_df.groupby(["Poste travail princ.","Statut OT"]).size().reset_index(name="Nombre d'OT OMS")
                         oms_pivot=oms_ps.pivot_table(index="Poste travail princ.",columns="Statut OT",values="Nombre d'OT OMS",aggfunc="sum",fill_value=0).reset_index()
-                        oms_pivot["Total"]=oms_pivot.iloc[:,1:].sum(axis=1)
-                        oms_pivot=oms_pivot.sort_values("Total",ascending=False)
+                        oms_pivot["Total"]=oms_pivot.iloc[:,1:].sum(axis=1); oms_pivot=oms_pivot.sort_values("Total",ascending=False)
                         oms_cols=list(oms_pivot.columns)
-                        oms_rows=[]
-                        for _,r in oms_pivot.iterrows():
-                            rd={"Poste de travail":r["Poste de travail"]}
-                            for c in oms_cols[1:]: rd[c]=int(r[c])
-                            oms_rows.append(rd)
-                        tot_oms={c:int(oms_pivot[c].sum()) for c in oms_cols[1:]}
-                        tot_oms["Poste de travail"]="TOTAL"; oms_rows.append({"_t":"total",**tot_oms})
+                        oms_rows=[{"Poste de travail":r["Poste de travail"], **{c:int(r[c]) for c in oms_cols[1:]}} for _,r in oms_pivot.iterrows()]
+                        oms_rows.append({"_t":"total","Poste de travail":"TOTAL", **{c:int(oms_pivot[c].sum()) for c in oms_cols[1:]}})
                         ac1,ac2=st.columns([0.6,0.4])
                         with ac1: st.markdown(html_table(oms_rows,oms_cols,"st"),unsafe_allow_html=True)
                         with ac2:
@@ -932,16 +903,10 @@ def main():
                     if not th_df.empty:
                         th_ps=th_df.groupby(["Poste travail princ.","Statut OT"]).size().reset_index(name="Nombre d'OT Thermographie")
                         th_pivot=th_ps.pivot_table(index="Poste travail princ.",columns="Statut OT",values="Nombre d'OT Thermographie",aggfunc="sum",fill_value=0).reset_index()
-                        th_pivot["Total"]=th_pivot.iloc[:,1:].sum(axis=1)
-                        th_pivot=th_pivot.sort_values("Total",ascending=False)
+                        th_pivot["Total"]=th_pivot.iloc[:,1:].sum(axis=1); th_pivot=th_pivot.sort_values("Total",ascending=False)
                         th_cols=list(th_pivot.columns)
-                        th_rows=[]
-                        for _,r in th_pivot.iterrows():
-                            rd={"Poste de travail":r["Poste de travail"]}
-                            for c in th_cols[1:]: rd[c]=int(r[c])
-                            th_rows.append(rd)
-                        tot_th={c:int(th_pivot[c].sum()) for c in th_cols[1:]}
-                        tot_th["Poste de travail"]="TOTAL"; th_rows.append({"_t":"total",**tot_th})
+                        th_rows=[{"Poste de travail":r["Poste de travail"], **{c:int(r[c]) for c in th_cols[1:]}} for _,r in th_pivot.iterrows()]
+                        th_rows.append({"_t":"total","Poste de travail":"TOTAL", **{c:int(th_pivot[c].sum()) for c in th_cols[1:]}})
                         ac1,ac2=st.columns([0.6,0.4])
                         with ac1: st.markdown(html_table(th_rows,th_cols,"st"),unsafe_allow_html=True)
                         with ac2:
@@ -952,16 +917,6 @@ def main():
                         st.markdown('<div class="es">Aucun OT contenant le mot "Thermographie" dans la designation</div>',unsafe_allow_html=True)
                 else:
                     st.markdown('<div class="es">Colonne "Designation" non trouvee dans les donnees</div>',unsafe_allow_html=True)
-
-                # Export analyse
-                st.markdown("<hr style='margin:16px 0;border-color:#e2e8f0'>",unsafe_allow_html=True)
-                exp_anl=pd.DataFrame()
-                if not prep_df.empty and 'prep_by_poste' in dir():
-                    exp_anl=pd.concat([exp_anl,prep_by_poste],ignore_index=True)
-                if not plan_df.empty and 'plan_by_poste' in dir():
-                    exp_anl=pd.concat([exp_anl,plan_by_poste],ignore_index=True)
-                if not exp_anl.empty:
-                    export_btn(exp_anl,"analyse_backlog_%s.xlsx"%fichier_date.replace("/","-"))
 
             # ==================== SUIVI DES AMELIORATIONS ====================
             with tab4:
@@ -987,4 +942,103 @@ def main():
                     rc1,rc2=st.columns(2)
                     with rc1:
                         if not top5_imp.empty:
-                            h='<div class="rank-card"><div class="rank-title" style="color:#276749;border
+                            h='<div class="rank-card"><div class="rank-title" style="color:#276749;border-bottom-color:#276749">🥇 Top 5 Ameliorations</div>'
+                            colors=["#276749","#38a169","#48bb78","#68d391","#9ae6b4"]
+                            for i,(_,row) in enumerate(top5_imp.iterrows()):
+                                h+='<div class="rank-row"><div class="rank-num" style="background:%s">%s</div><div class="rank-name">%s</div><div class="rank-score" style="color:#276749">%+.1f pts</div></div>'%(colors[i],i+1,row["Poste"],row["Score variation"])
+                            h+='</div>'; st.markdown(h,unsafe_allow_html=True)
+                    with rc2:
+                        if not top5_deg.empty:
+                            h='<div class="rank-card"><div class="rank-title" style="color:#c53030;border-bottom-color:#c53030">🔻 Top 5 Degradations</div>'
+                            colors=["#c53030","#e53e3e","#fc8181","#feb2b2","#fed7d7"]
+                            for i,(_,row) in enumerate(top5_deg.iterrows()):
+                                h+='<div class="rank-row"><div class="rank-num" style="background:%s">%s</div><div class="rank-name">%s</div><div class="rank-score" style="color:#c53030">%+.1f pts</div></div>'%(colors[i],i+1,row["Poste"],row["Score variation"])
+                            h+='</div>'; st.markdown(h,unsafe_allow_html=True)
+
+                    st.markdown('<div class="stl s">📊 Analyse detaillee des variations</div>',unsafe_allow_html=True)
+                    sc1,sc2,sc3=st.columns(3)
+                    with sc1: sel_type=st.selectbox("Type",["Tous","Performance","Qualite"],key="var_type")
+                    with sc2: sel_poste_var=st.selectbox("Poste",["Tous"]+sorted(var_df["Poste"].unique().tolist()),key="var_poste")
+                    with sc3: sel_periode=st.selectbox("Periode",["Toutes"]+[f"{dates_list[i]} → {dates_list[i+1]}" for i in range(len(dates_list)-1)],key="var_periode")
+                    filtered_var=var_df.copy()
+                    if sel_type!="Tous": filtered_var=filtered_var[filtered_var["Type"]==sel_type]
+                    if sel_poste_var!="Tous": filtered_var=filtered_var[filtered_var["Poste"]==sel_poste_var]
+                    if sel_periode!="Toutes":
+                        parts=sel_periode.split(" → ")
+                        if len(parts)==2: filtered_var=filtered_var[(filtered_var["Date precedente"]==parts[0].strip())&(filtered_var["Date actuelle"]==parts[1].strip())]
+                    if not filtered_var.empty:
+                        vcols=["Poste","Type","KPI","Valeur precedente","Valeur actuelle","Ecart","Ecart %","Tendance"]
+                        vh='<table class="tw st"><thead><tr>'+''.join('<th>%s</th>'%c for c in vcols)+'</tr></thead><tbody>'
+                        for _,r in filtered_var.iterrows():
+                            kpi=r["KPI"]
+                            if kpi in LOWER_BETTER:
+                                arrow='<span class="trend-up">▲</span>' if r["Tendance"]=="baisse" else ('<span class="trend-down">▼</span>' if r["Tendance"]=="hausse" else '<span class="trend-stable">►</span>')
+                            else:
+                                arrow='<span class="trend-up">▲</span>' if r["Tendance"]=="hausse" else ('<span class="trend-down">▼</span>' if r["Tendance"]=="baisse" else '<span class="trend-stable">►</span>')
+                            ep=r["Ecart %"]
+                            ec_s="color:#276749;font-weight:700" if ep>0.5 and kpi not in LOWER_BETTER else ("color:#c53030;font-weight:700" if ep<-0.5 and kpi not in LOWER_BETTER else ("color:#c53030;font-weight:700" if ep>0.5 and kpi in LOWER_BETTER else ("color:#276749;font-weight:700" if ep<-0.5 and kpi in LOWER_BETTER else "color:#718096")))
+                            vh+='<tr><td>%s</td><td>%s</td><td style="font-weight:600">%s</td><td>%.2f</td><td>%.2f</td><td>%+.2f</td><td style="%s">%+.2f%%</td><td style="text-align:center">%s</td></tr>'%(r["Poste"],r["Type"],r["KPI"],r["Valeur precedente"],r["Valeur actuelle"],r["Ecart"],ec_s,r["Ecart %"],arrow)
+                        vh+='</tbody></table>'; st.markdown(vh,unsafe_allow_html=True)
+                    else:
+                        st.markdown('<div class="es">Aucune variation trouvee pour les filtres selectionnes</div>',unsafe_allow_html=True)
+
+                    st.markdown('<div class="stl s">📝 Journal des evolutions significatives</div>',unsafe_allow_html=True)
+                    if not journal_df.empty:
+                        jcols=["Date actuelle","Poste","Type","KPI","Valeur precedente","Valeur actuelle","Ecart %","Sens"]
+                        jh='<table class="tw st"><thead><tr>'+''.join('<th>%s</th>'%c for c in jcols)+'</tr></thead><tbody>'
+                        for _,r in journal_df.iterrows():
+                            sens_color="background:#c6efce;color:#006100;font-weight:700" if r["Sens"]=="Amelioration" else "background:#ffc7ce;color:#9c0006;font-weight:700"
+                            jh+='<tr><td>%s</td><td>%s</td><td>%s</td><td style="font-weight:600">%s</td><td>%.2f</td><td>%.2f</td><td>%+.2f%%</td><td style="%s">%s</td></tr>'%(r["Date actuelle"],r["Poste"],r["Type"],r["KPI"],r["Valeur precedente"],r["Valeur actuelle"],r["Ecart %"],sens_color,r["Sens"])
+                        jh+='</tbody></table>'; st.markdown(jh,unsafe_allow_html=True)
+                        export_btn(journal_df[["Date precedente","Date actuelle","Poste","Type","KPI","Valeur precedente","Valeur actuelle","Ecart","Ecart %","Tendance","Sens"]],"journal_evolutions.xlsx")
+                    else:
+                        st.markdown('<div class="es">Aucune evolution significative (>5%%) detectee</div>',unsafe_allow_html=True)
+
+                    st.markdown('<div class="stl s">📈 Courbes d\'evolution par poste</div>',unsafe_allow_html=True)
+                    sk1,sk2=st.columns(2)
+                    with sk1: sel_score_type=st.selectbox("Indicateur",["Score Performance","Score Qualite"],key="spark_type")
+                    with sk2: sel_poste_spark=st.multiselect("Postes (vide = tous)",sorted(var_df["Poste"].unique().tolist()),key="spark_postes")
+                    score_col="Score Performance" if sel_score_type=="Score Performance" else "Score Qualite"
+                    spark_posts=sel_poste_spark if sel_poste_spark else sorted(var_df["Poste"].unique().tolist())
+                    spark_data=hist_df[hist_df["_section"]==("perf" if score_col=="Score Performance" else "qual")].copy()
+                    if "Poste de travail" in spark_data.columns and score_col in spark_data.columns:
+                        spark_pivot=spark_data.pivot_table(index="Date",columns="Poste de travail",values=score_col,aggfunc="first").reindex(dates_list)
+                        spark_pivot.index=pd.to_datetime(spark_pivot.index.str.replace("-","/"),format="%d/%m/%Y",errors="coerce")
+                        n_cols=min(3,len(spark_posts))
+                        if n_cols>0:
+                            cols_sp=st.columns(n_cols)
+                            for idx,poste in enumerate(spark_posts):
+                                if poste not in spark_pivot.columns: continue
+                                series=spark_pivot[poste].dropna()
+                                if len(series)<2: continue
+                                with cols_sp[idx % n_cols]:
+                                    fig_s=go.Figure()
+                                    fig_s.add_trace(go.Scatter(x=series.index,y=series.values,mode='lines+markers+text',text=[f"{v:.1f}" for v in series.values],textposition='top center',textfont=dict(size=8),line=dict(color='#2b6cb0' if score_col=="Score Performance" else '#276749',width=2.5),marker=dict(size=6,color='#fff',line=dict(width=2,color='#2b6cb0' if score_col=="Score Performance" else '#276749')),fill='tozeroy',fillcolor='rgba(43,108,176,0.06)' if score_col=="Score Performance" else 'rgba(39,103,73,0.06)'))
+                                    target_val=CIBLE.get(score_col.replace("Score ",""),100)
+                                    fig_s.add_hline(y=target_val,line_dash="dash",line_color="#e53e3e",line_width=1.5,annotation_text="Cible %.0f%%"%target_val,annotation_position="top right",annotation_font_size=8,annotation_font_color="#e53e3e")
+                                    first_v,last_v=series.iloc[0],series.iloc[-1]; diff_v=last_v-first_v
+                                    arrow="▲" if diff_v>0.5 else ("▼" if diff_v<-0.5 else "►"); clr="#276749" if diff_v>0.5 else ("#c53030" if diff_v<-0.5 else "#718096")
+                                    fig_s.update_layout(height=220,autosize=True,title=dict(text='<b>%s</b><br><span style="font-size:10px;color:%s">%s %+.1f pts</span>'%(poste,clr,arrow,diff_v),font_size=10,x=0.01,xanchor='left'),margin=dict(l=40,r=15,t=50,b=30),xaxis=dict(tickfont=dict(size=8),showgrid=False,tickformat='%d/%m'),yaxis=dict(tickfont=dict(size=8),showgrid=True,gridcolor='#edf2f7',range=[0,110]),showlegend=False,plot_bgcolor='white')
+                                    st.plotly_chart(fig_s,use_container_width=True)
+
+                    st.markdown('<div class="stl s">📉 Evolution globale des scores moyens</div>',unsafe_allow_html=True)
+                    for s_type,s_section,s_color in [("Performance","perf","#2b6cb0"),("Qualite","qual","#276749")]:
+                        sdata=hist_df[hist_df["_section"]==s_section].copy()
+                        score_col_name="Score "+s_type
+                        if "Poste de travail" in sdata.columns and score_col_name in sdata.columns:
+                            avg_per_date=sdata.groupby("Date")[score_col_name].mean()
+                            avg_per_date.index=pd.to_datetime(avg_per_date.index.str.replace("-","/"),format="%d/%m/%Y",errors="coerce")
+                            avg_per_date=avg_per_date.sort_index()
+                            if len(avg_per_date)>=2:
+                                fig_g=go.Figure()
+                                fig_g.add_trace(go.Scatter(x=avg_per_date.index,y=avg_per_date.values,mode='lines+markers+text',text=[f"{v:.1f}%%" for v in avg_per_date.values],textposition='top center',textfont=dict(size=10,color=s_color),line=dict(color=s_color,width=3),marker=dict(size=8,color='#fff',line=dict(width=2.5,color=s_color)),fill='tozeroy',fillcolor=s_color.replace(')',',0.06)').replace('rgb','rgba') if 'rgb' in s_color else 'rgba(43,108,176,0.06)' if s_color=="#2b6cb0" else 'rgba(39,103,73,0.06)'))
+                                fig_g.update_layout(height=300,autosize=True,title=dict(text=f"Evolution moyenne {s_type}",font_size=12,font_color=s_color),margin=dict(l=50,r=20,t=40,b=30),xaxis=dict(tickfont=dict(size=9),showgrid=False,tickformat='%d/%m/%Y'),yaxis=dict(tickfont=dict(size=9),showgrid=True,gridcolor='#edf2f7',range=[0,105]),showlegend=False,plot_bgcolor='white')
+                                st.plotly_chart(fig_g,use_container_width=True)
+
+        except Exception as e:
+            st.error(f"Erreur de chargement : {str(e)}")
+            import traceback
+            st.code(traceback.format_exc())
+
+if __name__ == "__main__":
+    main()

@@ -735,28 +735,7 @@ def main():
                 top5_p, bot5_p = get_top_bottom(pscores)
                 top5_q, bot5_q = get_top_bottom(qscores)
 
-                # Top/Bottom Performance
-                st.markdown('<div class="dgrid"><div>')
-                st.markdown('<div class="stl p">🏆 Top 5 — Performance</div>',unsafe_allow_html=True)
-                for i, (p, s) in enumerate(top5_p):
-                    st.markdown('<div class="sr"><span class="sn">%s</span><span class="sc" style="background:#38a169">%.1f%%</span><span class="sa">Score Performance</span></div>'%(p,s),unsafe_allow_html=True)
-                st.markdown('</div><div>')
-                st.markdown('<div class="stl a">📉 Bottom 5 — Performance</div>',unsafe_allow_html=True)
-                for i, (p, s) in enumerate(bot5_p):
-                    st.markdown('<div class="sr"><span class="sn">%s</span><span class="sc" style="background:#e53e3e">%.1f%%</span><span class="sa">Score Performance</span></div>'%(p,s),unsafe_allow_html=True)
-                st.markdown('</div></div>',unsafe_allow_html=True)
-
-                # Top/Bottom Qualité
-                st.markdown('<div class="dgrid" style="margin-top:6px"><div>')
-                st.markdown('<div class="stl q">🏆 Top 5 — Qualité</div>',unsafe_allow_html=True)
-                for i, (p, s) in enumerate(top5_q):
-                    st.markdown('<div class="sr"><span class="sn">%s</span><span class="sc" style="background:#3182ce">%.1f%%</span><span class="sa">Score Qualité</span></div>'%(p,s),unsafe_allow_html=True)
-                st.markdown('</div><div>')
-                st.markdown('<div class="stl a">📉 Bottom 5 — Qualité</div>',unsafe_allow_html=True)
-                for i, (p, s) in enumerate(bot5_q):
-                    st.markdown('<div class="sr"><span class="sn">%s</span><span class="sc" style="background:#e53e3e">%.1f%%</span><span class="sa">Score Qualité</span></div>'%(p,s),unsafe_allow_html=True)
-                st.markdown('</div></div>',unsafe_allow_html=True)
-
+             
                 # Journal des variations (uniquement si historique disponible)
                 if not journal_df.empty:
                     st.markdown('<div class="stl c" style="margin-top:10px">📜 Journal des Variations Significatives (≥5%%)</div>',unsafe_allow_html=True)

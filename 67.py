@@ -913,7 +913,7 @@ def main():
             # ===== MODIFICATION : Synthèse & Actions EN PREMIER =====
             tabs=st.tabs(["📋 Synthèse & Actions","📊 Indicateurs de Performance","✅ Indicateurs de Qualité","🔍 Analyse OMS & Thermographie"])
 
-                       # ===================== TAB 0 : SYNTHESE & ACTIONS (PREMIER) =====================
+                                 # ===================== TAB 0 : SYNTHESE & ACTIONS (PREMIER) =====================
             with tabs[0]:
                 st.markdown(html_grouped_bars(vp,pscores,qscores,"Scores par Poste travail princ."),unsafe_allow_html=True)
 
@@ -925,10 +925,13 @@ def main():
                 st.markdown('<div class="stl q" style="margin-top:10px">🏆 Classement — Indicateurs Qualité</div>',unsafe_allow_html=True)
                 st.markdown(html_classement(qscores,"#3182ce"),unsafe_allow_html=True)
 
-                # Plan d'Actions Consolidé
-                st.markdown('<div class="stl a" style="margin-top:10px">📋 Plan d\'Actions Consolidé — Tous les Indicateurs</div>',unsafe_allow_html=True)
-                all_actuals={**pa,**qa}
-                st.markdown(html_actions_table(ALL_KPI, all_actuals, CIBLE, ACT_MAP),unsafe_allow_html=True)
+                # Actions Performance
+                st.markdown('<div class="stl a" style="margin-top:10px">🛠️ Actions — Indicateurs Performance</div>',unsafe_allow_html=True)
+                st.markdown(html_actions_table(QK, pa, CIBLE, ACT_MAP),unsafe_allow_html=True)
+
+                # Actions Qualité
+                st.markdown('<div class="stl a" style="margin-top:10px">🛠️ Actions — Indicateurs Qualité</div>',unsafe_allow_html=True)
+                st.markdown(html_actions_table(PK, qa, CIBLE, ACT_MAP),unsafe_allow_html=True)
 
                 # ===== Top/Bottom basés sur les SCORES ACTUELS =====
                 def get_top_bottom(scores_dict, n=5):

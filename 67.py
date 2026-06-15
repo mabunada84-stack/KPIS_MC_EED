@@ -975,15 +975,31 @@ def main():
                         jh+='<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%.1f</td><td>%.1f</td><td>%.1f%%</td><td style="color:%s;font-weight:700">%s</td></tr>'%(r["Date actuelle"],r["Poste"],r["Type"],r["KPI"],r["Valeur precedente"],r["Valeur actuelle"],r["Ecart %"],sens_clr,r["Sens"])
                     jh+='</tbody></table>'
                     st.markdown(jh,unsafe_allow_html=True)
-                      # ===================== TAB 1 : INDICATEURS DE PERFORMANCE =====================
-                         if ano_p_rows:
+                               # ===================== TAB 1 : INDICATEURS DE PERFORMANCE =====================
+            with tabs[1]:
+                st.markdown('<div class="stl p">Indicateurs de Performance par Poste travail princ.</div>',unsafe_allow_html=True)
+                st.markdown(html_table(prows,pcols,"pt",sc_col=set(QK+["Score Performance"])),unsafe_allow_html=True)
+
+                st.markdown('<div class="stl a" style="margin-top:12px">🛠️ Actions — Performance</div>',unsafe_allow_html=True)
+                st.markdown(html_actions_table(QK, pa, CIBLE, ACT_MAP),unsafe_allow_html=True)
+                st.markdown(html_kpi_bars(QK,pa,CIBLE,"Progression par Indicateurs — Performance","#38a169","#e53e3e"),unsafe_allow_html=True)
+
+                if ano_p_rows:
                     st.markdown('<div class="stl a" style="margin-top:10px">⚠️ Anomalies Performance</div>',unsafe_allow_html=True)
                     st.markdown(html_ano_transpose(ano_p_rows, vp, "Performance", "#e53e3e"),unsafe_allow_html=True)
                     fig_ano_p = ano_charts(ano_p_rows, vp, "Performance")
                     if fig_ano_p:
                         st.plotly_chart(fig_ano_p, use_container_width=True)
-                       # ===================== TAB 2 : INDICATEURS DE QUALITE =====================
-                          if ano_q_rows:
+                                      # ===================== TAB 2 : INDICATEURS DE QUALITE =====================
+            with tabs[2]:
+                st.markdown('<div class="stl q">Indicateurs de Qualité par Poste travail princ.</div>',unsafe_allow_html=True)
+                st.markdown(html_table(qrows,qcols,"qt",sc_col=set(PK+["Score Qualite"])),unsafe_allow_html=True)
+
+                st.markdown('<div class="stl a" style="margin-top:12px">🛠️ Actions — Qualité</div>',unsafe_allow_html=True)
+                st.markdown(html_actions_table(PK, qa, CIBLE, ACT_MAP),unsafe_allow_html=True)
+                st.markdown(html_kpi_bars(PK,qa,CIBLE,"Progression par Indicateurs — Qualité","#3182ce","#e53e3e"),unsafe_allow_html=True)
+
+                if ano_q_rows:
                     st.markdown('<div class="stl a" style="margin-top:10px">⚠️ Anomalies Qualité</div>',unsafe_allow_html=True)
                     st.markdown(html_ano_transpose(ano_q_rows, vp, "Qualité", "#e53e3e"),unsafe_allow_html=True)
                     fig_ano_q = ano_charts(ano_q_rows, vp, "Qualité")

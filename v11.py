@@ -724,8 +724,8 @@ def main():
     def html_synthese_actions(pa, qa, pscores, qscores, targets):
         p_score_avg = np.mean(list(pscores.values())) if pscores else 0
         q_score_avg = np.mean(list(qscores.values())) if qscores else 0
-        p_met = sum(1 for k in QK if (pa.get(k,0) <= targets.get(k,100)) if is_lb(k) else (pa.get(k,0) >= targets.get(k,100)))
-        q_met = sum(1 for k in PK if (qa.get(k,0) <= targets.get(k,100)) if is_lb(k) else (qa.get(k,0) >= targets.get(k,100)))
+        p_met = sum(1 for k in QK if (pa.get(k,0) <= targets.get(k,100) if is_lb(k) else pa.get(k,0) >= targets.get(k,100)))
+        q_met = sum(1 for k in PK if (qa.get(k,0) <= targets.get(k,100) if is_lb(k) else qa.get(k,0) >= targets.get(k,100)))
 
         h = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">'
         h += '<div class="act-synth-col">'

@@ -10,9 +10,7 @@ from plotly.subplots import make_subplots
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
-# ============================================================
 st.set_page_config(layout="wide", page_title="Dashboard KPI")
-# ============================================================
 
 QK = ["TAUX_REALISATION_CORRECTIF/PT","OT préparation <1 mois","OT préparation >3 mois",
       "OT préparation 1mois< <3mois","OT planification <1 mois","OT planification >3 mois",
@@ -79,7 +77,6 @@ CONSIGNES_HSE = [
     "La securite est l'affaire de tous.","Chaque incident peut etre evite par la prevention.",
     "Aucun travail n'est plus urgent que la securite.","Zero accident commence par un comportement sur."]
 
-# ============================================================
 def get_date_from_file():
     if os.path.exists("date.txt"):
         try:
@@ -152,10 +149,11 @@ def calculate_variations(hist_df):
     variations=[]
     for i in range(1,len(dates)):
         prev_date,curr_date=dates[i-1],dates[i]
-        prev_perf=perf_df[perf_df["Date"]==prev_date].set_index("Poste travail princ.") if "Poste travail princ." in perf_df.columns else pd.DataFrame()
-        curr_perf=perf_df[perf_df["Date"]==curr_date].set_index("Poste travail princ.") if "Poste travail princ." in perf_df.columns else pd.DataFrame()
-        prev_qual=qual_df[qual_df["Date"]==prev_date].set_index("Poste travail princ.") if "Poste travail princ." in qual_df.columns else pd.DataFrame()
-        curr_qual=qual_df[qual_df["Date"]==curr_date].set_index("Poste travail princ.") if "Poste travail princ." in qual_df.columns else pd.DataFrame()
+        idx_c="Poste travail princ." if "Poste travail princ." in perf_df.columns else "Poste travail princ."
+        prev_perf=perf_df[perf_df["Date"]==prev_date].set_index(idx_c) if idx_c in perf_df.columns else pd.DataFrame()
+        curr_perf=perf_df[perf_df["Date"]==curr_date].set_index(idx_c) if idx_c in perf_df.columns else pd.DataFrame()
+        prev_qual=qual_df[qual_df["Date"]==prev_date].set_index(idx_c) if idx_c in qual_df.columns else pd.DataFrame()
+        curr_qual=qual_df[qual_df["Date"]==curr_date].set_index(idx_c) if idx_c in qual_df.columns else pd.DataFrame()
         for sec_name,prev_d,curr_d,kpi_list in [("Performance",prev_perf,curr_perf,QK+["Score Performance"]),("Qualite",prev_qual,curr_qual,PK+["Score Qualite"])]:
             for poste in set(prev_d.index)&set(curr_d.index):
                 for kpi in kpi_list:
@@ -180,11 +178,6 @@ def generate_journal(var_df):
     j["Sens"]=j.apply(lambda r:"Amelioration" if ((r["Tendance"]=="hausse" and r["KPI"] not in LOWER_BETTER) or (r["Tendance"]=="baisse" and r["KPI"] in LOWER_BETTER)) else "Degradation",axis=1)
     return j.sort_values(["Date actuelle","Sens","Ecart %"],ascending=[True,False,False])
 
-def get_caract_type(statut_user,keywords):
-    s=str(statut_user).upper(); matched=[kw for kw in keywords if kw in s]
-    return max(matched,key=len) if matched else "AUTRE"
-
-# ============================================================
 def inject_custom_css():
     st.markdown("""<style>
     section[data-testid="stSidebar"]{width:250px!important}
@@ -208,7 +201,7 @@ def inject_custom_css():
     .cc.c3{border-top:3px solid #805ad5}.cc.c3 .cv{color:#6b46c1}
     .cc.c4{border-top:3px solid #e53e3e}.cc.c4 .cv{color:#c53030}
     .stl{font-size:15px;font-weight:700;color:var(--p);margin:6px 0 2px 0;padding-left:10px;border-left:3px solid var(--pl)}
-    .stl.q{border-left-color:#3182ce}.stl.p{border-left-color:#38a169}.stl.a{border-left-color:#e53e3e}.stl.c{border-left-color:#805ad5}.stl.s{border-left-color:#d69e2e}
+    .stl.q{border-left-color:#3182ce}.stl.p{border-left-color:#38a169}.stl.a{border-left-color:#e53e3e}.stl.c{border-left-color:#805ad5}
     .tw{width:100%;border-collapse:collapse;font-family:'Inter',sans-serif;font-size:12px;display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0}
     .tw thead th{background:var(--p);color:#fff;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.3px;padding:5px 6px;border:none;white-space:nowrap;position:sticky;top:0;z-index:10}
     .tw.qt thead th{background:linear-gradient(135deg,#2b6cb0,#3182ce)}
@@ -218,8 +211,8 @@ def inject_custom_css():
     .tw tbody td{padding:4px 6px;border-bottom:1px solid #edf2f7;white-space:nowrap}
     .tw tbody tr:nth-child(even) td{background:#f7fafc}
     .tw tbody tr:hover td{background:#ebf8ff!important}
-    .cb td{background:#2b6cb0!important;color:#fff!important;font-weight:700!important;font-size:12px!important}
-    .tr td{background:#e2e8f0!important;font-weight:800!important;font-size:12px!important}
+    .cb td{background:#2b6cb0!important;color:#fff!important;font-weight:700!important}
+    .tr td{background:#e2e8f0!important;font-weight:800!important}
     .stTabs [data-baseweb="tab-list"]{gap:3px;background:#e2e8f0;padding:3px;border-radius:6px;margin-bottom:4px}
     .stTabs [data-baseweb="tab"]{border-radius:5px;padding:6px 14px;font-weight:600;font-size:14px}
     .stTabs [aria-selected="true"]{background:#fff!important;color:var(--p)!important;box-shadow:0 2px 5px rgba(0,0,0,.07)}
@@ -266,7 +259,6 @@ def inject_custom_css():
     @media(max-width:768px){.cr{grid-template-columns:repeat(2,1fr)}.mh h1{font-size:17px}.cg,.dgrid{grid-template-columns:1fr}.car .cal{width:120px}.gbr-l{width:100px}}
     </style>""",unsafe_allow_html=True)
 
-# ============================================================
 def main():
     try: locale.setlocale(locale.LC_ALL,'fr_FR.UTF-8')
     except Exception:
@@ -534,7 +526,6 @@ def main():
         buf=io.BytesIO(); df.to_excel(buf,index=False,engine='openpyxl'); buf.seek(0)
         st.download_button("📥 Exporter Excel",data=buf,file_name=filename,mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-    # ===================== SIDEBAR =====================
     with st.sidebar:
         st.markdown("""<div style="padding:10px 0 4px 0"><div style="font-size:22px;margin-bottom:2px">⚙️</div><div style="font-size:14px;font-weight:800;color:white">Filtres & Parametres</div><div style="font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Configuration</div></div>""",unsafe_allow_html=True)
         st.markdown("---")
@@ -569,7 +560,6 @@ def main():
                     apm=sorted(_t[_t["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"),na=False)]["Poste travail princ."].dropna().unique().tolist())
                 except Exception: pass
 
-    # ===================== DATA LOADING =====================
     if not unf or (ot_f is not None and av_f is not None):
         try:
             if unf: raw_ot=pd.read_excel(ot_f); raw_av=pd.read_excel(av_f)
@@ -693,9 +683,7 @@ def main():
 
             avg_p=round(np.mean(list(pscores.values())),2) if pscores else 0
             avg_q=round(np.mean(list(qscores.values())),2) if qscores else 0
-            avg_p_d=round(np.mean(list(pscores_d.values())),2) if pscores_d else 0
-            avg_q_d=round(np.mean(list(qscores_d.values())),2) if qscores_d else 0
-            total_ot=len(df); total_ot_d=len(df_dash)
+            total_ot=len(df)
             nb_ano_p=sum(r["Nb anomalies"] for r in ano_p_rows if r.get("_t")!="total")
             nb_ano_q=sum(r["Nb anomalies"] for r in ano_q_rows if r.get("_t")!="total")
 
@@ -707,13 +695,11 @@ def main():
             oms_df=dfp[dfp["Statut utilisateur"].str.contains("OMS",case=False,na=False)].copy() if "Statut utilisateur" in dfp.columns else pd.DataFrame()
             thermo_df=dfp[dfp["Statut utilisateur"].str.contains("THERM|THERMO",case=False,na=False)].copy() if "Statut utilisateur" in dfp.columns else pd.DataFrame()
 
-            # ===================== INTERFACE =====================
             st.markdown('<div class="mh"><h1>📊 Dashboard KPI Maintenance</h1><span class="db">📅 %s</span></div>'%fichier_date,unsafe_allow_html=True)
             st.markdown('<div class="cr"><div class="cc c1"><div class="cv">%s</div><div class="cl">OT (période)</div></div><div class="cc c2"><div class="cv">%.1f%%</div><div class="cl">Score Performance</div></div><div class="cc c3"><div class="cv">%.1f%%</div><div class="cl">Score Qualité</div></div><div class="cc c4"><div class="cv">%s</div><div class="cl">Anomalies</div></div></div>'%(total_ot,avg_p,avg_q,nb_ano_p+nb_ano_q),unsafe_allow_html=True)
 
             tabs=st.tabs(["📋 Synthèse & Actions","📊 Indicateurs de Performance","✅ Indicateurs de Qualité","🔍 Analyse OMS & Thermographie"])
 
-            # ===================== TAB 0 : SYNTHESE & ACTIONS =====================
             with tabs[0]:
                 st.markdown(html_grouped_bars(vp,pscores,qscores,"Scores par Poste travail princ."),unsafe_allow_html=True)
                 st.markdown('<div class="stl p" style="margin-top:10px">🏆 Classement — Indicateurs Performance</div>',unsafe_allow_html=True)
@@ -724,13 +710,11 @@ def main():
                 st.markdown(html_actions_table(QK, pa, CIBLE, ACT_MAP),unsafe_allow_html=True)
                 st.markdown('<div class="stl a" style="margin-top:10px">🛠️ Actions — Indicateurs Qualité</div>',unsafe_allow_html=True)
                 st.markdown(html_actions_table(PK, qa, CIBLE, ACT_MAP),unsafe_allow_html=True)
-
                 def get_top_bottom(scores_dict, n=5):
                     ranked = sorted(scores_dict.items(), key=lambda x: x[1], reverse=True)
                     top = ranked[:n]
                     bottom = ranked[-n:][::-1] if len(ranked) > n else ranked[::-1]
                     return top, bottom
-
                 top5_p, bot5_p = get_top_bottom(pscores)
                 top5_q, bot5_q = get_top_bottom(qscores)
                 st.markdown('<div class="dgrid"><div>')
@@ -751,7 +735,6 @@ def main():
                 for i, (p, s) in enumerate(bot5_q):
                     st.markdown('<div class="sr"><span class="sn">%s</span><span class="sc" style="background:#e53e3e">%.1f%%</span><span class="sa">Score Qualité</span></div>'%(p,s),unsafe_allow_html=True)
                 st.markdown('</div></div>',unsafe_allow_html=True)
-
                 if not journal_df.empty:
                     st.markdown('<div class="stl c" style="margin-top:10px">📜 Journal des Variations Significatives (≥5%%)</div>',unsafe_allow_html=True)
                     jcols=["Date actuelle","Poste","Type","Indicateurs","Valeur precedente","Valeur actuelle","Ecart %%","Sens"]
@@ -761,7 +744,7 @@ def main():
                         jh+='<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%.1f</td><td>%.1f</td><td>%.1f%%</td><td style="color:%s;font-weight:700">%s</td></tr>'%(r["Date actuelle"],r["Poste"],r["Type"],r["KPI"],r["Valeur precedente"],r["Valeur actuelle"],r["Ecart %"],sens_clr,r["Sens"])
                     jh+='</tbody></table>'
                     st.markdown(jh,unsafe_allow_html=True)
-                        # ===================== TAB 1 : PERFORMANCE =====================
+
             with tabs[1]:
                 st.markdown('<div class="stl p">Indicateurs de Performance par Poste travail princ.</div>',unsafe_allow_html=True)
                 st.markdown(html_table(prows,pcols,"pt",sc_col=set(QK+["Score Performance"])),unsafe_allow_html=True)
@@ -775,7 +758,6 @@ def main():
                     if fig_ano_p:
                         st.plotly_chart(fig_ano_p, use_container_width=True)
 
-            # ===================== TAB 2 : QUALITE =====================
             with tabs[2]:
                 st.markdown('<div class="stl q">Indicateurs de Qualité par Poste travail princ.</div>',unsafe_allow_html=True)
                 st.markdown(html_table(qrows,qcols,"qt",sc_col=set(PK+["Score Qualite"])),unsafe_allow_html=True)
@@ -789,7 +771,6 @@ def main():
                     if fig_ano_q:
                         st.plotly_chart(fig_ano_q, use_container_width=True)
 
-            # ===================== TAB 3 : OMS & THERMO =====================
             with tabs[3]:
                 st.markdown('<div class="dgrid"><div>')
                 st.markdown('<div class="stl q">🔍 Analyse OMS — Contrôle Conditionnel</div>',unsafe_allow_html=True)
@@ -834,4 +815,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-      

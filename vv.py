@@ -6,7 +6,6 @@ import io, locale, random, time, os
 from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
@@ -193,35 +192,6 @@ def get_caract_type(statut_user,keywords):
     s=str(statut_user).upper(); matched=[kw for kw in keywords if kw in s]
     return max(matched,key=len) if matched else "AUTRE"
 
-def create_pie_of_pie(labels,values,title,threshold=5):
-    total=sum(values)
-    if total==0 or not labels: return None
-    df=pd.DataFrame({"Label":labels,"Value":values})
-    df["Pct"]=df["Value"]/total*100
-    main=df[df["Pct"]>=threshold].copy(); other=df[df["Pct"]<threshold].copy()
-    if other.empty:
-        fig=go.Figure(go.Pie(labels=main["Label"].tolist(),values=main["Value"].tolist(),
-            textinfo='label+percent+value',textfont_size=12,hole=0.35,
-            marker_colors=px.colors.qualitative.Set2[:len(main)]))
-        fig.update_layout(title=dict(text=title,font=dict(size=15,color='#1e3a5f')),
-            height=450,autosize=True,margin=dict(t=50,b=20,l=20,r=20),
-            legend=dict(font_size=12,orientation="h",yanchor="bottom",y=-0.15))
-        return fig
-    other_total=other["Value"].sum()
-    mwo=pd.concat([main,pd.DataFrame({"Label":["Autres"],"Value":[other_total],"Pct":[other_total/total*100]})],ignore_index=True)
-    cm=list(px.colors.qualitative.Set2[:len(mwo)-1])+['rgba(180,180,180,0.6)']
-    co=px.colors.qualitative.Pastel[:len(other)]
-    fig=make_subplots(rows=1,cols=2,specs=[[{"type":"pie"},{"type":"pie"}]],column_widths=[0.55,0.45],
-        subplot_titles=("Repartition globale","Detail 'Autres'"))
-    fig.add_trace(go.Pie(labels=mwo["Label"].tolist(),values=mwo["Value"].tolist(),
-        textinfo='label+percent+value',textfont_size=12,hole=0.3,marker_colors=cm,name="Principal"),row=1,col=1)
-    fig.add_trace(go.Pie(labels=other["Label"].tolist(),values=other["Value"].tolist(),
-        textinfo='label+percent+value',textfont_size=12,hole=0.3,marker_colors=co,name="Detail"),row=1,col=2)
-    fig.update_layout(title=dict(text=title,font=dict(size=15,color='#1e3a5f')),
-        height=450,autosize=True,margin=dict(t=60,b=20,l=20,r=20),
-        legend=dict(font_size=11,orientation="h",yanchor="bottom",y=-0.25))
-    return fig
-
 # ============================================================
 def inject_custom_css():
     st.markdown("""<style>
@@ -351,7 +321,6 @@ def main():
         <style>@keyframes ld{from{width:0}to{width:100%%}}</style></div>"""%c,unsafe_allow_html=True)
         time.sleep(6); st.session_state.hse_affiche=True; st.rerun(); st.stop()
 
-    # ---------- HELPERS ----------
     def contient_mot(t,lm):
         t=str(t); return any(m in t for l in lm for m in l.split())
     def cat_age(a):
@@ -385,7 +354,6 @@ def main():
         if "SF2" in p: return "SF2"
         return "Autre"
 
-    # ---------- CALC KPI ----------
     def calc_kpis(df_i,av_i,now,posts):
         res={}; df=df_i.copy(); av=av_i.copy()
         df["Backlog preparation"]=np.where(df["Statut utilisateur"].apply(lambda x:contient_mot(x,MP_KW)),"CARACTERISE","NON CARACTERISE")
@@ -444,7 +412,6 @@ def main():
         })
         return res
 
-    # ---------- STYLING HELPERS ----------
     def ks(v,c):
         try: val=float(v)
         except Exception: return ""
@@ -483,7 +450,6 @@ def main():
         return 0
     def is_lb(k): return k in LOWER_BETTER
 
-    # ---------- HTML RENDERERS ----------
     def html_table(rows,cols,tc,sc_col=None):
         h='<table class="tw %s"><thead><tr>'%tc+''.join('<th>%s</th>'%c for c in cols)+'</tr></thead><tbody>'
         for r in rows:
@@ -495,7 +461,6 @@ def main():
                 else: s=cs(v) if sc_col and c in sc_col else ks(v,c); h+='<td style="%s">%s</td>'%(s or "",v)
             h+='</tr>'
         return h+'</tbody></table>'
-
     def html_ano(rows,cols):
         h='<table class="tw at"><thead><tr>'+''.join('<th>%s</th>'%c for c in cols)+'</tr></thead><tbody>'
         for r in rows:
@@ -503,7 +468,6 @@ def main():
             for c in cols: v=r.get(c,""); h+='<td style="%s">%s</td>'%(kas(v) or "",v)
             h+='</tr>'
         return h+'</tbody></table>'
-
     def html_actions_table(kpi_list,actuals,targets,act_map):
         h='<table class="tw at"><thead><tr><th>KPI</th><th>Valeur Actuelle</th><th>Cible</th><th>Ecart</th><th>Statut</th><th>Action Recommandée</th></tr></thead><tbody>'
         for k in kpi_list:
@@ -515,7 +479,6 @@ def main():
             action="Objectif atteint" if met else act_map.get(k,"")
             h+='<tr><td style="font-weight:600">%s</td><td>%.1f%%</td><td>%.0f%%</td><td style="color:%s;font-weight:700">%+.1f%%</td><td style="%s">%s</td><td style="color:#4a5568">%s</td></tr>'%(k,av,tv,ec_clr,diff,st_s,status,action)
         return h+'</tbody></table>'
-
     def html_classement(scores,accent):
         sp=sorted(scores.items(),key=lambda x:x[1],reverse=True)
         met_p=[(p,s) for p,s in sp if s>=80]; not_p=[(p,s) for p,s in sp if s<80]
@@ -529,7 +492,6 @@ def main():
             for i,(p,s) in enumerate(reversed(b5)): h+='<div class="cgr"><span class="rk" style="color:#e53e3e">%s</span><span class="pn">%s</span><span class="ps" style="%s">%.2f%%</span></div>'%(len(b5)-i,p,cs("%.2f"%s),s)
         else: h+='<div style="padding:6px;font-size:12px;color:#38a169">Tous atteints</div>'
         h+='</div></div>'; return h
-
     def html_kpi_bars(kpi_list,actuals,targets,title,color_ok,color_fail):
         h='<div class="ca"><div class="ct" style="color:%s">%s</div>'%(color_ok,title)
         for k in kpi_list:
@@ -537,14 +499,12 @@ def main():
             bw=min(max(av,0),100); bg=color_ok if met else color_fail
             h+='<div class="car"><div class="cal">%s</div><div class="cab"><div class="caf" style="width:%s%%;background:%s"></div></div><div class="cav-out">%.1f%%</div></div>'%(k,bw,bg,av)
         return h+'</div>'
-
     def html_bars(data,title,color):
         h='<div class="ca"><div class="ct" style="color:%s">%s</div>'%(color,title)
         for label,val in sorted(data,key=lambda x:x[1],reverse=True):
             bw=min(max(val,0),100)
             h+='<div class="car"><div class="cal">%s</div><div class="cab"><div class="caf" style="width:%s%%;background:%s"></div></div><div class="cav-out">%.1f%%</div></div>'%(label,bw,color,val)
         return h+'</div>'
-
     def html_grouped_bars(posts,pscores,qscores,title):
         h='<div class="ca"><div class="ct" style="color:#1e3a5f">%s</div>'%title
         h+='<div class="gbr-legend"><span><i style="background:linear-gradient(90deg,#2b6cb0,#4299e1)"></i> Performance</span><span><i style="background:linear-gradient(90deg,#276749,#48bb78)"></i> Qualite</span></div>'
@@ -552,14 +512,12 @@ def main():
             pv,qv=pscores.get(p,0),qscores.get(p,0)
             h+='<div class="gbr"><div class="gbr-l">%s</div><div class="gbr-g"><div class="gbr-w"><div class="gbr-f gb-p" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div><div class="gbr-w"><div class="gbr-f gb-q" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div></div></div>'%(p,min(max(pv,0),100),pv,min(max(qv,0),100),qv)
         return h+'</div>'
-
     def anl_pie_chart(data,names_col,values_col,title,colors=None):
         if data.empty: return None
         fig=px.pie(data,names=names_col,values=values_col,title=title,color_discrete_sequence=colors or px.colors.qualitative.Set2)
         fig.update_traces(textposition='inside',textinfo='percent+label+value',textfont_size=12)
         fig.update_layout(margin=dict(t=50,b=20,l=20,r=20),height=450,autosize=True,title_font_size=15,legend=dict(font_size=12,orientation="h",yanchor="bottom",y=-0.15))
         return fig
-
     def export_btn(df,filename):
         buf=io.BytesIO(); df.to_excel(buf,index=False,engine='openpyxl'); buf.seek(0)
         st.download_button("📥 Exporter Excel",data=buf,file_name=filename,mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
@@ -582,15 +540,13 @@ def main():
                         apm=sorted(_t[_t["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"),na=False)]["Poste travail princ."].dropna().unique().tolist())
                     except Exception: pass
                 st.markdown("""<div style="background:rgba(255,255,255,.1);padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.15)"><div style="font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Donnees</div><div style="font-size:14px;color:white;font-weight:600;margin-top:2px">📅 %s</div></div>"""%fichier_date,unsafe_allow_html=True)
-            st.markdown("---")
-            st.markdown("**🎯 Postes**")
+            st.markdown("---"); st.markdown("**🎯 Postes**")
             sp=st.multiselect("Poste",["All"]+apm,["All"],key="sp")
             st.markdown("**🏭 Atelier**")
             sa=st.multiselect("Atelier",["All","Sulfurique (PS)","Phosphorique (PP)","Engrais (TSP/REX)","Feed (MCP/DCP)"],["All"],key="sa")
             st.markdown("**🏢 Division**")
             sd=st.multiselect("Division",["All","SF1","SF2"],["All"],key="sd")
-            st.markdown("---")
-            st.markdown("**📅 Periode**")
+            st.markdown("---"); st.markdown("**📅 Periode**")
             dr=st.date_input("Date debut planifiee",value=(datetime(2025,1,1).date(),datetime.today().date()),format="DD/MM/YYYY",key="dr")
         else:
             unf=False; ot_f=av_f=None; apm=[]; sp=["All"]; sa=["All"]; sd=["All"]
@@ -660,19 +616,9 @@ def main():
                 pscores_d[poste]=(sum(gscore(k,r[k],CIBLE[k]) for k in QK if k in r.index)/len(QK)*100) if QK else 0
                 qscores_d[poste]=(sum(gscore(k,r[k],CIBLE[k]) for k in PK if k in r.index)/len(PK)*100) if PK else 0
 
-            # ANOMALIES
             all_ano=[]
-            sub_p={"TAUX_REALISATION_CORRECTIF/PT":lambda d:d[(d["Nº appel pl.entret."].fillna(0)==0)&(~d["Statut OT"].isin(["CLOT","TCLO"]))],
-                "OT préparation <1 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]!="<1 mois")],
-                "OT préparation >3 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]==">3 mois")],
-                "OT planification <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]!="<1 mois")],
-                "OT planification >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]==">3 mois")],
-                "OT exécution <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]!="<1 mois")],
-                "OT exécution >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]==">3 mois")]}
-            sub_q={"OT LANC ESTIME":lambda d:d[(d["Statut OT"]=="LANC")&(d["OT LANC ESTIME"]=="NON")],
-                "Backlog préparation caractérisé":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["Backlog preparation"]=="NON CARACTERISE")],
-                "Backlog planification caractérisé":lambda d:d[(d["Statut OT"]=="LANC")&(d["Backlog planification"]=="NON CARACTERISE")],
-                "OT CONFIME":lambda d:d[d["OT CONFIME"]=="NON"],"OT_COR_EGAL":lambda d:d[d["OT_COR_EGAL"]=="NON"]}
+            sub_p={"TAUX_REALISATION_CORRECTIF/PT":lambda d:d[(d["Nº appel pl.entret."].fillna(0)==0)&(~d["Statut OT"].isin(["CLOT","TCLO"]))],"OT préparation <1 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]!="<1 mois")],"OT préparation >3 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]==">3 mois")],"OT planification <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]!="<1 mois")],"OT planification >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]==">3 mois")],"OT exécution <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]!="<1 mois")],"OT exécution >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]==">3 mois")]}
+            sub_q={"OT LANC ESTIME":lambda d:d[(d["Statut OT"]=="LANC")&(d["OT LANC ESTIME"]=="NON")],"Backlog préparation caractérisé":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["Backlog preparation"]=="NON CARACTERISE")],"Backlog planification caractérisé":lambda d:d[(d["Statut OT"]=="LANC")&(d["Backlog planification"]=="NON CARACTERISE")],"OT CONFIME":lambda d:d[d["OT CONFIME"]=="NON"],"OT_COR_EGAL":lambda d:d[d["OT_COR_EGAL"]=="NON"]}
             for poste in vp:
                 if poste not in dfp["Poste travail princ."].values: continue
                 dp=dfp[dfp["Poste travail princ."]==poste]
@@ -738,7 +684,6 @@ def main():
             for cn in ["Désignation du travail","Designation du travail","Désignation","Designation","Description"]:
                 if cn in dfp.columns: desig_col=cn; break
 
-            # HISTORICAL
             kpis_file=os.path.join("kpis","indicateurs_kpis.xlsx")
             hist_df=load_historical_kpis(kpis_file); var_df=calculate_variations(hist_df)
             journal_df=generate_journal(var_df); top5_imp,top5_deg=calculate_rankings(var_df)
@@ -754,7 +699,6 @@ def main():
 
             tab0,tab1,tab2,tab3,tab4=st.tabs(["📊 TABLEAU DE BORD","📈 INDICATEURS PERFORMANCE","✅ INDICATEURS QUALITE","🔬 ANALYSE","📉 SUIVI DES AMELIORATIONS"])
 
-            # ==================== DASHBOARD ====================
             with tab0:
                 st.markdown('<div class="stl p">📊 Vue d\'ensemble par poste</div>',unsafe_allow_html=True)
                 st.markdown(html_grouped_bars(vp,pscores_d,qscores_d,"Performance & Qualite par Poste de Travail"),unsafe_allow_html=True)
@@ -782,7 +726,6 @@ def main():
                         fig_pie=anl_pie_chart(sc,"Statut","Nb","Repartition des OT par statut")
                         if fig_pie: st.plotly_chart(fig_pie,use_container_width=True)
 
-            # ==================== PERFORMANCE (regroupé) ====================
             with tab1:
                 perf_view=st.radio("Affichage",["Indicateurs de Performance","Anomalies Performance","Synthèse & Actions"],horizontal=True,key="perf_view")
                 if perf_view=="Indicateurs de Performance":
@@ -798,7 +741,6 @@ def main():
                     st.markdown('<div class="stl a">📋 Actions Recommandées</div>',unsafe_allow_html=True)
                     st.markdown(html_actions_table(QK,pa,CIBLE,ACT_MAP),unsafe_allow_html=True)
 
-            # ==================== QUALITE (regroupé) ====================
             with tab2:
                 qual_view=st.radio("Affichage",["Indicateurs Qualité","Anomalies Qualité","Synthèse & Actions"],horizontal=True,key="qual_view")
                 if qual_view=="Indicateurs Qualité":
@@ -831,13 +773,15 @@ def main():
                     with ac2:
                         total_c=int(prep_by_poste["Backlog Caractérisé"].sum()); total_nc=int(prep_by_poste["Total Backlog Préparation"].sum())-total_c
                         if prep_by_poste["Total Backlog Préparation"].sum()>0:
-                            fig_pc=create_pie_of_pie(["Caractérisé","Non Caractérisé"],[total_c,total_nc],"Taux de caractérisation Préparation")
+                            pie_data = pd.DataFrame({"Statut": ["Caractérisé", "Non Caractérisé"], "Nb": [total_c, total_nc]})
+                            fig_pc = anl_pie_chart(pie_data, "Statut", "Nb", "Taux de caractérisation Préparation")
                             if fig_pc: st.plotly_chart(fig_pc,use_container_width=True)
                     prep_caract=prep_df[prep_df["Backlog preparation"]=="CARACTERISE"].copy()
                     if not prep_caract.empty and "Statut utilisateur" in prep_caract.columns:
                         prep_caract["Type"]=prep_caract["Statut utilisateur"].apply(lambda x:get_caract_type(x,MP_KW))
-                        type_counts=prep_caract["Type"].value_counts()
-                        fig_pt=create_pie_of_pie(type_counts.index.tolist(),type_counts.values.tolist(),"Répartition des types de caractérisation Préparation")
+                        type_counts=prep_caract["Type"].value_counts().reset_index()
+                        type_counts.columns = ["Type", "Nb"]
+                        fig_pt = anl_pie_chart(type_counts, "Type", "Nb", "Répartition des types de caractérisation Préparation")
                         if fig_pt: st.plotly_chart(fig_pt,use_container_width=True)
                 else:
                     st.markdown('<div class="es">Aucun OT en statut CRÉÉ pour analyser le backlog préparation</div>',unsafe_allow_html=True)
@@ -859,13 +803,15 @@ def main():
                     with ac2:
                         total_c2=int(plan_by_poste["Backlog Caractérisé"].sum()); total_nc2=int(plan_by_poste["Total Backlog Planification"].sum())-total_c2
                         if plan_by_poste["Total Backlog Planification"].sum()>0:
-                            fig_pc2=create_pie_of_pie(["Caractérisé","Non Caractérisé"],[total_c2,total_nc2],"Taux de caractérisation Planification")
+                            pie_data = pd.DataFrame({"Statut": ["Caractérisé", "Non Caractérisé"], "Nb": [total_c2, total_nc2]})
+                            fig_pc2 = anl_pie_chart(pie_data, "Statut", "Nb", "Taux de caractérisation Planification")
                             if fig_pc2: st.plotly_chart(fig_pc2,use_container_width=True)
                     plan_caract=plan_df[plan_df["Backlog planification"]=="CARACTERISE"].copy()
                     if not plan_caract.empty and "Statut utilisateur" in plan_caract.columns:
                         plan_caract["Type"]=plan_caract["Statut utilisateur"].apply(lambda x:get_caract_type(x,MPLAN_KW))
-                        type_counts2=plan_caract["Type"].value_counts()
-                        fig_pt2=create_pie_of_pie(type_counts2.index.tolist(),type_counts2.values.tolist(),"Répartition des types de caractérisation Planification")
+                        type_counts2=plan_caract["Type"].value_counts().reset_index()
+                        type_counts2.columns = ["Type", "Nb"]
+                        fig_pt2 = anl_pie_chart(type_counts2, "Type", "Nb", "Répartition des types de caractérisation Planification")
                         if fig_pt2: st.plotly_chart(fig_pt2,use_container_width=True)
                 else:
                     st.markdown('<div class="es">Aucun OT en statut LANC pour analyser le backlog planification</div>',unsafe_allow_html=True)
@@ -881,13 +827,15 @@ def main():
                         oms_pivot=oms_ps.pivot_table(index="Poste travail princ.",columns="Statut OT",values="Nombre d'OT OMS",aggfunc="sum",fill_value=0).reset_index()
                         oms_pivot["Total"]=oms_pivot.iloc[:,1:].sum(axis=1); oms_pivot=oms_pivot.sort_values("Total",ascending=False)
                         oms_cols=list(oms_pivot.columns)
-                        oms_rows=[{"Poste de travail":r["Poste de travail"], **{c:int(r[c]) for c in oms_cols[1:]}} for _,r in oms_pivot.iterrows()]
+                        # CORRECTION : Utiliser "Poste travail princ." au lieu de "Poste de travail"
+                        oms_rows=[{"Poste de travail":r["Poste travail princ."], **{c:int(r[c]) for c in oms_cols[1:]}} for _,r in oms_pivot.iterrows()]
                         oms_rows.append({"_t":"total","Poste de travail":"TOTAL", **{c:int(oms_pivot[c].sum()) for c in oms_cols[1:]}})
                         ac1,ac2=st.columns([0.6,0.4])
                         with ac1: st.markdown(html_table(oms_rows,oms_cols,"st"),unsafe_allow_html=True)
                         with ac2:
-                            oms_by_statut=oms_ps.groupby("Statut OT")["Nombre d'OT OMS"].sum()
-                            fig_oms=create_pie_of_pie(oms_by_statut.index.tolist(),oms_by_statut.values.tolist(),"Répartition OT OMS par statut")
+                            oms_by_statut=oms_ps.groupby("Statut OT")["Nombre d'OT OMS"].sum().reset_index()
+                            oms_by_statut.columns = ["Statut", "Nb"]
+                            fig_oms = anl_pie_chart(oms_by_statut, "Statut", "Nb", "Répartition OT OMS par statut")
                             if fig_oms: st.plotly_chart(fig_oms,use_container_width=True)
                     else:
                         st.markdown('<div class="es">Aucun OT contenant le mot "OMS" dans la designation</div>',unsafe_allow_html=True)
@@ -905,13 +853,15 @@ def main():
                         th_pivot=th_ps.pivot_table(index="Poste travail princ.",columns="Statut OT",values="Nombre d'OT Thermographie",aggfunc="sum",fill_value=0).reset_index()
                         th_pivot["Total"]=th_pivot.iloc[:,1:].sum(axis=1); th_pivot=th_pivot.sort_values("Total",ascending=False)
                         th_cols=list(th_pivot.columns)
-                        th_rows=[{"Poste de travail":r["Poste de travail"], **{c:int(r[c]) for c in th_cols[1:]}} for _,r in th_pivot.iterrows()]
+                        # CORRECTION : Utiliser "Poste travail princ." au lieu de "Poste de travail"
+                        th_rows=[{"Poste de travail":r["Poste travail princ."], **{c:int(r[c]) for c in th_cols[1:]}} for _,r in th_pivot.iterrows()]
                         th_rows.append({"_t":"total","Poste de travail":"TOTAL", **{c:int(th_pivot[c].sum()) for c in th_cols[1:]}})
                         ac1,ac2=st.columns([0.6,0.4])
                         with ac1: st.markdown(html_table(th_rows,th_cols,"st"),unsafe_allow_html=True)
                         with ac2:
-                            th_by_statut=th_ps.groupby("Statut OT")["Nombre d'OT Thermographie"].sum()
-                            fig_th=create_pie_of_pie(th_by_statut.index.tolist(),th_by_statut.values.tolist(),"Répartition OT Thermographie par statut")
+                            th_by_statut=th_ps.groupby("Statut OT")["Nombre d'OT Thermographie"].sum().reset_index()
+                            th_by_statut.columns = ["Statut", "Nb"]
+                            fig_th = anl_pie_chart(th_by_statut, "Statut", "Nb", "Répartition OT Thermographie par statut")
                             if fig_th: st.plotly_chart(fig_th,use_container_width=True)
                     else:
                         st.markdown('<div class="es">Aucun OT contenant le mot "Thermographie" dans la designation</div>',unsafe_allow_html=True)
@@ -1031,7 +981,7 @@ def main():
                             avg_per_date=avg_per_date.sort_index()
                             if len(avg_per_date)>=2:
                                 fig_g=go.Figure()
-                                fig_g.add_trace(go.Scatter(x=avg_per_date.index,y=avg_per_date.values,mode='lines+markers+text',text=[f"{v:.1f}%%" for v in avg_per_date.values],textposition='top center',textfont=dict(size=10,color=s_color),line=dict(color=s_color,width=3),marker=dict(size=8,color='#fff',line=dict(width=2.5,color=s_color)),fill='tozeroy',fillcolor=s_color.replace(')',',0.06)').replace('rgb','rgba') if 'rgb' in s_color else 'rgba(43,108,176,0.06)' if s_color=="#2b6cb0" else 'rgba(39,103,73,0.06)'))
+                                fig_g.add_trace(go.Scatter(x=avg_per_date.index,y=avg_per_date.values,mode='lines+markers+text',text=[f"{v:.1f}%%" for v in avg_per_date.values],textposition='top center',textfont=dict(size=10,color=s_color),line=dict(color=s_color,width=3),marker=dict(size=8,color='#fff',line=dict(width=2.5,color=s_color)),fill='tozeroy',fillcolor='rgba(43,108,176,0.06)' if s_color=="#2b6cb0" else 'rgba(39,103,73,0.06)'))
                                 fig_g.update_layout(height=300,autosize=True,title=dict(text=f"Evolution moyenne {s_type}",font_size=12,font_color=s_color),margin=dict(l=50,r=20,t=40,b=30),xaxis=dict(tickfont=dict(size=9),showgrid=False,tickformat='%d/%m/%Y'),yaxis=dict(tickfont=dict(size=9),showgrid=True,gridcolor='#edf2f7',range=[0,105]),showlegend=False,plot_bgcolor='white')
                                 st.plotly_chart(fig_g,use_container_width=True)
 

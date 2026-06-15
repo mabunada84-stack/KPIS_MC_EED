@@ -560,7 +560,7 @@ def main():
                     apm=sorted(_t[_t["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"),na=False)]["Poste travail princ."].dropna().unique().tolist())
                 except Exception: pass
 
-    if not unf or (ot_f is not None and av_f is not None):
+        if not unf or (ot_f is not None and av_f is not None):
         try:
             if unf: raw_ot=pd.read_excel(ot_f); raw_av=pd.read_excel(av_f)
             else: raw_ot=pd.read_excel("ot.xlsx"); raw_av=pd.read_excel("avis.xlsx")
@@ -648,22 +648,11 @@ def main():
                         ano_q_rows.append({"Poste travail princ.":pst,"Indicateurs":k,"Nb anomalies":len(g),"_t":""})
                 except Exception: pass
             if ano_p_rows:
-               tot_p=sum(r["Nb anomalies"] for r in ano_p_rows)
-               ano_p_rows.append({
-                 "Poste travail princ.":"Total",
-                 "Indicateurs":"",
-                 "Nb anomalies":tot_p,
-             "_t":"total"
-    })
-
+                tot_p=sum(r["Nb anomalies"] for r in ano_p_rows)
+                ano_p_rows.append({"Poste travail princ.":"Total","Indicateurs":"","Nb anomalies":tot_p,"_t":"total"})
             if ano_q_rows:
-              tot_q=sum(r["Nb anomalies"] for r in ano_q_rows)
-              ano_q_rows.append({
-               "Poste travail princ.":"Total",
-               "Indicateurs":"",
-               "Nb anomalies":tot_q,
-               "_t":"total"
-    })
+                tot_q=sum(r["Nb anomalies"] for r in ano_q_rows)
+                ano_q_rows.append({"Poste travail princ.":"Total","Indicateurs":"","Nb anomalies":tot_q,"_t":"total"})
 
             pcols=["Poste travail princ."]+QK+["Score Performance"]
             prows=[{"Poste travail princ.":p,"_t":""} for p in ckdf.index]

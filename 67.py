@@ -867,15 +867,11 @@ def main():
                 st.markdown(html_actions_table(PK, global_qual, CIBLE, ACT_MAP), unsafe_allow_html=True)
                 st.markdown('</div>', unsafe_allow_html=True)
 
-            # ====================================================================
+                 # ====================================================================
             # ONGLET SUIVI & EVOLUTION
             # ====================================================================
             with tab_suivi:
                 st.markdown('<div class="mh"><h1>📈 Suivi & Évolution</h1><div class="db">📅 %s</div></div>'%fichier_date, unsafe_allow_html=True)
-
-                st.markdown('<div class="stl s">Vue Globale — Performance & Qualité par Poste</div>', unsafe_allow_html=True)
-                st.markdown(html_grouped_bars(filtered_posts, perf_scores, qual_scores,
-                    "Comparaison Performance vs Qualité par poste"), unsafe_allow_html=True)
 
                 st.markdown('<div class="stl p">Classement Global</div>', unsafe_allow_html=True)
                 combined={p: (perf_scores.get(p,0)+qual_scores.get(p,0))/2 for p in filtered_posts}
@@ -897,7 +893,6 @@ def main():
                     for kpi in ALL_KPI:
                         kpi_hist=hist_df[hist_df["KPI"]==kpi] if "KPI" in hist_df.columns else pd.DataFrame()
                         if kpi_hist.empty:
-                            # Essayer depuis les sections
                             perf_h=hist_df[hist_df["_section"]=="perf"]
                             qual_h=hist_df[hist_df["_section"]=="qual"]
                             kh=perf_h[perf_h["Poste de travail"]=="Total general"] if "Poste de travail" in perf_h.columns else pd.DataFrame()

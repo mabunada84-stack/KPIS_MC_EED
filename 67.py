@@ -1049,10 +1049,8 @@ def main():
                     st.plotly_chart(exec_pie, use_container_width=True)
                 else:
                     st.markdown('<div class="es">Aucun backlog</div>', unsafe_allow_html=True)
-        else:
-            st.markdown('<div class="es">Aucun OT en backlog d\'exécution.</div>', unsafe_allow_html=True)
 
-    # ===================== SAVE & EXPORT =====================
+              # ===================== SAVE & EXPORT =====================
     pcols_exp = ["Poste de travail"] + QK + ["Score Performance"]
     prows_exp = []
     for p in active_posts:
@@ -1062,6 +1060,7 @@ def main():
                 row[k] = round(float(ckdf.loc[p, k]), 2)
             row["Score Performance"] = round(perf_scores[p], 2)
             prows_exp.append(row)
+
     qcols_exp = ["Poste de travail"] + PK + ["Score Qualité"]
     qrows_exp = []
     for p in active_posts:
@@ -1071,10 +1070,31 @@ def main():
                 row[k] = round(float(ckdf.loc[p, k]), 2)
             row["Score Qualité"] = round(qual_scores[p], 2)
             qrows_exp.append(row)
+
     ano_p_cols = ["Poste de travail", "Nombre anomalies", "Details"]
     ano_q_cols = ["Poste de travail", "Nombre anomalies", "Details"]
-    save_kpis_to_excel(prows_exp, pcols_exp, qrows_exp, qcols_exp, ano_perf_rows, ano_p_cols, ano_qual_rows, ano_q_cols, fichier_date)
-    st.markdown('<div style="margin-top:12px;padding:10px;background:#fff;border-radius:10px;border:1px solid #e2e8f0;text-align:center;font-size:12px;color:#718096">✅ KPIs sauvegardés automatiquement dans <b>kpis/indicateurs_kpis.xlsx</b> — Onglet : %s</div>' % fichier_date, unsafe_allow_html=True)
+
+    # Sauvegarde Excel
+    save_kpis_to_excel(
+        prows_exp, pcols_exp,
+        qrows_exp, qcols_exp,
+        ano_perf_rows, ano_p_cols,
+        ano_qual_rows, ano_q_cols,
+        fichier_date
+    )
+
+    st.markdown(
+        f'<div style="margin-top:12px;padding:10px;background:#fff;border-radius:10px;'
+        f'border:1px solid #e2e8f0;text-align:center;font-size:12px;color:#718096">'
+        f'✅ KPIs sauvegardés automatiquement dans <b>kpis/indicateurs_kpis.xlsx</b> — Onglet : {fichier_date}</div>',
+        unsafe_allow_html=True
+    )
+
 
 if __name__ == "__main__":
     main()
+
+        else:
+            st.markdown('<div class="es">Aucun OT en backlog d\'exécution.</div>', unsafe_allow_html=True)
+
+   

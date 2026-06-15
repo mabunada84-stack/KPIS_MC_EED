@@ -492,63 +492,21 @@ def main():
         h += '</tr></tbody></table>'
         return h
 
-     # ===== Charts Anomalies =====
+    # ===== Charts Anomalies =====
     def ano_charts(ano_rows, postes_list, type_label):
-        if not ano_rows: return None, None
-        indicators = []
-        seen = set()
+        if not ano_rows: return None
+        poste_totals = {p: 0 for p in postes_list}
         for r in ano_rows:
-            if r.get("_t")!="total" and r["Indicateurs"] not in seen:
-                indicators.append(r["Indicateurs"])
-                seen.add(r["Indicateurs"])
-        pivot_data = {}
-        for ind in indicators:
-            pivot_data[ind] = {p: 0 for p in postes_list}
-            pivot_data[ind]["Total"] = 0
-        for r in ano_rows:
-            if r.get("_t")=="total": continue
-            ind = r["Indicateurs"]
+            if r.get("_t") == "total": continue
             pst = r["Poste travail princ."]
-            if ind in pivot_data and pst in pivot_data[ind]:
-                pivot_data[ind][pst] = r["Nb anomalies"]
-                pivot_data[ind]["Total"] += r["Nb anomalies"]
-        indicators_sorted = sorted(indicators, key=lambda x: pivot_data[x]["Total"], reverse=True)
-
-        # Chart 1 : Par Indicateur (barres horizontales)
-        fig1 = go.Figure()
-        fig1.add_trace(go.Bar(
-            y=indicators_sorted,
-            x=[pivot_data[ind]["Total"] for ind in indicators_sorted],
-            orientation='h',
-            marker_color='#e53e3e',
-            text=[pivot_data[ind]["Total"] for ind in indicators_sorted],
-            textposition='outside',
-            textfont_size=12,
-            hovertemplate='%{y}: %{x} anomalies<extra></extra>'
-        ))
-        fig1.update_layout(
-            title=dict(text='<b>Anomalies %s — Par Indicateur</b>'%type_label, font_size=14),
-            height=max(300, len(indicators_sorted)*45 + 80),
-            margin=dict(l=300, r=60, t=50, b=30),
-            xaxis_title="Nombre d'anomalies",
-            yaxis=dict(tickfont_size=11),
-            template='plotly_white',
-            showlegend=False
-        )
-
-        # Chart 2 : Total par Poste travail princ. (barres simples)
-        totals_par_poste = []
-        for p in postes_list:
-            total_p = sum(pivot_data[ind].get(p, 0) for ind in indicators)
-            totals_par_poste.append(total_p)
-        # Tri par total décroissant
-        poste_total = list(zip(postes_list, totals_par_poste))
-        poste_total_sorted = sorted(poste_total, key=lambda x: x[1], reverse=True)
+            if pst in poste_totals:
+                poste_totals[pst] += r["Nb anomalies"]
+        poste_total_sorted = sorted(poste_totals.items(), key=lambda x: x[1], reverse=True)
         postes_tri = [x[0] for x in poste_total_sorted]
         totaux_tri = [x[1] for x in poste_total_sorted]
 
-        fig2 = go.Figure()
-        fig2.add_trace(go.Bar(
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
             x=postes_tri,
             y=totaux_tri,
             marker_color='#e53e3e',
@@ -557,8 +515,8 @@ def main():
             textfont_size=12,
             hovertemplate='%{x}: %{y} anomalies<extra></extra>'
         ))
-        fig2.update_layout(
-            title=dict(text='<b>Anomalies %s — Total par Poste travail princ.</b>'%type_label, font_size=14),
+        fig.update_layout(
+            title=dict(text='<b>Total Anomalies %s — Par Poste travail princ.</b>'%type_label, font_size=14),
             height=400,
             margin=dict(l=40, r=40, t=50, b=120),
             xaxis_title="Poste travail princ.",
@@ -567,8 +525,7 @@ def main():
             template='plotly_white',
             showlegend=False
         )
-
-        return fig1, fig2
+        return fig
               # ===== Table Anomalies transposée (Indicateurs en lignes, Postes en colonnes) =====
     def html_ano_transpose(ano_rows, postes_list, type_label, color_header):
         if not ano_rows: return ""

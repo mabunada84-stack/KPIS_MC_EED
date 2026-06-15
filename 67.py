@@ -996,61 +996,7 @@ def main():
         else:
             st.markdown('<div class="es">⚠️ Colonne "Désignation" non trouvée.</div>', unsafe_allow_html=True)
 
-    # ============ TAB 6 ============
-    with tab6:
-        st.markdown('<div class="stl c">📋 Backlog Préparation</div>', unsafe_allow_html=True)
-        pc_df = dfp[dfp["Statut OT"] == "CRÉÉ"].copy() if dfp is not None else pd.DataFrame()
-        if not pc_df.empty and active_posts:
-            pc_pivot = pd.pivot_table(pc_df, index="Poste travail princ.", columns="Backlog preparation",
-                values="Ordre", aggfunc="count", fill_value=0).reindex(active_posts, fill_value=0)
-            pc_pivot.index.name = "Poste de travail"
-            prep_tbl, prep_pie = create_backlog_section(pc_pivot, "Backlog Préparation", "bt")
-            c_b1, c_b2 = st.columns([2, 1])
-            with c_b1:
-                st.markdown(prep_tbl, unsafe_allow_html=True)
-            with c_b2:
-                if prep_pie:
-                    st.plotly_chart(prep_pie, use_container_width=True)
-                else:
-                    st.markdown('<div class="es">Aucun backlog</div>', unsafe_allow_html=True)
-        else:
-            st.markdown('<div class="es">Aucun OT en backlog de préparation.</div>', unsafe_allow_html=True)
-        st.markdown('<hr style="margin:12px 0;border:none;border-top:1px solid #e2e8f0">', unsafe_allow_html=True)
-        st.markdown('<div class="stl c">📋 Backlog Planification</div>', unsafe_allow_html=True)
-        pl_df = dfp[(dfp["Statut OT"] == "LANC") & (dfp["Contient SOPL"] == 0)].copy() if dfp is not None else pd.DataFrame()
-        if not pl_df.empty and active_posts:
-            pl_pivot = pd.pivot_table(pl_df, index="Poste travail princ.", columns="Backlog planification",
-                values="Ordre", aggfunc="count", fill_value=0).reindex(active_posts, fill_value=0)
-            pl_pivot.index.name = "Poste de travail"
-            plan_tbl, plan_pie = create_backlog_section(pl_pivot, "Backlog Planification", "bt")
-            c_b3, c_b4 = st.columns([2, 1])
-            with c_b3:
-                st.markdown(plan_tbl, unsafe_allow_html=True)
-            with c_b4:
-                if plan_pie:
-                    st.plotly_chart(plan_pie, use_container_width=True)
-                else:
-                    st.markdown('<div class="es">Aucun backlog</div>', unsafe_allow_html=True)
-        else:
-            st.markdown('<div class="es">Aucun OT en backlog de planification.</div>', unsafe_allow_html=True)
-        st.markdown('<hr style="margin:12px 0;border:none;border-top:1px solid #e2e8f0">', unsafe_allow_html=True)
-        st.markdown('<div class="stl c">📋 Backlog Exécution</div>', unsafe_allow_html=True)
-        ex_df = dfp[(dfp["Statut OT"] == "LANC") & (dfp["Contient SOPL"] == 1)].copy() if dfp is not None else pd.DataFrame()
-        if not ex_df.empty and active_posts:
-            ex_pivot = pd.pivot_table(ex_df, index="Poste travail princ.", columns="Backlog execution",
-                values="Ordre", aggfunc="count", fill_value=0).reindex(active_posts, fill_value=0)
-            ex_pivot.index.name = "Poste de travail"
-            exec_tbl, exec_pie = create_backlog_section(ex_pivot, "Backlog Exécution", "bt")
-            c_b5, c_b6 = st.columns([2, 1])
-            with c_b5:
-                st.markdown(exec_tbl, unsafe_allow_html=True)
-            with c_b6:
-                if exec_pie:
-                    st.plotly_chart(exec_pie, use_container_width=True)
-                else:
-                    st.markdown('<div class="es">Aucun backlog</div>', unsafe_allow_html=True)
-
-              # ===================== SAVE & EXPORT =====================
+    # ===================== SAVE & EXPORT =====================
     pcols_exp = ["Poste de travail"] + QK + ["Score Performance"]
     prows_exp = []
     for p in active_posts:
@@ -1074,7 +1020,6 @@ def main():
     ano_p_cols = ["Poste de travail", "Nombre anomalies", "Details"]
     ano_q_cols = ["Poste de travail", "Nombre anomalies", "Details"]
 
-    # Sauvegarde Excel
     save_kpis_to_excel(
         prows_exp, pcols_exp,
         qrows_exp, qcols_exp,
@@ -1094,7 +1039,12 @@ def main():
 if __name__ == "__main__":
     main()
 
-        else:
-            st.markdown('<div class="es">Aucun OT en backlog d\'exécution.</div>', unsafe_allow_html=True)
 
+
+
+
+
+
+
+    # ============ TAB 6 ============
    

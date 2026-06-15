@@ -422,7 +422,7 @@ def main():
         if "SF2" in p: return "SF2"
         return "Autre"
 
-        def calc_kpis(df_i,av_i,now,posts):
+    def calc_kpis(df_i,av_i,now,posts):
         res={}; df=df_i.copy(); av=av_i.copy()
         # --- Conversion des colonnes numeriques potentiellement en texte ---
         for col_num in ["Total coûts budgétés","Total coûts réels","Nº appel pl.entret."]:

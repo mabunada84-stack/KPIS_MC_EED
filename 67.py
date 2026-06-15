@@ -956,12 +956,8 @@ def main():
             # ===== MODIFICATION : Synthèse & Actions EN PREMIER =====
             tabs=st.tabs(["📋 Synthèse & Actions","📊 Indicateurs de Performance","✅ Indicateurs de Qualité","🔍 Analyse OMS & Thermographie"])
 
-            # ===================== TAB 0 : SYNTHESE & ACTIONS (PREMIER) =====================
                        # ===================== TAB 0 : SYNTHESE & ACTIONS (PREMIER) =====================
             with tabs[0]:
-                st.markdown('<div class="stl s">Vue Globale — Performance & Qualité</div>',unsafe_allow_html=True)
-                st.markdown('<div class="cr"><div class="cc c2"><div class="cv">%.1f%%</div><div class="cl">Perf. (période)</div></div><div class="cc c2"><div class="cv">%.1f%%</div><div class="cl">Qual. (période)</div></div><div class="cc c1"><div class="cv">%.1f%%</div><div class="cl">Perf. (global)</div></div><div class="cc c1"><div class="cv">%.1f%%</div><div class="cl">Qual. (global)</div></div></div>'%(avg_p,avg_q,avg_p_d,avg_q_d),unsafe_allow_html=True)
-
                 st.markdown(html_grouped_bars(vp,pscores,qscores,"Scores par Poste travail princ."),unsafe_allow_html=True)
 
                 # Classement Performance
@@ -977,7 +973,7 @@ def main():
                 all_actuals={**pa,**qa}
                 st.markdown(html_actions_table(ALL_KPI, all_actuals, CIBLE, ACT_MAP),unsafe_allow_html=True)
 
-                # ===== Top/Bottom basés sur les SCORES ACTUELS (pas l'historique) =====
+                # ===== Top/Bottom basés sur les SCORES ACTUELS =====
                 def get_top_bottom(scores_dict, n=5):
                     ranked = sorted(scores_dict.items(), key=lambda x: x[1], reverse=True)
                     top = ranked[:n]
@@ -987,8 +983,29 @@ def main():
                 top5_p, bot5_p = get_top_bottom(pscores)
                 top5_q, bot5_q = get_top_bottom(qscores)
 
-             
-                # Journal des variations (uniquement si historique disponible)
+                # Top/Bottom Performance
+                st.markdown('<div class="dgrid"><div>')
+                st.markdown('<div class="stl p">🏆 Top 5 — Performance</div>',unsafe_allow_html=True)
+                for i, (p, s) in enumerate(top5_p):
+                    st.markdown('<div class="sr"><span class="sn">%s</span><span class="sc" style="background:#38a169">%.1f%%</span><span class="sa">Score Performance</span></div>'%(p,s),unsafe_allow_html=True)
+                st.markdown('</div><div>')
+                st.markdown('<div class="stl a">📉 Bottom 5 — Performance</div>',unsafe_allow_html=True)
+                for i, (p, s) in enumerate(bot5_p):
+                    st.markdown('<div class="sr"><span class="sn">%s</span><span class="sc" style="background:#e53e3e">%.1f%%</span><span class="sa">Score Performance</span></div>'%(p,s),unsafe_allow_html=True)
+                st.markdown('</div></div>',unsafe_allow_html=True)
+
+                # Top/Bottom Qualité
+                st.markdown('<div class="dgrid" style="margin-top:6px"><div>')
+                st.markdown('<div class="stl q">🏆 Top 5 — Qualité</div>',unsafe_allow_html=True)
+                for i, (p, s) in enumerate(top5_q):
+                    st.markdown('<div class="sr"><span class="sn">%s</span><span class="sc" style="background:#3182ce">%.1f%%</span><span class="sa">Score Qualité</span></div>'%(p,s),unsafe_allow_html=True)
+                st.markdown('</div><div>')
+                st.markdown('<div class="stl a">📉 Bottom 5 — Qualité</div>',unsafe_allow_html=True)
+                for i, (p, s) in enumerate(bot5_q):
+                    st.markdown('<div class="sr"><span class="sn">%s</span><span class="sc" style="background:#e53e3e">%.1f%%</span><span class="sa">Score Qualité</span></div>'%(p,s),unsafe_allow_html=True)
+                st.markdown('</div></div>',unsafe_allow_html=True)
+
+                # Journal des variations
                 if not journal_df.empty:
                     st.markdown('<div class="stl c" style="margin-top:10px">📜 Journal des Variations Significatives (≥5%%)</div>',unsafe_allow_html=True)
                     jcols=["Date actuelle","Poste","Type","Indicateurs","Valeur precedente","Valeur actuelle","Ecart %%","Sens"]
@@ -998,7 +1015,6 @@ def main():
                         jh+='<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%.1f</td><td>%.1f</td><td>%.1f%%</td><td style="color:%s;font-weight:700">%s</td></tr>'%(r["Date actuelle"],r["Poste"],r["Type"],r["KPI"],r["Valeur precedente"],r["Valeur actuelle"],r["Ecart %"],sens_clr,r["Sens"])
                     jh+='</tbody></table>'
                     st.markdown(jh,unsafe_allow_html=True)
-
                       # ===================== TAB 1 : INDICATEURS DE PERFORMANCE =====================
             with tabs[1]:
                 st.markdown('<div class="stl p">Indicateurs de Performance par Poste travail princ.</div>',unsafe_allow_html=True)

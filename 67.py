@@ -572,6 +572,123 @@ def main():
         )
         
         return fig1, fig2
+              # ===== Table Anomalies transposée (Indicateurs en lignes, Postes en colonnes) =====
+    def html_ano_transpose(ano_rows, postes_list, type_label, color_header):
+        if not ano_rows: return ""
+        indicators = []
+        seen = set()
+        for r in ano_rows:
+            if r.get("_t")!="total" and r["Indicateurs"] not in seen:
+                indicators.append(r["Indicateurs"])
+                seen.add(r["Indicateurs"])
+        cols = ["Indicateurs"] + postes_list + ["Total"]
+        pivot_data = {}
+        for ind in indicators:
+            pivot_data[ind] = {"Indicateurs": ind}
+            for p in postes_list:
+                pivot_data[ind][p] = 0
+            pivot_data[ind]["Total"] = 0
+        for r in ano_rows:
+            if r.get("_t")=="total": continue
+            ind = r["Indicateurs"]
+            pst = r["Poste travail princ."]
+            cnt = r["Nb anomalies"]
+            if ind in pivot_data:
+                pivot_data[ind][pst] = cnt
+                pivot_data[ind]["Total"] += cnt
+        indicators_sorted = sorted(indicators, key=lambda x: pivot_data[x]["Total"], reverse=True)
+        h = '<table class="tw at"><thead><tr>'
+        for c in cols:
+            h += '<th>%s</th>' % c
+        h += '</tr></thead><tbody>'
+        grand_total = 0
+        for ind in indicators_sorted:
+            d = pivot_data[ind]
+            grand_total += d["Total"]
+            h += '<tr>'
+            h += '<td style="font-weight:700;white-space:normal;max-width:280px">%s</td>' % ind
+            for p in postes_list:
+                v = d[p]
+                h += '<td style="%s">%s</td>' % (kas(v) or "", v if v > 0 else "-")
+            h += '<td style="font-weight:800;background:#2b6cb0;color:#fff">%s</td>' % d["Total"]
+            h += '</tr>'
+        h += '<tr class="tr"><td style="font-weight:800">TOTAL</td>'
+        for p in postes_list:
+            s = sum(pivot_data[ind].get(p,0) for ind in indicators)
+            h += '<td style="font-weight:800">%s</td>' % s
+        h += '<td style="font-weight:900;font-size:13px">%s</td>' % grand_total
+        h += '</tr></tbody></table>'
+        return h
+
+    # ===== Charts Anomalies =====
+    def ano_charts(ano_rows, postes_list, type_label):
+        if not ano_rows: return None, None
+        indicators = []
+        seen = set()
+        for r in ano_rows:
+            if r.get("_t")!="total" and r["Indicateurs"] not in seen:
+                indicators.append(r["Indicateurs"])
+                seen.add(r["Indicateurs"])
+        pivot_data = {}
+        for ind in indicators:
+            pivot_data[ind] = {p: 0 for p in postes_list}
+            pivot_data[ind]["Total"] = 0
+        for r in ano_rows:
+            if r.get("_t")=="total": continue
+            ind = r["Indicateurs"]
+            pst = r["Poste travail princ."]
+            if ind in pivot_data and pst in pivot_data[ind]:
+                pivot_data[ind][pst] = r["Nb anomalies"]
+                pivot_data[ind]["Total"] += r["Nb anomalies"]
+        indicators_sorted = sorted(indicators, key=lambda x: pivot_data[x]["Total"], reverse=True)
+        fig1 = go.Figure()
+        fig1.add_trace(go.Bar(
+            y=indicators_sorted,
+            x=[pivot_data[ind]["Total"] for ind in indicators_sorted],
+            orientation='h',
+            marker_color='#e53e3e',
+            text=[pivot_data[ind]["Total"] for ind in indicators_sorted],
+            textposition='outside',
+            textfont_size=12,
+            hovertemplate='%{y}: %{x} anomalies<extra></extra>'
+        ))
+        fig1.update_layout(
+            title=dict(text='<b>Anomalies %s — Par Indicateur</b>'%type_label, font_size=14),
+            height=max(300, len(indicators_sorted)*45 + 80),
+            margin=dict(l=300, r=60, t=50, b=30),
+            xaxis_title="Nombre d'anomalies",
+            yaxis=dict(tickfont_size=11),
+            template='plotly_white',
+            showlegend=False
+        )
+        colors_seq = px.colors.qualitative.Set2
+        fig2 = go.Figure()
+        for i, ind in enumerate(indicators_sorted):
+            vals = [pivot_data[ind].get(p, 0) for p in postes_list]
+            if sum(vals) > 0:
+                fig2.add_trace(go.Bar(
+                    name=ind[:30],
+                    x=postes_list,
+                    y=vals,
+                    marker_color=colors_seq[i % len(colors_seq)],
+                    text=vals,
+                    textposition='inside',
+                    textfont_size=10
+                ))
+        fig2.update_layout(
+            title=dict(text='<b>Anomalies %s — Par Poste travail princ.</b>'%type_label, font_size=14),
+            barmode='stack',
+            height=400,
+            margin=dict(l=40, r=200, t=50, b=100),
+            xaxis_title="Poste travail princ.",
+            yaxis_title="Nombre d'anomalies",
+            xaxis_tickangle=-45,
+            legend=dict(font_size=9, orientation="v", yanchor="top", y=0.99, xanchor="left", x=1.01),
+            template='plotly_white'
+        )
+        return fig1, fig2
+
+    def html_actions_table(kpi_list,actuals,targets,act_map):
       def html_actions_table(kpi_list,actuals,targets,act_map):
         h='<table class="tw at"><thead><tr><th>Indicateurs</th><th>Valeur Actuelle</th><th>Cible</th><th>Ecart</th><th>Statut</th><th>Action Recommandée</th></tr></thead><tbody>'
         for k in kpi_list:

@@ -422,8 +422,16 @@ def main():
         if "SF2" in p: return "SF2"
         return "Autre"
 
-    def calc_kpis(df_i,av_i,now,posts):
+        def calc_kpis(df_i,av_i,now,posts):
         res={}; df=df_i.copy(); av=av_i.copy()
+        # --- Conversion des colonnes numeriques potentiellement en texte ---
+        for col_num in ["Total coûts budgétés","Total coûts réels","Nº appel pl.entret."]:
+            if col_num in df.columns:
+                df[col_num]=pd.to_numeric(df[col_num],errors='coerce').fillna(0)
+        for col_num in ["Avis"]:
+            if col_num in av.columns:
+                av[col_num]=pd.to_numeric(av[col_num],errors='coerce').fillna(0)
+
         df["Backlog preparation"]=np.where(df["Statut utilisateur"].apply(lambda x:contient_mot(x,MP_KW)),"CARACTERISE","NON CARACTERISE")
         df["Backlog planification"]=np.where(df["Statut utilisateur"].apply(lambda x:contient_mot(x,MPLAN_KW)),"CARACTERISE","NON CARACTERISE")
         for dc,am,ac in [('Créé le',"amp","ap"),('Date de début planifiée',"amlp","alp"),('Date de début planifiée',"amex","aex")]:
@@ -434,10 +442,10 @@ def main():
             else: df[am]=np.nan; df[ac]="Inconnu"
         df["OT CONFIME"]=np.where(df["Statut système"].str.contains("CLO",na=False)&df["Statut système"].str.contains("CONF",na=False),"OUI","NON")
         df["Contient SOPL"]=df["Statut utilisateur"].str.contains("SOPL",na=False).map({True:1,False:0})
-        df["OT LANC ESTIME"]=np.where(df["Total coûts budgétés"].fillna(0)==0,"NON","OUI")
-        df["OT_COR_EGAL"]=np.where((df["Total coûts budgétés"].fillna(0)-df["Total coûts réels"].fillna(0))==0,"OUI","NON")
+        df["OT LANC ESTIME"]=np.where(df["Total coûts budgétés"]==0,"NON","OUI")
+        df["OT_COR_EGAL"]=np.where((df["Total coûts budgétés"]-df["Total coûts réels"])==0,"OUI","NON")
         res['dfp']=df
-        an=cpiv(df,df["Nº appel pl.entret."].fillna(0)==0,"Statut OT",posts)
+        an=cpiv(df,df["Nº appel pl.entret."]==0,"Statut OT",posts)
         for c in ["CLOT","CRÉÉ","LANC","TCLO"]: an[c]=an.get(c,0)
         an["Total"]=an[["CLOT","CRÉÉ","LANC","TCLO"]].sum(axis=1); an["TAUX_REALISATION_CORRECTIF/PT"]=ckpi(an["TCLO"],an["Total"])
         pr=cpiv(df,df["Statut OT"]=="CRÉÉ","ap",posts)
@@ -465,7 +473,7 @@ def main():
             pv=pd.pivot_table(df,index="Poste travail princ.",columns=cn,values="Ordre",aggfunc="count",fill_value=0).reindex(posts,fill_value=0)
             for c in ["OUI","NON"]: pv[c]=pv.get(c,0)
             pv["Total"]=pv["OUI"]+pv["NON"]; pv[cn]=ckpi(pv["OUI"],pv["Total"]); res[kn.lower().replace(" ","_")]=pv
-        avf=av[(av["Ordre"].isna())|(av["Ordre"].astype(str).str.strip()=="")].copy(); res['avf']=avf
+        avf=av[(av["Ordre"].isna())|(av["Ordre"].astype(str).str.strip().eq(""))].copy(); res['avf']=avf
         tca=pd.pivot_table(avf,index="Poste travail princ.",columns="Statut utilisateur",values="Avis",aggfunc="count",fill_value=0).reindex(posts,fill_value=0)
         for c in ["APRQ","APRV","APRV AVAU","REJT"]: tca[c]=tca.get(c,0)
         tca["Total"]=tca[["APRQ","APRV","APRV AVAU","REJT"]].sum(axis=1); tca["appel avis approuvé"]=ckpi(tca["APRV"],tca["Total"])

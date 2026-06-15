@@ -761,8 +761,6 @@ def main():
                         jh+='<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%.1f</td><td>%.1f</td><td>%.1f%%</td><td style="color:%s;font-weight:700">%s</td></tr>'%(r["Date actuelle"],r["Poste"],r["Type"],r["KPI"],r["Valeur precedente"],r["Valeur actuelle"],r["Ecart %"],sens_clr,r["Sens"])
                     jh+='</tbody></table>'
                     st.markdown(jh,unsafe_allow_html=True)
-
-      
                         # ===================== TAB 1 : PERFORMANCE =====================
             with tabs[1]:
                 st.markdown('<div class="stl p">Indicateurs de Performance par Poste travail princ.</div>',unsafe_allow_html=True)
@@ -836,3 +834,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+      

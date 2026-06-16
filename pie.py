@@ -551,6 +551,14 @@ def main():
         buf=io.BytesIO(); df.to_excel(buf,index=False,engine='openpyxl'); buf.seek(0)
         st.download_button("📥 Exporter Excel",data=buf,file_name=filename,mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
+    # ===================== LECTURE EXCEL MULTI-MOTEURS =====================
+    def read_xl(f):
+        try: return pd.read_excel(f,engine="openpyxl")
+        except Exception:
+            try: return pd.read_excel(f,engine="xlrd")
+            except Exception: return pd.read_excel(f)
+    # ========================================================================
+
     # ===================== SIDEBAR =====================
     with st.sidebar:
         st.markdown("""<div style="padding:10px 0 4px 0"><div style="font-size:22px;margin-bottom:2px">⚙️</div><div style="font-size:14px;font-weight:800;color:white">Filtres & Parametres</div><div style="font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Configuration</div></div>""",unsafe_allow_html=True)
@@ -560,12 +568,13 @@ def main():
             unf=st.toggle("📁 Charger nouveaux fichiers",value=False,key="tf")
             ot_f=av_f=None; apm=[]
             if unf:
-                ot_f=st.file_uploader("Fichier OT",type=["xlsx"],key="uot")
-                av_f=st.file_uploader("Fichier AVIS",type=["xlsx"],key="uav")
+                ot_f=st.file_uploader("Fichier OT",type=["xlsx","xls"],key="uot")
+                av_f=st.file_uploader("Fichier AVIS",type=["xlsx","xls"],key="uav")
             else:
-                if os.path.exists("ot.xlsx"):
+                if os.path.exists("ot.xlsx") or os.path.exists("ot.xls"):
                     try:
-                        _t=excr(pd.read_excel("ot.xlsx",engine="openpyxl"))
+                        _f="ot.xlsx" if os.path.exists("ot.xlsx") else "ot.xls"
+                        _t=excr(read_xl(_f))
                         apm=sorted(_t[_t["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"),na=False)]["Poste travail princ."].dropna().unique().tolist())
                     except Exception: pass
                 st.markdown("""<div style="background:rgba(255,255,255,.1);padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.15)"><div style="font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Donnees</div><div style="font-size:14px;color:white;font-weight:600;margin-top:2px">📅 %s</div></div>"""%fichier_date,unsafe_allow_html=True)
@@ -580,17 +589,21 @@ def main():
         else:
             unf=False; ot_f=av_f=None; apm=[]; sp=["All"]; sa=["All"]; sd=["All"]
             dr=(datetime(2025,1,1).date(),datetime.today().date())
-            if os.path.exists("ot.xlsx"):
+            if os.path.exists("ot.xlsx") or os.path.exists("ot.xls"):
                 try:
-                    _t=excr(pd.read_excel("ot.xlsx",engine="openpyxl"))
+                    _f="ot.xlsx" if os.path.exists("ot.xlsx") else "ot.xls"
+                    _t=excr(read_xl(_f))
                     apm=sorted(_t[_t["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"),na=False)]["Poste travail princ."].dropna().unique().tolist())
                 except Exception: pass
 
     # ===================== DATA LOADING =====================
     if not unf or (ot_f is not None and av_f is not None):
         try:
-            if unf: raw_ot=pd.read_excel(ot_f,engine="openpyxl"); raw_av=pd.read_excel(av_f,engine="openpyxl")
-            else: raw_ot=pd.read_excel("ot.xlsx",engine="openpyxl"); raw_av=pd.read_excel("avis.xlsx",engine="openpyxl")
+            if unf: raw_ot=read_xl(ot_f); raw_av=read_xl(av_f)
+            else:
+                _ot_f="ot.xlsx" if os.path.exists("ot.xlsx") else "ot.xls"
+                _av_f="avis.xlsx" if os.path.exists("avis.xlsx") else "avis.xls"
+                raw_ot=read_xl(_ot_f); raw_av=read_xl(_av_f)
             raw_ot=excr(raw_ot); raw_av=excr(raw_av)
             for c in ["Créé le","Date de début planifiée","Date de clôture","Début réel","Fin réelle"]:
                 if c in raw_ot.columns: raw_ot[c]=pd.to_datetime(raw_ot[c],errors="coerce")
@@ -862,9 +875,9 @@ def main():
 
         except Exception as e:
             st.error(f"Erreur de chargement des données : {e}")
-            st.info("Veuillez vérifier que les fichiers ot.xlsx et avis.xlsx sont présents dans le même répertoire.")
+            st.info("Veuillez vérifier que les fichiers ot.xlsx/xls et avis.xlsx/xls sont présents dans le même répertoire.")
     else:
-        st.markdown('<div class="es" style="margin-top:80px">📁 Veuillez charger les fichiers OT et AVIS depuis le menu latéral, ou placer les fichiers ot.xlsx et avis.xlsx dans le répertoire de l\'application.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="es" style="margin-top:80px">📁 Veuillez charger les fichiers OT et AVIS depuis le menu latéral, ou placer les fichiers ot.xlsx/xls et avis.xlsx/xls dans le répertoire de l\'application.</div>',unsafe_allow_html=True)
 
 if __name__=="__main__":
     main()

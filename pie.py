@@ -623,7 +623,7 @@ def main():
             title=dict(text=title + ' <span style="font-size:11px;color:#a0aec0">(pie of 2 pie — secteurs < ' + str(threshold) + '%)</span>', font=dict(size=14)),
             height=580, autosize=True, margin=dict(t=60, b=10, l=10, r=10),
             legend=dict(font_size=10, orientation="h", yanchor="bottom", y=-0.02),
-            annotations=[dict(text="Détail<br>secteurs minces", x=0.5, y=0.11, font_size=9, showarrow=False, color="#718096")],
+            annotations=[dict(text="Détail<br>secteurs minces", x=0.5, y=0.11, font=dict(size=9, color="#718096"), showarrow=False)],
             showlegend=True
         )
         return fig
@@ -700,13 +700,11 @@ def main():
 
             vp = [p for p in apm if mf(p) and p in sp]
 
-            # OT : filtre date
             df = raw_ot[(raw_ot["Poste travail princ."].isin(vp))&(raw_ot["Date de début planifiée"].between(sdt, edt))].copy()
             df = excr(df[df["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"),na=False)].drop_duplicates())
             if "Statut système" in df.columns:
                 df["Statut OT"] = df["Statut système"].fillna("").astype(str).str.strip().str.split().str[0]
 
-            # AVIS : filtre date
             avdf = raw_av[raw_av["Poste travail princ."].isin(vp)].copy()
             av_date_col = None
             for col in ["Créé le", "Début souhaité", "Date de la clôture"]:
@@ -716,7 +714,6 @@ def main():
                 avdf = avdf[avdf[av_date_col].between(sdt, edt)]
             avdf = excr(avdf[(avdf["Ordre"].isna())|(avdf["Ordre"].astype(str).str.strip().eq(""))].drop_duplicates())
 
-            # OT dashboard toutes dates
             df_dash = raw_ot[raw_ot["Poste travail princ."].isin(vp)].copy()
             df_dash = excr(df_dash[df_dash["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"),na=False)].drop_duplicates())
             if "Statut système" in df_dash.columns:
@@ -724,11 +721,9 @@ def main():
 
             now = pd.Timestamp.now()
 
-            # KPIs filtrés (CACHED)
             fp = _df_fingerprint(df, avdf, vp, now.timestamp())
             res = _cached_calc_kpis(fp, df, avdf, now.timestamp(), tuple(sorted(vp)))
 
-            # KPIs dashboard toutes dates (CACHED)
             fp_d = _df_fingerprint(df_dash, avdf, vp, now.timestamp())
             res_d = _cached_calc_kpis(fp_d, df_dash, avdf, now.timestamp(), tuple(sorted(vp)))
 
@@ -751,7 +746,6 @@ def main():
                 pscores_d[poste] = (sum(gscore(k, r[k], CIBLE[k]) for k in QK if k in r.index)/len(QK)*100) if QK else 0
                 qscores_d[poste] = (sum(gscore(k, r[k], CIBLE[k]) for k in PK if k in r.index)/len(PK)*100) if PK else 0
 
-            # ANOMALIES
             sub_p = {
                 "TAUX_REALISATION_CORRECTIF/PT": lambda d: d[(d["Nº appel pl.entret."].fillna(0)==0)&(d["Contient SOPL"]==1)&(~d["Statut OT"].isin(["CLOT","TCLO"]))],
                 "OT préparation <1 mois": lambda d: d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]!="<1 mois")],
@@ -795,7 +789,6 @@ def main():
             ano_p_counts = pd.DataFrame(ano_p_rows).groupby(["Poste de travail","KPI"]).size().reset_index(name="Nombre") if ano_p_rows else pd.DataFrame(columns=["Poste de travail","KPI","Nombre"])
             ano_q_counts = pd.DataFrame(ano_q_rows).groupby(["Poste de travail","KPI"]).size().reset_index(name="Nombre") if ano_q_rows else pd.DataFrame(columns=["Poste de travail","KPI","Nombre"])
 
-            # HISTORIQUE (CACHED)
             hist_path = os.path.join("kpis", "indicateurs_kpis.xlsx")
             hist_df = _cached_load_historical(hist_path) if os.path.exists(hist_path) else pd.DataFrame()
             st.session_state["__hist_df_raw"] = hist_df
@@ -823,7 +816,6 @@ def main():
                 top5 = pd.DataFrame(columns=["Poste","Score variation"])
                 bot5 = pd.DataFrame(columns=["Poste","Score variation"])
 
-            # DISTRIBUTIONS POUR PIES
             dist_atelier = df_dash.groupby(df_dash["Poste travail princ."].apply(get_atelier))["Ordre"].count().reset_index()
             dist_atelier.columns = ["Atelier", "Nombre"]
             dist_metier = df_dash.groupby(df_dash["Poste travail princ."].apply(get_metier))["Ordre"].count().reset_index()
@@ -833,7 +825,6 @@ def main():
             dist_statut = df_dash.groupby("Statut OT")["Ordre"].count().reset_index()
             dist_statut.columns = ["Statut", "Nombre"]
 
-            # TABLES POUR EXPORT
             pcols = ["Poste de travail"] + QK + ["Score Performance"]
             prows = []
             for poste in ckdf.index:

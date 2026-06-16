@@ -347,7 +347,7 @@ def main():
         if "PP" in p: return "Phosphorique"
         if "TSP" in p or "REX" in p: return "Engrais"
         if "MCP" in p or "DCP" in p: return "Feed"
-        return "Autre"
+        return "Centrale et utilitaires"
     def get_division(p):
         p=str(p).upper()
         if "SF1" in p: return "SF1"

@@ -2,7 +2,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import io, locale, random, time, os, hashlib, json
+import io, locale, random, time, os, hashlib
 from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
@@ -78,9 +78,9 @@ CONSIGNES_HSE = [
     "La securite est l'affaire de tous.","Chaque incident peut etre evite par la prevention.",
     "Aucun travail n'est plus urgent que la securite.","Zero accident commence par un comportement sur."]
 
-# ============================================================
-# FONCTIONS UTILITAIRES NIVEAU MODULE
-# ============================================================
+# Colonnes obligatoires pour var_df pour éviter les KeyError
+VAR_COLS = ["Date precedente","Date actuelle","Poste","Type","KPI","Valeur precedente","Valeur actuelle","Ecart","Ecart %","Tendance"]
+
 def excr(df):
     if "Poste travail princ." in df.columns:
         return df[~df["Poste travail princ."].astype(str).str.contains("cresseur",case=False,na=False)].copy()
@@ -130,9 +130,6 @@ def get_poste_name(row):
             return str(row[col]).strip()
     return "NON ATTRIBUE"
 
-# ============================================================
-# CACHE : Chargement des fichiers Excel
-# ============================================================
 @st.cache_data(ttl=3600, show_spinner="Chargement des fichiers Excel...")
 def _cached_load_excel(path_or_bytes, is_bytes):
     if is_bytes:
@@ -154,9 +151,6 @@ def load_raw_data(unf, ot_f, av_f):
         if c in raw_av.columns: raw_av[c] = pd.to_datetime(raw_av[c],errors="coerce")
     return raw_ot, raw_av
 
-# ============================================================
-# CACHE : Calcul des KPIs
-# ============================================================
 def _df_fingerprint(df, av, posts, now_ts):
     s = f"{len(df)}|{df['Ordre'].nunique() if 'Ordre' in df.columns else 0}|{len(av)}|{sorted(posts)}|{now_ts}"
     return hashlib.md5(s.encode()).hexdigest()
@@ -187,11 +181,7 @@ def _calc_kpis_impl(df_i, av_i, now, posts):
     def cpiv(f, col_name, p):
         return pd.pivot_table(f, index="Poste travail princ.", columns=col_name, values="Ordre", aggfunc="count", fill_value=0).reindex(p, fill_value=0)
 
-    # NOUVEAU CALCUL TAUX_REALISATION_CORRECTIF/PT
-    df_total = df[
-        (df["Nº appel pl.entret."].fillna(0) == 0)
-        & (df["Contient SOPL"] == 1)
-    ]
+    df_total = df[(df["Nº appel pl.entret."].fillna(0) == 0) & (df["Contient SOPL"] == 1)]
     total_ot = df_total.groupby("Poste travail princ.")["Ordre"].count()
     df_cloture = df_total[df_total["Statut OT"].isin(["TCLO", "CLOT"])]
     ot_clotures = df_cloture.groupby("Poste travail princ.")["Ordre"].count()
@@ -199,13 +189,8 @@ def _calc_kpis_impl(df_i, av_i, now, posts):
     an["OT_CLOTURES"] = ot_clotures
     an["Total"] = total_ot
     an = an.fillna(0)
-    an["TAUX_REALISATION_CORRECTIF/PT"] = np.where(
-        an["Total"] == 0,
-        100,
-        (an["OT_CLOTURES"] / an["Total"]) * 100
-    )
+    an["TAUX_REALISATION_CORRECTIF/PT"] = np.where(an["Total"] == 0, 100, (an["OT_CLOTURES"] / an["Total"]) * 100)
 
-    # Préparation
     pr = cpiv(df[df["Statut OT"]=="CRÉÉ"], "ap", posts)
     for c in ["<1 mois",">3 mois","1 mois < <3 mois"]: pr[c] = pr.get(c, 0)
     pr["Total"] = pr[["<1 mois","1 mois < <3 mois",">3 mois"]].sum(axis=1)
@@ -213,7 +198,6 @@ def _calc_kpis_impl(df_i, av_i, now, posts):
     pr["OT préparation >3 mois"] = ckpi(pr[">3 mois"], pr["Total"], 0)
     pr["OT préparation 1mois< <3mois"] = ckpi(pr["1 mois < <3 mois"], pr["Total"], 0)
 
-    # Planification
     pl = cpiv(df[(df["Statut OT"]=="LANC")&(df["Contient SOPL"]==0)], "alp", posts)
     for c in ["<1 mois",">3 mois","1 mois < <3 mois"]: pl[c] = pl.get(c, 0)
     pl["Total"] = pl[["<1 mois","1 mois < <3 mois",">3 mois"]].sum(axis=1)
@@ -221,7 +205,6 @@ def _calc_kpis_impl(df_i, av_i, now, posts):
     pl["OT planification >3 mois"] = ckpi(pl[">3 mois"], pl["Total"], 0)
     pl["OT planification 1mois< <3mois"] = ckpi(pl["1 mois < <3 mois"], pl["Total"], 0)
 
-    # Exécution
     ex = cpiv(df[(df["Statut OT"]=="LANC")&(df["Contient SOPL"]==1)], "aex", posts)
     for c in ["<1 mois",">3 mois","1 mois < <3 mois"]: ex[c] = ex.get(c, 0)
     ex["Total"] = ex[["<1 mois","1 mois < <3 mois",">3 mois"]].sum(axis=1)
@@ -229,29 +212,24 @@ def _calc_kpis_impl(df_i, av_i, now, posts):
     ex["OT exécution >3 mois"] = ckpi(ex[">3 mois"], ex["Total"], 0)
     ex["OT exécution 1mois< <3mois"] = ckpi(ex["1 mois < <3 mois"], ex["Total"], 0)
 
-    # OT LANC ESTIME
     la = pd.pivot_table(df[df["Statut OT"]=="LANC"], index="Poste travail princ.", columns="OT LANC ESTIME", values="Ordre", aggfunc="count", fill_value=0).reindex(posts, fill_value=0)
     for c in ["OUI","NON"]: la[c] = la.get(c, 0)
     la["Total"] = la["OUI"]+la["NON"]; la["OT LANC ESTIME"] = ckpi(la["OUI"], la["Total"])
 
-    # Backlog préparation
     pc = pd.pivot_table(df[df["Statut OT"]=="CRÉÉ"], index="Poste travail princ.", columns="Backlog preparation", values="Ordre", aggfunc="count", fill_value=0).reindex(posts, fill_value=0)
     for c in ["CARACTERISE","NON CARACTERISE"]: pc[c] = pc.get(c, 0)
     pc["Total"] = pc["CARACTERISE"]+pc["NON CARACTERISE"]; pc["Backlog préparation caractérisé"] = ckpi(pc["CARACTERISE"], pc["Total"])
 
-    # Backlog planification
     plc = pd.pivot_table(df[df["Statut OT"]=="LANC"], index="Poste travail princ.", columns="Backlog planification", values="Ordre", aggfunc="count", fill_value=0).reindex(posts, fill_value=0)
     for c in ["CARACTERISE","NON CARACTERISE"]: plc[c] = plc.get(c, 0)
     plc["Total"] = plc["CARACTERISE"]+plc["NON CARACTERISE"]; plc["Backlog planification caractérisé"] = ckpi(plc["CARACTERISE"], plc["Total"])
 
-    # OT CONFIME et OT_COR_EGAL
     for kn, cn in [("OT CONFIME","OT CONFIME"),("OT_COR_EGAL","OT_COR_EGAL")]:
         pv = pd.pivot_table(df, index="Poste travail princ.", columns=cn, values="Ordre", aggfunc="count", fill_value=0).reindex(posts, fill_value=0)
         for c in ["OUI","NON"]: pv[c] = pv.get(c, 0)
         pv["Total"] = pv["OUI"]+pv["NON"]; pv[cn] = ckpi(pv["OUI"], pv["Total"])
         res[kn.lower().replace(" ","_")] = pv
 
-    # Avis
     avf = av[(av["Ordre"].isna())|(av["Ordre"].astype(str).str.strip()=="")].copy()
     res['avf'] = avf
     tca = pd.pivot_table(avf, index="Poste travail princ.", columns="Statut utilisateur", values="Avis", aggfunc="count", fill_value=0).reindex(posts, fill_value=0)
@@ -259,7 +237,6 @@ def _calc_kpis_impl(df_i, av_i, now, posts):
     tca["Total"] = tca[["APRQ","APRV","APRV AVAU","REJT"]].sum(axis=1)
     tca["appel avis approuvé"] = ckpi(tca["APRV"], tca["Total"])
 
-    # Assemblage final
     res['ckdf'] = pd.DataFrame({
         "TAUX_REALISATION_CORRECTIF/PT": an["TAUX_REALISATION_CORRECTIF/PT"],
         "OT préparation <1 mois":pr["OT préparation <1 mois"],"OT préparation >3 mois":pr["OT préparation >3 mois"],"OT préparation 1mois< <3mois":pr["OT préparation 1mois< <3mois"],
@@ -271,9 +248,6 @@ def _calc_kpis_impl(df_i, av_i, now, posts):
     })
     return res
 
-# ============================================================
-# CACHE : Historique et variations
-# ============================================================
 @st.cache_data(ttl=1800, show_spinner="Chargement historique...")
 def _cached_load_historical(filepath):
     return _load_historical_impl(filepath)
@@ -308,13 +282,13 @@ def _load_historical_impl(filepath):
 @st.cache_data(ttl=1800)
 def _cached_calc_variations(_hist_fp):
     hist_df = st.session_state.get("__hist_df_raw")
-    if hist_df is None or hist_df.empty: return pd.DataFrame()
+    if hist_df is None or hist_df.empty: return pd.DataFrame(columns=VAR_COLS)
     return _calc_variations_impl(hist_df)
 
 def _calc_variations_impl(hist_df):
-    if hist_df.empty or "Date" not in hist_df.columns: return pd.DataFrame()
+    if hist_df.empty or "Date" not in hist_df.columns: return pd.DataFrame(columns=VAR_COLS)
     dates = sorted(hist_df["Date"].unique())
-    if len(dates) < 2: return pd.DataFrame()
+    if len(dates) < 2: return pd.DataFrame(columns=VAR_COLS)
     perf_df = hist_df[hist_df["_section"]=="perf"].copy()
     qual_df = hist_df[hist_df["_section"]=="qual"].copy()
     variations = []
@@ -342,7 +316,6 @@ def _calc_variations_impl(hist_df):
                         "Ecart":round(diff,2),"Ecart %":round(pct,2),"Tendance":trend})
     return pd.DataFrame(variations)
 
-# ============================================================
 def save_kpis_to_excel(prows,pcols,qrows,qcols,ano_p_r,ano_p_c,ano_q_r,ano_q_c,sheet_name):
     kpis_dir="kpis"; os.makedirs(kpis_dir,exist_ok=True)
     filepath=os.path.join(kpis_dir,"indicateurs_kpis.xlsx")
@@ -372,7 +345,6 @@ def save_kpis_to_excel(prows,pcols,qrows,qcols,ano_p_r,ano_p_c,ano_q_r,ano_q_c,s
     try: wb.save(filepath)
     except Exception: pass
 
-# ============================================================
 def inject_custom_css():
     st.markdown("""<style>
     section[data-testid="stSidebar"]{width:250px!important}
@@ -457,7 +429,6 @@ def inject_custom_css():
     @media(max-width:768px){.cr{grid-template-columns:repeat(2,1fr)}.mh h1{font-size:17px}.cg,.dgrid{grid-template-columns:1fr}.car .cal{width:120px}.gbr-l{width:100px}}
     </style>""",unsafe_allow_html=True)
 
-# ============================================================
 def main():
     try: locale.setlocale(locale.LC_ALL,'fr_FR.UTF-8')
     except Exception:
@@ -633,7 +604,6 @@ def main():
         st.download_button("📥 Exporter Excel", data=buf, file_name=filename,
                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-    # ===================== SIDEBAR =====================
     with st.sidebar:
         st.markdown("""<div style="padding:10px 0 4px 0"><div style="font-size:22px;margin-bottom:2px">⚙️</div><div style="font-size:14px;font-weight:800;color:white">Filtres & Parametres</div><div style="font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Configuration</div></div>""",unsafe_allow_html=True)
         st.markdown("---")
@@ -668,7 +638,6 @@ def main():
                     apm = sorted(_t[_t["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"),na=False)]["Poste travail princ."].dropna().unique().tolist())
                 except Exception: pass
 
-    # ===================== DATA LOADING =====================
     data_ready = not unf or (ot_f is not None and av_f is not None)
     if data_ready:
         with st.spinner("Chargement des données..."):
@@ -732,19 +701,12 @@ def main():
 
             pa = {k: round(ckdf[k].mean(), 2) for k in QK}
             qa = {k: round(ckdf[k].mean(), 2) for k in PK}
-            pa_d = {k: round(ckdf_d[k].mean(), 2) for k in QK}
-            qa_d = {k: round(ckdf_d[k].mean(), 2) for k in PK}
 
             pscores = {}; qscores = {}
             for poste in ckdf.index:
                 r = ckdf.loc[poste]
                 pscores[poste] = (sum(gscore(k, r[k], CIBLE[k]) for k in QK if k in r.index)/len(QK)*100) if QK else 0
                 qscores[poste] = (sum(gscore(k, r[k], CIBLE[k]) for k in PK if k in r.index)/len(PK)*100) if PK else 0
-            pscores_d = {}; qscores_d = {}
-            for poste in ckdf_d.index:
-                r = ckdf_d.loc[poste]
-                pscores_d[poste] = (sum(gscore(k, r[k], CIBLE[k]) for k in QK if k in r.index)/len(QK)*100) if QK else 0
-                qscores_d[poste] = (sum(gscore(k, r[k], CIBLE[k]) for k in PK if k in r.index)/len(PK)*100) if PK else 0
 
             sub_p = {
                 "TAUX_REALISATION_CORRECTIF/PT": lambda d: d[(d["Nº appel pl.entret."].fillna(0)==0)&(d["Contient SOPL"]==1)&(~d["Statut OT"].isin(["CLOT","TCLO"]))],
@@ -795,33 +757,27 @@ def main():
             hist_fp = hashlib.md5((str(len(hist_df)) + str(hist_df.columns.tolist())).encode()).hexdigest() if not hist_df.empty else "empty"
             var_df = _cached_calc_variations(hist_fp)
 
-            # Sécurité : si var_df n'a pas les colonnes attendues, on le vide
-            if var_df.empty or "KPI" not in var_df.columns:
-                var_df = pd.DataFrame()
-                journal = pd.DataFrame()
+            # Sécurité bulletproof : forcer les colonnes si vide ou corrompu
+            if var_df.empty:
+                var_df = pd.DataFrame(columns=VAR_COLS)
+
+            if not var_df.empty:
+                journal = var_df.copy()
+                journal["Significatif"] = journal["Ecart %"].abs() >= 5
+                journal = journal[journal["Significatif"]].copy()
+                journal["Sens"] = journal.apply(lambda r: "Amelioration" if ((r["Tendance"]=="hausse" and r["KPI"] not in LOWER_BETTER) or (r["Tendance"]=="baisse" and r["KPI"] in LOWER_BETTER)) else "Degradation", axis=1)
+                journal = journal.sort_values(["Date actuelle","Sens","Ecart %"], ascending=[True, False, False])
+                scores_var = {}
+                for poste in var_df["Poste"].unique():
+                    pv = var_df[var_df["Poste"]==poste]
+                    scores_var[poste] = sum((-r["Ecart %"] if r["KPI"] in LOWER_BETTER else r["Ecart %"]) for _, r in pv.iterrows())
+                ranked = sorted(scores_var.items(), key=lambda x: x[1], reverse=True)
+                top5 = pd.DataFrame(ranked[:5], columns=["Poste","Score variation"]) if ranked else pd.DataFrame(columns=["Poste","Score variation"])
+                bot5 = pd.DataFrame(ranked[-5:][::-1], columns=["Poste","Score variation"]) if ranked else pd.DataFrame(columns=["Poste","Score variation"])
+            else:
+                journal = pd.DataFrame(columns=VAR_COLS)
                 top5 = pd.DataFrame(columns=["Poste","Score variation"])
                 bot5 = pd.DataFrame(columns=["Poste","Score variation"])
-            else:
-                if not var_df.empty:
-                    journal = var_df.copy()
-                    journal["Significatif"] = journal["Ecart %"].abs() >= 5
-                    journal = journal[journal["Significatif"]].copy()
-                    journal["Sens"] = journal.apply(lambda r: "Amelioration" if ((r["Tendance"]=="hausse" and r["KPI"] not in LOWER_BETTER) or (r["Tendance"]=="baisse" and r["KPI"] in LOWER_BETTER)) else "Degradation", axis=1)
-                    journal = journal.sort_values(["Date actuelle","Sens","Ecart %"], ascending=[True, False, False])
-                else:
-                    journal = pd.DataFrame()
-
-                if not var_df.empty:
-                    scores_var = {}
-                    for poste in var_df["Poste"].unique():
-                        pv = var_df[var_df["Poste"]==poste]
-                        scores_var[poste] = sum((-r["Ecart %"] if r["KPI"] in LOWER_BETTER else r["Ecart %"]) for _, r in pv.iterrows())
-                    ranked = sorted(scores_var.items(), key=lambda x: x[1], reverse=True)
-                    top5 = pd.DataFrame(ranked[:5], columns=["Poste","Score variation"]) if ranked else pd.DataFrame()
-                    bot5 = pd.DataFrame(ranked[-5:][::-1], columns=["Poste","Score variation"]) if ranked else pd.DataFrame()
-                else:
-                    top5 = pd.DataFrame(columns=["Poste","Score variation"])
-                    bot5 = pd.DataFrame(columns=["Poste","Score variation"])
 
             dist_atelier = df_dash.groupby(df_dash["Poste travail princ."].apply(get_atelier))["Ordre"].count().reset_index()
             dist_atelier.columns = ["Atelier", "Nombre"]
@@ -872,7 +828,6 @@ def main():
                                list(ano_q_exp.columns) if not ano_q_exp.empty else [],
                                fichier_date)
 
-            # ===================== RENDU =====================
             avg_p_score = round(np.mean(list(pscores.values())), 1) if pscores else 0
             avg_q_score = round(np.mean(list(qscores.values())), 1) if qscores else 0
             avg_g_score = round((avg_p_score + avg_q_score) / 2, 1)
@@ -945,7 +900,7 @@ def main():
 
             with tab5:
                 st.markdown('<div class="mh"><h1>📈 Suivi d\'Amélioration</h1><span class="db">Historique & Tendances</span></div>', unsafe_allow_html=True)
-                if hist_df.empty:
+                if var_df.empty:
                     st.markdown('<div class="es">Aucune donnée historique disponible.<br>Les données seront accumulées à chaque sauvegarde Excel dans le dossier <code>kpis/</code>.</div>', unsafe_allow_html=True)
                 else:
                     st.markdown('<div class="stl s">Journal des Variations Significatives (|écart| ≥ 5%)</div>', unsafe_allow_html=True)
@@ -969,74 +924,4 @@ def main():
                     with cls_cols[0]:
                         st.markdown('<div class="rank-card"><div class="rank-title" style="color:#38a169">🏆 Top 5 Progression</div>', unsafe_allow_html=True)
                         if not top5.empty:
-                            for i, (_, r) in enumerate(top5.iterrows()):
-                                clr = "#38a169" if i==0 else ("#48bb78" if i==1 else ("#68d391" if i==2 else "#9ae6b4"))
-                                st.markdown('<div class="rank-row"><div class="rank-num" style="background:%s">%s</div><div class="rank-name">%s</div><div class="rank-score" style="color:#276749">%+.1f</div></div>'%(clr, i+1, r["Poste"], r["Score variation"]), unsafe_allow_html=True)
-                        else: st.markdown('<div style="padding:8px;color:#718096;font-size:12px">Aucune donnée</div>', unsafe_allow_html=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
-                    with cls_cols[1]:
-                        st.markdown('<div class="rank-card"><div class="rank-title" style="color:#e53e3e">⚠️ Top 5 Régression</div>', unsafe_allow_html=True)
-                        if not bot5.empty:
-                            for i, (_, r) in enumerate(bot5.iterrows()):
-                                clr = "#e53e3e" if i==0 else ("#fc8181" if i==1 else ("#feb2b2" if i==2 else "#fed7d7"))
-                                st.markdown('<div class="rank-row"><div class="rank-num" style="background:%s">%s</div><div class="rank-name">%s</div><div class="rank-score" style="color:#c53030">%+.1f</div></div>'%(clr, i+1, r["Poste"], r["Score variation"]), unsafe_allow_html=True)
-                        else: st.markdown('<div style="padding:8px;color:#718096;font-size:12px">Aucune donnée</div>', unsafe_allow_html=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
-                    st.markdown('<div class="stl q">Tendances Historiques par KPI</div>', unsafe_allow_html=True)
-                    kpi_sel = st.multiselect("Sélectionner les KPIs", ALL_KPI, default=QK[:3], key="kpi_trend_sel")
-                    if kpi_sel:
-                        for kpi in kpi_sel:
-                            kpi_hist = var_df[var_df["KPI"]==kpi].copy()
-                            if kpi_hist.empty:
-                                st.markdown('<div class="es">Aucun historique pour %s</div>'%kpi, unsafe_allow_html=True); continue
-                            fig_t = go.Figure()
-                            for poste in kpi_hist["Poste"].unique()[:10]:
-                                pd_kpi = kpi_hist[kpi_hist["Poste"]==poste].sort_values("Date actuelle")
-                                clr = "#276749" if "Amelioration" in pd_kpi["Sens"].values[-1:] else "#c53030"
-                                fig_t.add_trace(go.Scatter(x=pd_kpi["Date actuelle"], y=pd_kpi["Valeur actuelle"],
-                                    mode='lines+markers+text', name=poste, line=dict(color=clr, width=2),
-                                    marker=dict(size=6), text=pd_kpi["Valeur actuelle"].apply(lambda x: "%.1f"%x),
-                                    textposition="top center", textfont_size=9))
-                            fig_t.update_layout(height=350, margin=dict(t=40,b=20,l=40,r=20),
-                                title=dict(text=kpi, font_size=14, font_color="#1e3a5f"),
-                                xaxis_title="Date", yaxis_title="Valeur",
-                                legend=dict(orientation="h", yanchor="bottom", y=-0.3, font_size=10))
-                            st.plotly_chart(fig_t, use_container_width=True)
-                    st.markdown('<div class="stl a">Plan d\'Actions Recommandées</div>', unsafe_allow_html=True)
-                    st.markdown(html_actions_table(ALL_KPI, {**pa, **qa}, CIBLE, ACT_MAP), unsafe_allow_html=True)
-                    with st.expander("📋 Voir l'historique complet des variations"):
-                        if not var_df.empty:
-                            st.dataframe(var_df.sort_values(["Date actuelle","Poste","KPI"]), use_container_width=True, height=400)
-                            export_btn(var_df, "variations_completes.xlsx")
-                        else: st.markdown('<div class="es">Aucune variation</div>', unsafe_allow_html=True)
-
-            with tab6:
-                st.markdown('<div class="mh"><h1>📥 Export des Données</h1></div>', unsafe_allow_html=True)
-                st.markdown('<div class="stl p">Performance</div>', unsafe_allow_html=True)
-                export_btn(pd.DataFrame(prows), "performance_kpis.xlsx")
-                st.markdown('<div class="stl q">Qualité</div>', unsafe_allow_html=True)
-                export_btn(pd.DataFrame(qrows), "qualite_kpis.xlsx")
-                st.markdown('<div class="stl a">Anomalies Performance</div>', unsafe_allow_html=True)
-                if not ano_p_counts.empty: export_btn(ano_p_counts, "anomalies_performance.xlsx")
-                else: st.markdown('<div class="es">Aucune anomalie</div>', unsafe_allow_html=True)
-                st.markdown('<div class="stl a">Anomalies Qualité</div>', unsafe_allow_html=True)
-                if not ano_q_counts.empty: export_btn(ano_q_counts, "anomalies_qualite.xlsx")
-                else: st.markdown('<div class="es">Aucune anomalie</div>', unsafe_allow_html=True)
-                if not var_df.empty:
-                    st.markdown('<div class="stl s">Variations Historiques</div>', unsafe_allow_html=True)
-                    export_btn(var_df, "variations_historiques.xlsx")
-                if not journal.empty:
-                    st.markdown('<div class="stl s">Journal</div>', unsafe_allow_html=True)
-                    export_btn(journal, "journal_amelioration.xlsx")
-                st.markdown('<div class="stl c">Données Brutes (filtrées)</div>', unsafe_allow_html=True)
-                export_btn(df, "donnees_brutes_filtrees.xlsx")
-
-    else:
-        st.markdown("""<div style="text-align:center;padding:80px;color:#718096">
-        <div style="font-size:64px;margin-bottom:20px">📁</div>
-        <h2 style="font-size:24px;font-weight:700;color:#1e3a5f">Veuillez charger les fichiers OT et AVIS</h2>
-        <p style="font-size:16px;margin-top:10px">Utilisez le panneau de gauche pour activer le chargement de nouveaux fichiers.</p>
-        </div>""", unsafe_allow_html=True)
-
-if __name__ == "__main__":
-    main()
+                            for

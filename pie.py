@@ -565,7 +565,7 @@ def main():
             else:
                 if os.path.exists("ot.xlsx"):
                     try:
-                        _t=excr(pd.read_excel("ot.xlsx"))
+                        _t=excr(pd.read_excel("ot.xlsx",engine="openpyxl"))
                         apm=sorted(_t[_t["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"),na=False)]["Poste travail princ."].dropna().unique().tolist())
                     except Exception: pass
                 st.markdown("""<div style="background:rgba(255,255,255,.1);padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.15)"><div style="font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Donnees</div><div style="font-size:14px;color:white;font-weight:600;margin-top:2px">📅 %s</div></div>"""%fichier_date,unsafe_allow_html=True)
@@ -582,15 +582,15 @@ def main():
             dr=(datetime(2025,1,1).date(),datetime.today().date())
             if os.path.exists("ot.xlsx"):
                 try:
-                    _t=excr(pd.read_excel("ot.xlsx"))
+                    _t=excr(pd.read_excel("ot.xlsx",engine="openpyxl"))
                     apm=sorted(_t[_t["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"),na=False)]["Poste travail princ."].dropna().unique().tolist())
                 except Exception: pass
 
     # ===================== DATA LOADING =====================
     if not unf or (ot_f is not None and av_f is not None):
         try:
-            if unf: raw_ot=pd.read_excel(ot_f); raw_av=pd.read_excel(av_f)
-            else: raw_ot=pd.read_excel("ot.xlsx"); raw_av=pd.read_excel("avis.xlsx")
+            if unf: raw_ot=pd.read_excel(ot_f,engine="openpyxl"); raw_av=pd.read_excel(av_f,engine="openpyxl")
+            else: raw_ot=pd.read_excel("ot.xlsx",engine="openpyxl"); raw_av=pd.read_excel("avis.xlsx",engine="openpyxl")
             raw_ot=excr(raw_ot); raw_av=excr(raw_av)
             for c in ["Créé le","Date de début planifiée","Date de clôture","Début réel","Fin réelle"]:
                 if c in raw_ot.columns: raw_ot[c]=pd.to_datetime(raw_ot[c],errors="coerce")

@@ -797,13 +797,34 @@ def main():
             _cache_hit = True
         else:
             _cache_hit = False
-
-        if not _cache_hit:
+     if not _cache_hit:
             try:
                 if unf:
+                    if ot_f is None:
+                        st.error("📁 Veuillez selectionner le fichier OT")
+                        st.stop()
+                    if av_f is None:
+                        st.error("📁 Veuillez selectionner le fichier AVIS")
+                        st.stop()
                     raw_ot=safe_read_excel(ot_f); raw_av=safe_read_excel(av_f)
                 else:
+                    # Vérifier que les fichiers existent et ne sont pas vides
+                    for fname, label in [("ot.xlsx","OT"),("avis.xlsx","AVIS")]:
+                        if not os.path.exists(fname):
+                            st.error(f"📁 Fichier {label} introuvable : {fname}\n\nPlacez-le dans le même dossier que le script.")
+                            st.stop()
+                        fsize = os.path.getsize(fname)
+                        if fsize < 100:
+                            st.error(f"❌ Le fichier {label} ({fname}) est vide ou corrompu ({fsize} octets).\n\n"
+                                     f"**Action requise :**\n"
+                                     f"1. Ouvrez votre vrai fichier de données dans Excel\n"
+                                     f"2. Faites **Fichier > Enregistrer sous**\n"
+                                     f"3. Choisissez **Classeur Excel (.xlsx)**\n"
+                                     f"4. Nommez-le **{fname}** et placez-le à côté du script")
+                            st.stop()
                     raw_ot=safe_read_excel("ot.xlsx"); raw_av=safe_read_excel("avis.xlsx")
+
+      
                 raw_ot=excr(raw_ot); raw_av=excr(raw_av)
                 for c in ["Créé le","Date de début planifiée","Date de clôture","Début réel","Fin réelle"]:
                     if c in raw_ot.columns: raw_ot[c]=pd.to_datetime(raw_ot[c],errors="coerce")

@@ -795,26 +795,33 @@ def main():
             hist_fp = hashlib.md5((str(len(hist_df)) + str(hist_df.columns.tolist())).encode()).hexdigest() if not hist_df.empty else "empty"
             var_df = _cached_calc_variations(hist_fp)
 
-            if not var_df.empty:
-                journal = var_df.copy()
-                journal["Significatif"] = journal["Ecart %"].abs() >= 5
-                journal = journal[journal["Significatif"]].copy()
-                journal["Sens"] = journal.apply(lambda r: "Amelioration" if ((r["Tendance"]=="hausse" and r["KPI"] not in LOWER_BETTER) or (r["Tendance"]=="baisse" and r["KPI"] in LOWER_BETTER)) else "Degradation", axis=1)
-                journal = journal.sort_values(["Date actuelle","Sens","Ecart %"], ascending=[True, False, False])
-            else:
+            # Sécurité : si var_df n'a pas les colonnes attendues, on le vide
+            if var_df.empty or "KPI" not in var_df.columns:
+                var_df = pd.DataFrame()
                 journal = pd.DataFrame()
-
-            if not var_df.empty:
-                scores_var = {}
-                for poste in var_df["Poste"].unique():
-                    pv = var_df[var_df["Poste"]==poste]
-                    scores_var[poste] = sum((-r["Ecart %"] if r["KPI"] in LOWER_BETTER else r["Ecart %"]) for _, r in pv.iterrows())
-                ranked = sorted(scores_var.items(), key=lambda x: x[1], reverse=True)
-                top5 = pd.DataFrame(ranked[:5], columns=["Poste","Score variation"]) if ranked else pd.DataFrame()
-                bot5 = pd.DataFrame(ranked[-5:][::-1], columns=["Poste","Score variation"]) if ranked else pd.DataFrame()
-            else:
                 top5 = pd.DataFrame(columns=["Poste","Score variation"])
                 bot5 = pd.DataFrame(columns=["Poste","Score variation"])
+            else:
+                if not var_df.empty:
+                    journal = var_df.copy()
+                    journal["Significatif"] = journal["Ecart %"].abs() >= 5
+                    journal = journal[journal["Significatif"]].copy()
+                    journal["Sens"] = journal.apply(lambda r: "Amelioration" if ((r["Tendance"]=="hausse" and r["KPI"] not in LOWER_BETTER) or (r["Tendance"]=="baisse" and r["KPI"] in LOWER_BETTER)) else "Degradation", axis=1)
+                    journal = journal.sort_values(["Date actuelle","Sens","Ecart %"], ascending=[True, False, False])
+                else:
+                    journal = pd.DataFrame()
+
+                if not var_df.empty:
+                    scores_var = {}
+                    for poste in var_df["Poste"].unique():
+                        pv = var_df[var_df["Poste"]==poste]
+                        scores_var[poste] = sum((-r["Ecart %"] if r["KPI"] in LOWER_BETTER else r["Ecart %"]) for _, r in pv.iterrows())
+                    ranked = sorted(scores_var.items(), key=lambda x: x[1], reverse=True)
+                    top5 = pd.DataFrame(ranked[:5], columns=["Poste","Score variation"]) if ranked else pd.DataFrame()
+                    bot5 = pd.DataFrame(ranked[-5:][::-1], columns=["Poste","Score variation"]) if ranked else pd.DataFrame()
+                else:
+                    top5 = pd.DataFrame(columns=["Poste","Score variation"])
+                    bot5 = pd.DataFrame(columns=["Poste","Score variation"])
 
             dist_atelier = df_dash.groupby(df_dash["Poste travail princ."].apply(get_atelier))["Ordre"].count().reset_index()
             dist_atelier.columns = ["Atelier", "Nombre"]

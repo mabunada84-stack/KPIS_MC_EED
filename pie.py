@@ -553,6 +553,7 @@ def main():
 
     # ===================== LECTURE EXCEL MULTI-MOTEURS =====================
 
+
     def read_xl(f):
     try:
         st.write(f"Lecture {f} avec openpyxl")

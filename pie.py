@@ -772,6 +772,8 @@ def main():
                 except Exception: pass
 
     # ===================== DATA LOADING =====================
+  
+      
     if not unf or (ot_f is not None and av_f is not None):
         cache_key = build_cache_key(fichier_date, sp, sa, sd, dr) if not unf else None
         cached_data = load_cache(cache_key) if cache_key else None
@@ -784,7 +786,7 @@ def main():
                 elif k=='avf': avf=v
                 elif k=='df_dash': df_dash=v
             for k in ['pa','qa','pa_d','qa_d','pscores','qscores','pscores_d','qscores_d']:
-                v=cached_data.get(k,{}); 
+                v=cached_data.get(k,{})
                 if k=='pa': pa=v
                 elif k=='qa': qa=v
                 elif k=='pa_d': pa_d=v
@@ -797,7 +799,8 @@ def main():
             _cache_hit = True
         else:
             _cache_hit = False
-    if not _cache_hit:
+
+        if not _cache_hit:
             try:
                 if unf:
                     if ot_f is None:
@@ -808,23 +811,15 @@ def main():
                         st.stop()
                     raw_ot=safe_read_excel(ot_f); raw_av=safe_read_excel(av_f)
                 else:
-                    # Vérifier que les fichiers existent et ne sont pas vides
                     for fname, label in [("ot.xlsx","OT"),("avis.xlsx","AVIS")]:
                         if not os.path.exists(fname):
                             st.error(f"📁 Fichier {label} introuvable : {fname}\n\nPlacez-le dans le même dossier que le script.")
                             st.stop()
                         fsize = os.path.getsize(fname)
                         if fsize < 100:
-                            st.error(f"❌ Le fichier {label} ({fname}) est vide ou corrompu ({fsize} octets).\n\n"
-                                     f"**Action requise :**\n"
-                                     f"1. Ouvrez votre vrai fichier de données dans Excel\n"
-                                     f"2. Faites **Fichier > Enregistrer sous**\n"
-                                     f"3. Choisissez **Classeur Excel (.xlsx)**\n"
-                                     f"4. Nommez-le **{fname}** et placez-le à côté du script")
+                            st.error(f"❌ Le fichier {label} ({fname}) est vide ou corrompu ({fsize} octets).\n\n**Action requise :**\n1. Ouvrez votre vrai fichier dans Excel\n2. Faites **Fichier > Enregistrer sous**\n3. Choisissez **Classeur Excel (.xlsx)**\n4. Nommez-le **{fname}** à côté du script")
                             st.stop()
                     raw_ot=safe_read_excel("ot.xlsx"); raw_av=safe_read_excel("avis.xlsx")
-
-      
                 raw_ot=excr(raw_ot); raw_av=excr(raw_av)
                 for c in ["Créé le","Date de début planifiée","Date de clôture","Début réel","Fin réelle"]:
                     if c in raw_ot.columns: raw_ot[c]=pd.to_datetime(raw_ot[c],errors="coerce")
@@ -875,29 +870,10 @@ def main():
                     r=ckdf_d.loc[poste]
                     pscores_d[poste]=(sum(gscore(k,r[k],CIBLE[k]) for k in QK if k in r.index)/len(QK)*100) if QK else 0
                     qscores_d[poste]=(sum(gscore(k,r[k],CIBLE[k]) for k in PK if k in r.index)/len(PK)*100) if PK else 0
-                all_ano=[]; sub_p={"TAUX_REALISATION_CORRECTIF/PT":lambda d:d[(d["Nº appel pl.entret."].fillna(0)==0)&(~d["Statut OT"].isin(["CLOT","TCLO"]))],"OT préparation <1 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]!="<1 mois")],"OT préparation >3 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]==">3 mois")],"OT planification <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]!="<1 mois")],"OT planification >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]==">3 mois")],"OT exécution <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]!="<1 mois")],"OT exécution >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]==">3 mois")],"OT préparation 1mois< <3mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]=="1 mois < <3 mois")],"OT planification 1mois< <3mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]=="1 mois < <3 mois")],"OT exécution 1mois< <3mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]=="1 mois < <3 mois")]}
+                all_ano=[]
+                sub_p={"TAUX_REALISATION_CORRECTIF/PT":lambda d:d[(d["Nº appel pl.entret."].fillna(0)==0)&(~d["Statut OT"].isin(["CLOT","TCLO"]))],"OT préparation <1 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]!="<1 mois")],"OT préparation >3 mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]==">3 mois")],"OT planification <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]!="<1 mois")],"OT planification >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]==">3 mois")],"OT exécution <1 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]!="<1 mois")],"OT exécution >3 mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]==">3 mois")],"OT préparation 1mois< <3mois":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["ap"]=="1 mois < <3 mois")],"OT planification 1mois< <3mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==0)&(d["alp"]=="1 mois < <3 mois")],"OT exécution 1mois< <3mois":lambda d:d[(d["Statut OT"]=="LANC")&(d["Contient SOPL"]==1)&(d["aex"]=="1 mois < <3 mois")]}
                 sub_q={"OT LANC ESTIME":lambda d:d[(d["Statut OT"]=="LANC")&(d["OT LANC ESTIME"]=="NON")],"Backlog préparation caractérisé":lambda d:d[(d["Statut OT"]=="CRÉÉ")&(d["Backlog preparation"]=="NON CARACTERISE")],"Backlog planification caractérisé":lambda d:d[(d["Statut OT"]=="LANC")&(d["Backlog planification"]=="NON CARACTERISE")],"OT COR Egal":lambda d:d[(d["OT COR EGAL"]=="NON")],"OT CONFIME":lambda d:d[(d["OT CONFIME"]=="NON")&(d["Statut OT"].isin(["CLOT","TCLO"]))],"appel avis approuvé":lambda d:d[(d["Statut utilisateur"].isin(["APRQ","REJT"]))]}
-                ano_data={}
-                for kn,fn in sub_p.items():
-                    try:
-                        sd2=fn(dfp); cnt=len(sd2)
-                        if cnt>0:
-                            grp=sd2.groupby("Poste travail princ.")["Ordre"].count().to_dict()
-                            all_ano.extend([{"KPI":kn,"Poste":p,"Nb anomalies":n} for p,n in grp.items() if n>0]); ano_data[kn]=cnt
-                    except Exception: pass
-                for kn,fn in sub_q.items():
-                    try:
-                        sd2=fn(dfp); cnt=len(sd2)
-                        if cnt>0:
-                            grp=sd2.groupby("Poste travail princ.")["Ordre"].count().to_dict()
-                            all_ano.extend([{"KPI":kn,"Poste":p,"Nb anomalies":n} for p,n in grp.items() if n>0]); ano_data[kn]=cnt
-                    except Exception: pass
-                if cache_key:
-                    save_cache(cache_key, {'ckdf':ckdf,'dfp':dfp,'avf':avf,'pa':pa,'qa':qa,'pa_d':pa_d,'qa_d':qa_d,'pscores':pscores,'qscores':qscores,'pscores_d':pscores_d,'qscores_d':qscores_d,'vp':vp,'df_dash':df_dash,'all_ano':all_ano,'ano_data':ano_data})
-            except Exception as e:
-                st.error(f"Erreur de chargement: {str(e)}"); st.stop()
-        else:
-            pass
+                ano
 
         # ===================== DASHBOARD =====================
         p_score=round(np.mean(list(pscores.values())),2) if pscores else 0

@@ -389,12 +389,12 @@ def main():
             av_f=st.file_uploader("Fichier AVIS",type=["xlsx"],key="uav")
         else:
             st.markdown(f"📅 Données: {fichier_date}")
-            if os.path.exists("ot.xlsx"):
+          
+             if os.path.exists("ot.xlsx"):
                 try:
-                    _t=excr(pd.read_excel("ot.xlsx"))
+                    _t=excr(pd.read_excel("ot.xlsx", engine="openpyxl"))
                     apm=sorted(_t[_t["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"),na=False)]["Poste travail princ."].dropna().unique().tolist())
                 except Exception: pass
-        
         sp=st.multiselect("Poste",["All"]+apm,["All"],key="sp")
         sa=st.multiselect("Atelier",["All","Sulfurique (PS)","Phosphorique (PP)","Engrais (TSP/REX)","Feed (MCP/DCP)"],["All"],key="sa")
         sd=st.multiselect("Division",["All","SF1","SF2"],["All"],key="sd")
@@ -403,8 +403,8 @@ def main():
     # --- DATA LOADING ---
     if not unf or (ot_f is not None and av_f is not None):
         try:
-            raw_ot = pd.read_excel(ot_f) if unf else pd.read_excel("ot.xlsx")
-            raw_av = pd.read_excel(av_f) if unf else pd.read_excel("avis.xlsx")
+            raw_ot = pd.read_excel(ot_f, engine="openpyxl") if unf else pd.read_excel("ot.xlsx", engine="openpyxl")
+            raw_av = pd.read_excel(av_f, engine="openpyxl") if unf else pd.read_excel("avis.xlsx", engine="openpyxl")
             raw_ot = excr(raw_ot); raw_av = excr(raw_av)
             
             for c in ["Créé le","Date de début planifiée"]: 

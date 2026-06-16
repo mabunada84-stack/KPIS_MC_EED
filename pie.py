@@ -708,7 +708,7 @@ def main():
         return h+'</tbody></table>'
     def html_classement(scores,accent):
         sp=sorted(scores.items(),key=lambda x:x[1],reverse=True)
-        t5=[(p,s) for p,s in sp if s>=80][:5]; b5=[(p,s) for p,s in sp if s<80][-5:] if len([p,s for p,s in sp if s<80])>5 else [(p,s) for p,s in sp if s<80]
+        not_p=[(p,s) for p,s in sp if s<80]; t5=[(p,s) for p,s in sp if s>=80][:5]; b5=not_p[-5:] if len(not_p)>5 else not_p
         h='<div class="cg"><div><div class="ct" style="color:#38a169">Top 5 - Atteint</div>'
         if t5:
             for i,(p,s) in enumerate(t5): h+='<div class="cgr"><span class="rk" style="color:%s">%s</span><span class="pn">%s</span><span class="ps" style="%s">%.2f%%</span></div>'%(accent,i+1,p,cs("%.2f"%s),s)

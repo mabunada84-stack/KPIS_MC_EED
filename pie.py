@@ -552,11 +552,21 @@ def main():
         st.download_button("📥 Exporter Excel",data=buf,file_name=filename,mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
     # ===================== LECTURE EXCEL MULTI-MOTEURS =====================
+
     def read_xl(f):
-        try: return pd.read_excel(f,engine="openpyxl")
-        except Exception:
-            try: return pd.read_excel(f,engine="xlrd")
-            except Exception: return pd.read_excel(f)
+    try:
+        st.write(f"Lecture {f} avec openpyxl")
+        return pd.read_excel(f, engine="openpyxl")
+    except Exception as e:
+        st.error(f"Erreur openpyxl pour {f}: {e}")
+
+    try:
+        st.write(f"Lecture {f} avec xlrd")
+        return pd.read_excel(f, engine="xlrd")
+    except Exception as e:
+        st.error(f"Erreur xlrd pour {f}: {e}")
+
+    raise Exception(f"Impossible de lire le fichier : {f}")
     # ========================================================================
 
     # ===================== SIDEBAR =====================
@@ -597,13 +607,27 @@ def main():
                 except Exception: pass
 
     # ===================== DATA LOADING =====================
+    
     if not unf or (ot_f is not None and av_f is not None):
-        try:
-            if unf: raw_ot=read_xl(ot_f); raw_av=read_xl(av_f)
-            else:
-                _ot_f="ot.xlsx" if os.path.exists("ot.xlsx") else "ot.xls"
-                _av_f="avis.xlsx" if os.path.exists("avis.xlsx") else "avis.xls"
-                raw_ot=read_xl(_ot_f); raw_av=read_xl(_av_f)
+    try:
+        if unf:
+            raw_ot = read_xl(ot_f)
+            raw_av = read_xl(av_f)
+        else:
+            _ot_f = "ot.xlsx" if os.path.exists("ot.xlsx") else "ot.xls"
+            _av_f = "avis.xlsx" if os.path.exists("avis.xlsx") else "avis.xls"
+
+            st.write("OT existe :", os.path.exists(_ot_f))
+            st.write("AVIS existe :", os.path.exists(_av_f))
+
+            if os.path.exists(_ot_f):
+                st.write("Taille OT :", os.path.getsize(_ot_f))
+
+            if os.path.exists(_av_f):
+                st.write("Taille AVIS :", os.path.getsize(_av_f))
+
+            raw_ot = read_xl(_ot_f)
+            raw_av = read_xl(_av_f)
             raw_ot=excr(raw_ot); raw_av=excr(raw_av)
             for c in ["Créé le","Date de début planifiée","Date de clôture","Début réel","Fin réelle"]:
                 if c in raw_ot.columns: raw_ot[c]=pd.to_datetime(raw_ot[c],errors="coerce")

@@ -670,7 +670,7 @@ def main():
         fig=go.Figure()
         fig.add_trace(go.Bar(x=names,y=vals,marker_color=colors,text=["%.1f%%"%v for v in vals],textposition='outside',textfont=dict(size=11,color="#1a202c",family="Inter"),hovertemplate="<b>%{x}</b><br>Valeur: %{y:.1f}%%<extra></extra>",name="Valeur"))
         for i,(n,tv) in enumerate(zip(names,cibles)):
-            fig.add_shape(type="line",x0=i-0.4,x1=i+0.4,y0=tv,y1=tv,line=dict(color="#e53e3e,width=2.5,dash="dash"))
+            fig.add_shape(type="line",x0=i-0.4,x1=i+0.4,y0=tv,y1=tv,line=dict(color="#e53e3e",width=2.5,dash="dash")))
             fig.add_annotation(x=i,y=tv,text="Cible %d%%"%tv,showarrow=False,yshift=8,font=dict(size=9,color="#e53e3e",family="Inter",weight="bold"),bgcolor="rgba(255,255,255,0.8)",bordercolor="#e53e3e",borderwidth=0.5)
         fig.update_layout(title="<b>%s</b>"%title,height=420,margin=dict(l=20,r=20,t=60,b=140),xaxis=dict(tickangle=-45,tickfont=dict(size=10,family="Inter")),yaxis=dict(range=[0,max(max(vals),max(cibles))*1.2],title="%",gridcolor="#edf2f7"),plot_bgcolor="white",font=dict(family="Inter"),showlegend=False,bargap=0.3)
         return fig

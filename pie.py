@@ -6,7 +6,6 @@ import io, locale, random, time, os, json, hashlib
 from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
@@ -80,8 +79,6 @@ CONSIGNES_HSE = [
     "Aucun travail n'est plus urgent que la securite.","Zero accident commence par un comportement sur."]
 
 # ============================================================
-# PALETTE PROFESSIONNELLE POUR PIE CHARTS
-# ============================================================
 PIE_COLORS = [
     "#1e3a5f","#2b6cb0","#3182ce","#4299e1","#63b3ed",
     "#276749","#38a169","#48bb78","#68d391","#9ae6b4",
@@ -93,9 +90,53 @@ PIE_COLORS = [
 ]
 
 # ============================================================
-# CACHE SYSTEM - basé sur date.txt
+# === FONCTION DE LECTURE EXCEL ROBUSTE ===
 # ============================================================
-CACHE_FILE = ".dashboard_cache.pkl"
+def safe_read_excel(filepath_or_buffer, **kwargs):
+    """Lit un fichier Excel avec détection automatique du moteur."""
+    engines = ["openpyxl", "xlrd", "calamine"]
+    # Si c'est un buffer uploadé (BytesIO), on ne peut pas vérifier l'extension
+    is_buffer = isinstance(filepath_or_buffer, io.BytesIO) or hasattr(filepath_or_buffer, 'read')
+    
+    if not is_buffer:
+        fpath = str(filepath_or_buffer)
+        # Détection par extension
+        ext = os.path.splitext(fpath)[1].lower()
+        if ext == ".xls":
+            try:
+                return pd.read_excel(filepath_or_buffer, engine="xlrd", **kwargs)
+            except Exception:
+                pass
+        elif ext == ".xlsx":
+            try:
+                return pd.read_excel(filepath_or_buffer, engine="openpyxl", **kwargs)
+            except Exception:
+                pass
+        elif ext == ".csv":
+            try:
+                return pd.read_csv(filepath_or_buffer, **kwargs)
+            except Exception:
+                pass
+    
+    # Fallback : essayer chaque moteur
+    for eng in engines:
+        try:
+            df = pd.read_excel(filepath_or_buffer, engine=eng, **kwargs)
+            if df is not None and not df.empty:
+                return df
+        except Exception:
+            continue
+    
+    # Dernier recours : sans spécifier de moteur
+    try:
+        return pd.read_excel(filepath_or_buffer, **kwargs)
+    except Exception as e:
+        raise ValueError(f"Impossible de lire le fichier Excel. Détail : {e}")
+
+# ============================================================
+# CACHE SYSTEM
+# ============================================================
+CACHE_FILE = ".dashboard_cache.json"
 
 def get_date_from_file():
     if os.path.exists("date.txt"):
@@ -105,7 +146,6 @@ def get_date_from_file():
     return datetime.now().strftime("%d/%m/%Y")
 
 def build_cache_key(fichier_date, sp, sa, sd, dr):
-    """Construit une clé de cache unique basée sur date.txt + filtres"""
     raw = json.dumps({
         "date": fichier_date,
         "sp": sorted(sp),
@@ -116,59 +156,86 @@ def build_cache_key(fichier_date, sp, sa, sd, dr):
     return hashlib.md5(raw.encode()).hexdigest()
 
 def save_cache(key, data):
-    """Sauvegarde le cache en JSON"""
     try:
         cache = {}
-        if os.path.exists(CACHE_FILE.replace(".pkl",".json")):
-            with open(CACHE_FILE.replace(".pkl",".json"),"r") as f:
+        cf = CACHE_FILE
+        if os.path.exists(cf):
+            with open(cf,"r",encoding="utf-8") as f:
                 cache = json.load(f)
-        # Convertir les DataFrames en dictionnaires pour le JSON
         serializable = {}
         for k, v in data.items():
             if isinstance(v, pd.DataFrame):
-                serializable[k] = {"_type": "df", "data": v.to_dict(orient="split")}
+                s = {"_type": "df", "columns": list(v.columns),
+                     "index": [str(i) for i in v.index],
+                     "data": v.reset_index(drop=True).to_dict(orient="split")["data"]}
+                # Nettoyer les types non sérialisables
+                clean_data = []
+                for row in s["data"]:
+                    clean_row = []
+                    for cell in row:
+                        if isinstance(cell, (np.integer,)):
+                            clean_row.append(int(cell))
+                        elif isinstance(cell, (np.floating,)):
+                            clean_row.append(float(cell))
+                        elif isinstance(cell, np.bool_):
+                            clean_row.append(bool(cell))
+                        elif pd.isna(cell):
+                            clean_row.append(None)
+                        else:
+                            clean_row.append(cell)
+                    clean_data.append(clean_row)
+                s["data"] = clean_data
+                serializable[k] = s
             elif isinstance(v, dict):
-                serializable[k] = {"_type": "dict", "data": v}
+                clean_d = {}
+                for dk, dv in v.items():
+                    dk_s = str(dk)
+                    if isinstance(dv, (np.integer,)):
+                        clean_d[dk_s] = int(dv)
+                    elif isinstance(dv, (np.floating,)):
+                        clean_d[dk_s] = float(dv)
+                    elif isinstance(dv, np.bool_):
+                        clean_d[dk_s] = bool(dv)
+                    elif pd.isna(dv):
+                        clean_d[dk_s] = None
+                    else:
+                        clean_d[dk_s] = dv
+                serializable[k] = {"_type": "dict", "data": clean_d}
+            elif isinstance(v, list):
+                serializable[k] = {"_type": "list", "data": json.loads(json.dumps(v, default=str))}
             elif isinstance(v, (int, float, str, bool, type(None))):
                 serializable[k] = {"_type": "val", "data": v}
-            elif isinstance(v, list):
-                serializable[k] = {"_type": "list", "data": v}
             else:
                 serializable[k] = {"_type": "val", "data": str(v)}
         cache[key] = serializable
-        with open(CACHE_FILE.replace(".pkl",".json"),"w") as f:
-            json.dump(cache, f)
+        with open(cf,"w",encoding="utf-8") as f:
+            json.dump(cache, f, ensure_ascii=False)
     except Exception:
         pass
 
 def load_cache(key):
-    """Charge le cache depuis JSON"""
     try:
-        if not os.path.exists(CACHE_FILE.replace(".pkl",".json")):
-            return None
-        with open(CACHE_FILE.replace(".pkl",".json"),"r") as f:
+        cf = CACHE_FILE
+        if not os.path.exists(cf): return None
+        with open(cf,"r",encoding="utf-8") as f:
             cache = json.load(f)
-        if key not in cache:
-            return None
+        if key not in cache: return None
         raw = cache[key]
         result = {}
         for k, v in raw.items():
             t = v.get("_type","val")
             d = v.get("data")
-            if t == "df":
-                result[k] = pd.DataFrame(**d)
-                if "index" in d and d["index"]:
-                    result[k].index = d["index"]
-                    if "columns" in d:
-                        result[k] = result[k][d["columns"]]
-            elif t == "dict":
-                # Convertir les clés numériques
-                result[k] = {}
-                for dk, dv in d.items():
-                    try: dk_conv = float(dk)
-                    except: dk_conv = dk
-                    result[k][dk_conv] = dv
-            elif t == "list":
+            if t == "df" and isinstance(d, dict):
+                cols = d.get("columns",[])
+                idx = d.get("index",[])
+                rows = d.get("data",[])
+                df = pd.DataFrame(rows, columns=cols)
+                if idx and len(idx) == len(df):
+                    df.index = idx
+                result[k] = df
+            elif t == "dict" and isinstance(d, dict):
+                result[k] = d
+            elif t == "list" and isinstance(d, list):
                 result[k] = d
             else:
                 result[k] = d
@@ -279,25 +346,13 @@ def calculate_rankings(var_df):
     ranked=sorted(scores.items(),key=lambda x:x[1],reverse=True)
     return pd.DataFrame(ranked[:5],columns=["Poste","Score variation"]),pd.DataFrame(ranked[-5:][::-1],columns=["Poste","Score variation"])
 
-def get_caract_type(statut_user,keywords):
-    s=str(statut_user).upper(); matched=[kw for kw in keywords if kw in s]
-    return max(matched,key=len) if matched else "AUTRE"
-
 # ============================================================
-# PIE CHART PROFESSIONNEL - Style référence avec % + Nombre
+# PIE CHART PROFESSIONNEL
 # ============================================================
 def create_professional_pie(labels, values, title="", colors=None, hole=0.45,
                              pull_small=0.12, small_threshold=5,
                              show_center_text=True, center_text="",
                              height=480, font_size_label=12, font_size_pct=13):
-    """
-    Crée un pie chart professionnel style référence :
-    - Donut avec texte central
-    - Secteurs petits tirés vers l'extérieur (pull)
-    - Labels avec % ET nombre
-    - Leader lines pour les petits secteurs
-    - Palette professionnelle
-    """
     total = sum(values)
     if total == 0:
         fig = go.Figure()
@@ -305,199 +360,109 @@ def create_professional_pie(labels, values, title="", colors=None, hole=0.45,
                           x=0.5, y=0.5, showarrow=False, font=dict(size=18, color="#718096"))
         fig.update_layout(height=height, margin=dict(t=40,b=10,l=10,r=10))
         return fig
-
     n = len(labels)
     if colors is None:
         colors = [PIE_COLORS[i % len(PIE_COLORS)] for i in range(n)]
-
-    # Calculer le pull pour chaque secteur (tirer les petits)
     pulls = []
     for v in values:
         pct = (v / total * 100) if total > 0 else 0
-        if 0 < pct < small_threshold:
-            pulls.append(pull_small)
-        else:
-            pulls.append(0)
-
-    # Préparer les textes : "Label\nXX.X% (N)"
+        pulls.append(pull_small if 0 < pct < small_threshold else 0)
     text_labels = []
     for i, (lab, val) in enumerate(zip(labels, values)):
         pct = (val / total * 100) if total > 0 else 0
-        if pct < 1 and val > 0:
-            text_labels.append(f"{lab}<br>{pct:.1f}%<br>({int(val)})")
-        elif pct >= 1:
+        if val > 0:
             text_labels.append(f"{lab}<br>{pct:.1f}%<br>({int(val)})")
         else:
             text_labels.append("")
-
-    # Position des textes : outside pour les petits, inside pour les grands
     text_positions = []
     for v in values:
         pct = (v / total * 100) if total > 0 else 0
-        if pct < small_threshold:
-            text_positions.append("outside")
-        else:
-            text_positions.append("inside")
-
+        text_positions.append("outside" if pct < small_threshold else "inside")
     fig = go.Figure(go.Pie(
-        labels=labels,
-        values=values,
-        hole=hole,
-        pull=pulls,
-        marker=dict(colors=colors,
-                    line=dict(color='white', width=2.5)),
-        text=text_labels,
-        textposition=text_positions,
+        labels=labels, values=values, hole=hole, pull=pulls,
+        marker=dict(colors=colors, line=dict(color='white', width=2.5)),
+        text=text_labels, textposition=text_positions,
         textfont=dict(size=font_size_label, color="#1a202c", family="Inter, sans-serif"),
-        hovertemplate='<b>%{label}</b><br>'
-                      'Nombre: <b>%{value}</b><br>'
-                      'Pourcentage: <b>%{percent}</b><br>'
-                      'Total: <b>%{total}</b>'
-                      '<extra></extra>',
-        sort=False,
-        direction='clockwise',
-        rotation=0,
+        hovertemplate='<b>%{label}</b><br>Nombre: <b>%{value}</b><br>Pourcentage: <b>%{percent}</b><extra></extra>',
+        sort=False, direction='clockwise', rotation=0,
     ))
-
-    # Texte central dans le trou du donut
     if show_center_text and hole > 0:
         if not center_text:
             center_text = f"Total<br><b>{int(total)}</b>"
-        fig.add_annotation(
-            text=center_text,
-            x=0.5, y=0.5,
-            xref="paper", yref="paper",
-            showarrow=False,
-            font=dict(size=20, color="#1e3a5f", family="Inter, sans-serif", weight="bold"),
-            align="center"
-        )
-
+        fig.add_annotation(text=center_text, x=0.5, y=0.5, xref="paper", yref="paper",
+            showarrow=False, font=dict(size=20, color="#1e3a5f", family="Inter, sans-serif", weight="bold"), align="center")
     fig.update_layout(
-        title=dict(
-            text=title,
-            font=dict(size=16, color="#1e3a5f", family="Inter, sans-serif", weight="bold"),
-            x=0.5, xanchor="center",
-            y=0.97, yanchor="top",
-            pad=dict(t=5, b=5)
-        ),
-        height=height,
-        margin=dict(t=50, b=20, l=30, r=30),
-        showlegend=True,
-        legend=dict(
-            font=dict(size=11, color="#4a5568", family="Inter, sans-serif"),
-            orientation="h",
-            yanchor="bottom", y=-0.08,
-            xanchor="center", x=0.5,
-            itemwidth=30,
-            itemsel="none"
-        ),
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(family="Inter, sans-serif"),
+        title=dict(text=title, font=dict(size=16, color="#1e3a5f", family="Inter, sans-serif", weight="bold"),
+                   x=0.5, xanchor="center", y=0.97, yanchor="top", pad=dict(t=5, b=5)),
+        height=height, margin=dict(t=50, b=20, l=30, r=30), showlegend=True,
+        legend=dict(font=dict(size=11, color="#4a5568", family="Inter, sans-serif"),
+                    orientation="h", yanchor="bottom", y=-0.08, xanchor="center", x=0.5,
+                    itemwidth=30, itemsel="none"),
+        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(family="Inter, sans-serif"),
     )
-
     return fig
 
-
 def create_status_pie_chart(df, status_col, title="", colors_map=None, height=480):
-    """
-    Crée un pie chart pour la répartition par statut avec % + nombre.
-    Gère automatiquement les petits secteurs.
-    """
     if df.empty or status_col not in df.columns:
         fig = go.Figure()
         fig.add_annotation(text="Aucune donnée", xref="paper", yref="paper",
                           x=0.5, y=0.5, showarrow=False, font=dict(size=18, color="#718096"))
         fig.update_layout(height=height)
         return fig
-
     counts = df[status_col].value_counts()
     labels = counts.index.tolist()
     values = counts.values.tolist()
-
-    # Palette par défaut pour les statuts
     default_colors = {
-        "CLOT": "#276749", "TCLO": "#38a169", "CRÉÉ": "#2b6cb0",
+        "CLOT": "#276749", "TCLO": "#38a169", "CRÉÉ": "#2b6cb0", "CRÉE": "#2b6cb0",
         "LANC": "#d69e2e", "ENCO": "#805ad5", "LIBE": "#4299e1",
         "CARACTERISE": "#276749", "NON CARACTERISE": "#c53030",
         "OUI": "#276749", "NON": "#c53030",
         "APRV": "#276749", "APRQ": "#2b6cb0", "REJT": "#c53030",
         "<1 mois": "#276749", ">3 mois": "#c53030", "1 mois < <3 mois": "#d69e2e",
-        "APRV AVAU": "#38a169",
+        "APRV AVAU": "#38a169", "Inconnu": "#a0aec0",
     }
-
     colors = []
     for lab in labels:
         lab_s = str(lab).strip()
-        if colors_map and lab_s in colors_map:
-            colors.append(colors_map[lab_s])
-        elif lab_s in default_colors:
-            colors.append(default_colors[lab_s])
-        else:
-            colors.append(PIE_COLORS[len(colors) % len(PIE_COLORS)])
-
+        if colors_map and lab_s in colors_map: colors.append(colors_map[lab_s])
+        elif lab_s in default_colors: colors.append(default_colors[lab_s])
+        else: colors.append(PIE_COLORS[len(colors) % len(PIE_COLORS)])
     total = sum(values)
-    center = f"Total<br><b>{int(total)}</b>"
-
-    return create_professional_pie(
-        labels=labels, values=values, title=title,
-        colors=colors, hole=0.42, pull_small=0.15,
-        small_threshold=6, show_center_text=True,
-        center_text=center, height=height,
-        font_size_label=11, font_size_pct=12
-    )
-
+    return create_professional_pie(labels=labels, values=values, title=title,
+        colors=colors, hole=0.42, pull_small=0.15, small_threshold=6,
+        show_center_text=True, center_text=f"Total<br><b>{int(total)}</b>",
+        height=height, font_size_label=11, font_size_pct=12)
 
 def create_age_pie_chart(df, age_col, title="", height=480):
-    """Pie chart spécialisé pour la répartition par âge des OT"""
     age_colors = {"<1 mois": "#276749", "1 mois < <3 mois": "#d69e2e", ">3 mois": "#c53030", "Inconnu": "#a0aec0"}
     return create_status_pie_chart(df, age_col, title=title, colors_map=age_colors, height=height)
 
-
 def create_kpi_pie_by_poste(ckdf, kpi_name, title="", height=500):
-    """
-    Pie chart montrant la répartition d'un KPI par poste.
-    Affiche les postes qui ont des valeurs != 0, avec % et nombre.
-    """
     if kpi_name not in ckdf.columns:
         fig = go.Figure()
         fig.add_annotation(text="KPI non disponible", xref="paper", yref="paper",
                           x=0.5, y=0.5, showarrow=False, font=dict(size=18, color="#718096"))
-        fig.update_layout(height=height)
-        return fig
-
-    vals = ckdf[kpi_name].dropna()
-    vals = vals[vals != 0]
-
+        fig.update_layout(height=height); return fig
+    vals = ckdf[kpi_name].dropna(); vals = vals[vals != 0]
     if vals.empty:
         fig = go.Figure()
         fig.add_annotation(text="Aucune valeur non-nulle", xref="paper", yref="paper",
                           x=0.5, y=0.5, showarrow=False, font=dict(size=18, color="#718096"))
-        fig.update_layout(height=height)
-        return fig
-
-    # Pour les KPI en %, on montre la contribution de chaque poste
+        fig.update_layout(height=height); return fig
     total = vals.sum()
     if total == 0:
         fig = go.Figure()
         fig.add_annotation(text="Total = 0", xref="paper", yref="paper",
                           x=0.5, y=0.5, showarrow=False, font=dict(size=18, color="#718096"))
-        fig.update_layout(height=height)
-        return fig
-
+        fig.update_layout(height=height); return fig
     labels = [str(idx) for idx in vals.index]
     values = vals.values.tolist()
     n = len(labels)
     colors = [PIE_COLORS[i % len(PIE_COLORS)] for i in range(n)]
-
-    return create_professional_pie(
-        labels=labels, values=values, title=title,
-        colors=colors, hole=0.40, pull_small=0.18,
-        small_threshold=4, show_center_text=True,
+    return create_professional_pie(labels=labels, values=values, title=title,
+        colors=colors, hole=0.40, pull_small=0.18, small_threshold=4, show_center_text=True,
         center_text=f"{kpi_name[:25]}<br>Moy: <b>{total/max(n,1):.1f}%</b>",
-        height=height, font_size_label=10, font_size_pct=11
-    )
-
+        height=height, font_size_label=10, font_size_pct=11)
 
 # ============================================================
 def inject_custom_css():
@@ -515,7 +480,7 @@ def inject_custom_css():
     .mh h1{color:#fff;font-size:20px;font-weight:800;margin:0;display:inline}
     .mh .db{float:right;background:rgba(255,255,255,.15);padding:3px 12px;border-radius:14px;color:#fff;font-size:14px;font-weight:500;border:1px solid rgba(255,255,255,.2);margin-top:2px}
     .cr{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:6px}
-    .cc{background:#fff;border-radius:var(--p);padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.04);border:1px solid var(--b);text-align:center}
+    .cc{background:#fff;border-radius:var(--r);padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.04);border:1px solid var(--b);text-align:center}
     .cc .cv{font-size:26px;font-weight:900;line-height:1}
     .cc .cl{font-size:11px;color:#718096;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
     .cc.c1{border-top:3px solid #3182ce}.cc.c1 .cv{color:#2b6cb0}
@@ -543,7 +508,6 @@ def inject_custom_css():
     .sr .sc{padding:3px 9px;border-radius:12px;font-weight:800;font-size:14px;min-width:50px;text-align:center;margin:0 8px;color:#fff}
     .sr .sa{color:#718096;font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .sr .stg{font-size:11px;color:#718096;min-width:60px;text-align:center;white-space:nowrap}
-    .sr .sb{font-size:11px;font-weight:700;padding:2px 8px;border-radius:3px;white-space:nowrap}
     .ca{background:#fff;border-radius:var(--r);padding:10px;margin-top:4px;border:1px solid var(--b);box-shadow:0 1px 4px rgba(0,0,0,.02)}
     .ca .ct{font-size:14px;font-weight:700;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--b)}
     .car{display:flex;align-items:center;margin-bottom:4px;font-size:12px}
@@ -589,13 +553,6 @@ def inject_custom_css():
     .g-green{background:#c6efce;color:#006100;font-weight:600}
     .g-yellow{background:#ffeb9c;color:#9c6500;font-weight:600}
     .g-red{background:#ffc7ce;color:#9c0006;font-weight:600}
-    .trend-up{color:#276749;font-weight:800;font-size:16px}
-    .trend-down{color:#c53030;font-weight:800;font-size:16px}
-    .trend-stable{color:#718096;font-weight:800;font-size:16px}
-    .spark-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:8px}
-    .spark-card{background:#fff;border-radius:var(--r);padding:10px 12px;border:1px solid var(--b);box-shadow:0 1px 4px rgba(0,0,0,.02)}
-    .spark-card .sp-title{font-size:13px;font-weight:800;color:var(--p);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .spark-card .sp-sub{font-size:11px;color:#718096;margin-bottom:5px}
     .rank-card{background:#fff;border-radius:var(--r);padding:12px 16px;border:1px solid var(--b);box-shadow:0 2px 8px rgba(0,0,0,.04)}
     .rank-card .rank-title{font-size:15px;font-weight:800;margin-bottom:8px;padding-bottom:5px;border-bottom:2px solid var(--b)}
     .rank-row{display:flex;align-items:center;padding:5px 0;font-size:13px;border-bottom:1px solid #f7fafc}
@@ -603,9 +560,7 @@ def inject_custom_css():
     .rank-row .rank-num{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;color:#fff;margin-right:10px;flex-shrink:0}
     .rank-row .rank-name{flex:1;font-weight:600;color:#1a202c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .rank-row .rank-score{font-weight:900;min-width:70px;text-align:right}
-    .pie-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:8px}
-    .pie-container{background:#fff;border-radius:var(--r);padding:12px;border:1px solid var(--b);box-shadow:0 2px 8px rgba(0,0,0,.04)}
-    @media(max-width:768px){.cr{grid-template-columns:repeat(2,1fr)}.mh h1{font-size:17px}.cg,.dgrid{grid-template-columns:1fr}.car .cal{width:120px}.gbr-l{width:100px}.spark-grid{grid-template-columns:1fr}.pie-grid{grid-template-columns:1fr}}
+    @media(max-width:768px){.cr{grid-template-columns:repeat(2,1fr)}.mh h1{font-size:17px}.cg,.dgrid{grid-template-columns:1fr}.car .cal{width:120px}.gbr-l{width:100px}}
     </style>""",unsafe_allow_html=True)
 
 # ============================================================
@@ -808,12 +763,6 @@ def main():
             bw=min(max(av,0),100); bg=color_ok if met else color_fail
             h+='<div class="car"><div class="cal">%s</div><div class="cab"><div class="caf" style="width:%s%%;background:%s"></div></div><div class="cav-out">%.1f%%</div></div>'%(k,bw,bg,av)
         return h+'</div>'
-    def html_bars(data,title,color):
-        h='<div class="ca"><div class="ct" style="color:%s">%s</div>'%(color,title)
-        for label,val in sorted(data,key=lambda x:x[1],reverse=True):
-            bw=min(max(val,0),100)
-            h+='<div class="car"><div class="cal">%s</div><div class="cab"><div class="caf" style="width:%s%%;background:%s"></div></div><div class="cav-out">%.1f%%</div></div>'%(label,bw,color,val)
-        return h+'</div>'
     def html_grouped_bars(posts,pscores,qscores,title):
         h='<div class="ca"><div class="ct" style="color:#1e3a5f">%s</div>'%title
         h+='<div class="gbr-legend"><span><i style="background:linear-gradient(90deg,#2b6cb0,#4299e1)"></i> Performance</span><span><i style="background:linear-gradient(90deg,#276749,#48bb78)"></i> Qualite</span></div>'
@@ -834,12 +783,13 @@ def main():
             unf=st.toggle("📁 Charger nouveaux fichiers",value=False,key="tf")
             ot_f=av_f=None; apm=[]
             if unf:
-                ot_f=st.file_uploader("Fichier OT",type=["xlsx"],key="uot")
-                av_f=st.file_uploader("Fichier AVIS",type=["xlsx"],key="uav")
+                ot_f=st.file_uploader("Fichier OT",type=["xlsx","xls"],key="uot")
+                av_f=st.file_uploader("Fichier AVIS",type=["xlsx","xls"],key="uav")
             else:
                 if os.path.exists("ot.xlsx"):
                     try:
-                        _t=excr(pd.read_excel("ot.xlsx"))
+                        # *** CORRECTION ICI : safe_read_excel ***
+                        _t=excr(safe_read_excel("ot.xlsx"))
                         apm=sorted(_t[_t["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"),na=False)]["Poste travail princ."].dropna().unique().tolist())
                     except Exception: pass
                 st.markdown("""<div style="background:rgba(255,255,255,.1);padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.15)"><div style="font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Donnees</div><div style="font-size:14px;color:white;font-weight:600;margin-top:2px">📅 %s</div></div>"""%fichier_date,unsafe_allow_html=True)
@@ -856,24 +806,20 @@ def main():
             dr=(datetime(2025,1,1).date(),datetime.today().date())
             if os.path.exists("ot.xlsx"):
                 try:
-                    _t=excr(pd.read_excel("ot.xlsx"))
+                    _t=excr(safe_read_excel("ot.xlsx"))
                     apm=sorted(_t[_t["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"),na=False)]["Poste travail princ."].dropna().unique().tolist())
                 except Exception: pass
 
     # ===================== DATA LOADING AVEC CACHE =====================
     if not unf or (ot_f is not None and av_f is not None):
-        # Construire la clé de cache
         cache_key = None
         if not unf:
-            # Mode fichiers locaux : clé basée sur date.txt + filtres
             cache_key = build_cache_key(fichier_date, sp, sa, sd, dr)
 
-        # Tentative de chargement du cache (uniquement en mode fichiers locaux)
         cached_data = None
         if cache_key:
             cached_data = load_cache(cache_key)
             if cached_data is not None:
-                # Restaurer toutes les variables depuis le cache
                 ckdf = cached_data.get('ckdf')
                 dfp = cached_data.get('dfp')
                 avf = cached_data.get('avf')
@@ -889,8 +835,6 @@ def main():
                 df_dash = cached_data.get('df_dash')
                 all_ano = cached_data.get('all_ano', [])
                 ano_data = cached_data.get('ano_data', {})
-                raw_ot = cached_data.get('raw_ot')
-                raw_av = cached_data.get('raw_av')
                 _cache_hit = True
             else:
                 _cache_hit = False
@@ -898,10 +842,14 @@ def main():
             _cache_hit = False
 
         if not _cache_hit:
-            # ============ CALCUL COMPLET (pas de cache ou fichiers uploadés) ============
             try:
-                if unf: raw_ot=pd.read_excel(ot_f); raw_av=pd.read_excel(av_f)
-                else: raw_ot=pd.read_excel("ot.xlsx"); raw_av=pd.read_excel("avis.xlsx")
+                # *** CORRECTION ICI : safe_read_excel pour les fichiers locaux ET uploadés ***
+                if unf:
+                    raw_ot=safe_read_excel(ot_f)
+                    raw_av=safe_read_excel(av_f)
+                else:
+                    raw_ot=safe_read_excel("ot.xlsx")
+                    raw_av=safe_read_excel("avis.xlsx")
                 raw_ot=excr(raw_ot); raw_av=excr(raw_av)
                 for c in ["Créé le","Date de début planifiée","Date de clôture","Début réel","Fin réelle"]:
                     if c in raw_ot.columns: raw_ot[c]=pd.to_datetime(raw_ot[c],errors="coerce")
@@ -978,7 +926,6 @@ def main():
                             ano_data[kn]=cnt
                     except Exception: pass
 
-                # Sauvegarder dans le cache si mode fichiers locaux
                 if cache_key:
                     cache_data = {
                         'ckdf': ckdf, 'dfp': dfp, 'avf': avf,
@@ -987,7 +934,6 @@ def main():
                         'pscores_d': pscores_d, 'qscores_d': qscores_d,
                         'vp': vp, 'df_dash': df_dash, 'all_ano': all_ano,
                         'ano_data': ano_data,
-                        'raw_ot': raw_ot.head(0), 'raw_av': raw_av.head(0)
                     }
                     save_cache(cache_key, cache_data)
 
@@ -995,7 +941,6 @@ def main():
                 st.error(f"Erreur de chargement: {str(e)}")
                 st.stop()
         else:
-            # Cache hit - afficher indicateur de performance
             pass
 
         # ===================== DASHBOARD DISPLAY =====================
@@ -1011,7 +956,6 @@ def main():
         st.markdown('<div class="cr"><div class="cc c1"><div class="cv">%d</div><div class="cl">OT (Periode)</div></div><div class="cc c2"><div class="cv">%.1f%%</div><div class="cl">Score Performance</div></div><div class="cc c3"><div class="cv">%.1f%%</div><div class="cl">Score Qualite</div></div><div class="cc c4"><div class="cv">%d</div><div class="cl">Anomalies</div></div></div>'%(total_ot,p_score,q_score,total_anom),unsafe_allow_html=True)
         st.markdown('<div class="cr"><div class="cc c1"><div class="cv">%d</div><div class="cl">OT (Total)</div></div><div class="cc c2"><div class="cv">%.1f%%</div><div class="cl">Perf. (Total)</div></div><div class="cc c3"><div class="cv">%.1f%%</div><div class="cl">Qual. (Total)</div></div><div class="cc c4"><div class="cv">%d</div><div class="cl">Postes</div></div></div>'%(total_ot_d,p_score_d,q_score_d,len(vp)),unsafe_allow_html=True)
 
-        # ===================== TABS =====================
         tab1,tab2,tab3,tab4,tab5,tab6=st.tabs(["📋 Performance","🎯 Qualite","⚠️ Anomalies","📊 Graphiques","📈 Tendances","💾 Export"])
 
         with tab1:
@@ -1078,148 +1022,96 @@ def main():
                 st.markdown('<div class="es">✅ Aucune anomalie detectee</div>',unsafe_allow_html=True)
 
         with tab4:
-            # ===================== GRAPHIQUES AVEC PIE CHARTS PROFESSIONNELS =====================
             st.markdown('<div class="stl c">REPARTITION PAR STATUT OT - PIE CHARTS</div>',unsafe_allow_html=True)
-
-            # Grille de pie charts
             col_p1, col_p2 = st.columns(2)
-
             with col_p1:
-                # Pie 1: Répartition globale par statut OT
-                fig_statut = create_status_pie_chart(dfp, "Statut OT",
-                    title="Répartition par Statut OT", height=460)
+                fig_statut = create_status_pie_chart(dfp, "Statut OT", title="Repartition par Statut OT", height=460)
                 st.plotly_chart(fig_statut, use_container_width=True, config={"displayModeBar": False})
-
-                # Pie 2: Répartition par âge préparation
                 if "ap" in dfp.columns:
                     crees = dfp[dfp["Statut OT"]=="CRÉÉ"]
-                    fig_age_prep = create_age_pie_chart(crees, "ap",
-                        title="Age Preparation (OT Créés)", height=460)
+                    fig_age_prep = create_age_pie_chart(crees, "ap", title="Age Preparation (OT Crees)", height=460)
                     st.plotly_chart(fig_age_prep, use_container_width=True, config={"displayModeBar": False})
-
-                # Pie 3: Backlog préparation caractérisé
                 if "Backlog preparation" in dfp.columns:
                     crees2 = dfp[dfp["Statut OT"]=="CRÉÉ"]
-                    fig_bp = create_status_pie_chart(crees2, "Backlog preparation",
-                        title="Backlog Préparation Caractérisé", height=460)
+                    fig_bp = create_status_pie_chart(crees2, "Backlog preparation", title="Backlog Preparation Caracterise", height=460)
                     st.plotly_chart(fig_bp, use_container_width=True, config={"displayModeBar": False})
-
             with col_p2:
-                # Pie 4: Répartition par âge planification
                 if "alp" in dfp.columns:
                     lanc_sopl0 = dfp[(dfp["Statut OT"]=="LANC")&(dfp["Contient SOPL"]==0)]
-                    fig_age_plan = create_age_pie_chart(lanc_sopl0, "alp",
-                        title="Age Planification (OT Lancés)", height=460)
+                    fig_age_plan = create_age_pie_chart(lanc_sopl0, "alp", title="Age Planification (OT Lances)", height=460)
                     st.plotly_chart(fig_age_plan, use_container_width=True, config={"displayModeBar": False})
-
-                # Pie 5: Répartition par âge exécution
                 if "aex" in dfp.columns:
                     lanc_sopl1 = dfp[(dfp["Statut OT"]=="LANC")&(dfp["Contient SOPL"]==1)]
-                    fig_age_exec = create_age_pie_chart(lanc_sopl1, "aex",
-                        title="Age Exécution (OT en Cours)", height=460)
+                    fig_age_exec = create_age_pie_chart(lanc_sopl1, "aex", title="Age Execution (OT en Cours)", height=460)
                     st.plotly_chart(fig_age_exec, use_container_width=True, config={"displayModeBar": False})
-
-                # Pie 6: Backlog planification caractérisé
                 if "Backlog planification" in dfp.columns:
                     lanc2 = dfp[dfp["Statut OT"]=="LANC"]
-                    fig_bpl = create_status_pie_chart(lanc2, "Backlog planification",
-                        title="Backlog Planification Caractérisé", height=460)
+                    fig_bpl = create_status_pie_chart(lanc2, "Backlog planification", title="Backlog Planification Caracterise", height=460)
                     st.plotly_chart(fig_bpl, use_container_width=True, config={"displayModeBar": False})
 
-            # Deuxième rangée : Pie charts par poste pour les KPIs clés
             st.markdown('<div class="stl s" style="margin-top:10px">REPARTITION PAR POSTE - KPIs CLES</div>',unsafe_allow_html=True)
-
-            kpi_pie_selection = st.selectbox(
-                "Sélectionner un KPI pour voir la répartition par poste",
-                ALL_KPI, index=0, key="kpi_pie_sel"
-            )
-
+            kpi_pie_selection = st.selectbox("Selectionner un KPI pour voir la repartition par poste", ALL_KPI, index=0, key="kpi_pie_sel")
             col_kp1, col_kp2 = st.columns(2)
             with col_kp1:
-                fig_kpi_poste = create_kpi_pie_by_poste(ckdf, kpi_pie_selection,
-                    title=f"Répartition: {kpi_pie_selection}", height=480)
+                fig_kpi_poste = create_kpi_pie_by_poste(ckdf, kpi_pie_selection, title=f"Repartition: {kpi_pie_selection}", height=480)
                 st.plotly_chart(fig_kpi_poste, use_container_width=True, config={"displayModeBar": False})
-
             with col_kp2:
-                # Pie: OT Confirmés vs Non confirmés
                 if "OT CONFIME" in dfp.columns:
-                    fig_conf = create_status_pie_chart(dfp, "OT CONFIME",
-                        title="OT Confirmés (CLOT+CONF)", height=480)
+                    fig_conf = create_status_pie_chart(dfp, "OT CONFIME", title="OT Confirmes (CLOT+CONF)", height=480)
                     st.plotly_chart(fig_conf, use_container_width=True, config={"displayModeBar": False})
 
-            # Troisième rangée : Distribution par atelier et division
             st.markdown('<div class="stl p" style="margin-top:10px">REPARTITION PAR ATELIER & DIVISION</div>',unsafe_allow_html=True)
-
             dfp_copy = dfp.copy()
             dfp_copy["Atelier"] = dfp_copy["Poste travail princ."].apply(get_atelier)
             dfp_copy["Division"] = dfp_copy["Poste travail princ."].apply(get_division)
             dfp_copy["Metier"] = dfp_copy["Poste travail princ."].apply(get_metier)
-
             col_a1, col_a2, col_a3 = st.columns(3)
             with col_a1:
                 fig_atel = create_professional_pie(
                     labels=dfp_copy["Atelier"].value_counts().index.tolist(),
                     values=dfp_copy["Atelier"].value_counts().values.tolist(),
-                    title="Répartition par Atelier",
-                    colors=["#276749","#2b6cb0","#d69e2e","#805ad5","#a0aec0"],
-                    hole=0.40, height=420
-                )
+                    title="Repartition par Atelier",
+                    colors=["#276749","#2b6cb0","#d69e2e","#805ad5","#a0aec0"], hole=0.40, height=420)
                 st.plotly_chart(fig_atel, use_container_width=True, config={"displayModeBar": False})
-
             with col_a2:
                 fig_div = create_professional_pie(
                     labels=dfp_copy["Division"].value_counts().index.tolist(),
                     values=dfp_copy["Division"].value_counts().values.tolist(),
-                    title="Répartition par Division",
-                    colors=["#1e3a5f","#4299e1","#a0aec0"],
-                    hole=0.40, height=420
-                )
+                    title="Repartition par Division",
+                    colors=["#1e3a5f","#4299e1","#a0aec0"], hole=0.40, height=420)
                 st.plotly_chart(fig_div, use_container_width=True, config={"displayModeBar": False})
-
             with col_a3:
                 fig_met = create_professional_pie(
                     labels=dfp_copy["Metier"].value_counts().index.tolist(),
                     values=dfp_copy["Metier"].value_counts().values.tolist(),
-                    title="Répartition par Metier",
-                    colors=["#e53e3e","#2b6cb0","#805ad5","#d69e2e","#38a169"],
-                    hole=0.40, height=420
-                )
+                    title="Repartition par Metier",
+                    colors=["#e53e3e","#2b6cb0","#805ad5","#d69e2e","#38a169"], hole=0.40, height=420)
                 st.plotly_chart(fig_met, use_container_width=True, config={"displayModeBar": False})
 
-            # Barres groupées
             st.markdown('<div class="stl p" style="margin-top:10px">SCORES PAR POSTE</div>',unsafe_allow_html=True)
             st.markdown(html_grouped_bars(vp,pscores,qscores,"Comparaison Performance vs Qualite par Poste"),unsafe_allow_html=True)
 
-            # OT LANC ESTIME
             if "OT LANC ESTIME" in dfp.columns:
                 lanc3 = dfp[dfp["Statut OT"]=="LANC"]
                 col_e1, col_e2 = st.columns(2)
                 with col_e1:
-                    fig_est = create_status_pie_chart(lanc3, "OT LANC ESTIME",
-                        title="OT Lancés Estimés", height=420)
+                    fig_est = create_status_pie_chart(lanc3, "OT LANC ESTIME", title="OT Lances Estimes", height=420)
                     st.plotly_chart(fig_est, use_container_width=True, config={"displayModeBar": False})
                 with col_e2:
-                    fig_cor = create_status_pie_chart(dfp, "OT_COR_EGAL",
-                        title="OT Coûts Réels = Budgétés", height=420)
+                    fig_cor = create_status_pie_chart(dfp, "OT_COR_EGAL", title="OT Couts Reels = Budgetes", height=420)
                     st.plotly_chart(fig_cor, use_container_width=True, config={"displayModeBar": False})
 
-            # Appels avis
             if avf is not None and not avf.empty:
                 st.markdown('<div class="stl q" style="margin-top:10px">APPELS AVIS</div>',unsafe_allow_html=True)
                 col_av1, col_av2 = st.columns(2)
                 with col_av1:
-                    fig_av = create_status_pie_chart(avf, "Statut utilisateur",
-                        title="Statut Appels Avis", height=420)
+                    fig_av = create_status_pie_chart(avf, "Statut utilisateur", title="Statut Appels Avis", height=420)
                     st.plotly_chart(fig_av, use_container_width=True, config={"displayModeBar": False})
                 with col_av2:
-                    # Pie par poste pour les avis
                     av_poste = avf["Poste travail princ."].value_counts()
                     fig_avp = create_professional_pie(
-                        labels=av_poste.index.tolist(),
-                        values=av_poste.values.tolist(),
-                        title="Appels Avis par Poste",
-                        hole=0.40, height=420
-                    )
+                        labels=av_poste.index.tolist(), values=av_poste.values.tolist(),
+                        title="Appels Avis par Poste", hole=0.40, height=420)
                     st.plotly_chart(fig_avp, use_container_width=True, config={"displayModeBar": False})
 
         with tab5:
@@ -1250,7 +1142,7 @@ def main():
                         st.markdown('</div>',unsafe_allow_html=True)
                         st.markdown('</div>',unsafe_allow_html=True)
                 else:
-                    st.markdown('<div class="es">Pas assez de donnees historiques pour calculer les tendances (minimum 2 periodes requises)</div>',unsafe_allow_html=True)
+                    st.markdown('<div class="es">Pas assez de donnees historiques (minimum 2 periodes requises)</div>',unsafe_allow_html=True)
             else:
                 st.markdown('<div class="es">Aucun fichier historique trouve dans kpis/indicateurs_kpis.xlsx</div>',unsafe_allow_html=True)
 
@@ -1270,10 +1162,8 @@ def main():
                 export_btn(qdf_exp,"qualite_kpis.xlsx")
             with col_e2:
                 st.markdown("**Anomalies**")
-                if all_ano:
-                    export_btn(pd.DataFrame(all_ano),"anomalies.xlsx")
-                else:
-                    st.info("Aucune anomalie")
+                if all_ano: export_btn(pd.DataFrame(all_ano),"anomalies.xlsx")
+                else: st.info("Aucune anomalie")
                 st.markdown("**Sauvegarde KPIs historiques**")
                 if st.button("💾 Sauvegarder dans Excel historique",key="save_hist"):
                     pcols_h=["Poste de travail"]+QK+["Score Performance"]
@@ -1286,11 +1176,11 @@ def main():
                         for kn in QK:
                             sub=adf[adf["KPI"]==kn]
                             if not sub.empty:
-                                ano_p_h.append({"KPI":kn,"Poste":p,"Nb":int(n)} for _,r in sub.iterrows() for p,n in r.items() if p!="KPI" and p!="Nb")
+                                for _,r in sub.iterrows(): ano_p_h.append({"KPI":kn,"Poste":r["Poste"],"Nb":int(r["Nb anomalies"])})
                         for kn in PK:
                             sub=adf[adf["KPI"]==kn]
                             if not sub.empty:
-                                ano_q_h.append({"KPI":kn,"Poste":p,"Nb":int(n)} for _,r in sub.iterrows() for p,n in r.items() if p!="KPI" and p!="Nb")
+                                for _,r in sub.iterrows(): ano_q_h.append({"KPI":kn,"Poste":r["Poste"],"Nb":int(r["Nb anomalies"])})
                     save_kpis_to_excel(pr_h,pcols_h,qr_h,qcols_h,ano_p_h,["KPI","Poste","Nb"] if ano_p_h else [],ano_q_h,["KPI","Poste","Nb"] if ano_q_h else [],fichier_date)
                     st.success("✅ Sauvegarde effectuee avec succes!")
     else:

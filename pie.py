@@ -104,7 +104,7 @@ def safe_read_excel(filepath_or_buffer, **kwargs):
         ext = os.path.splitext(fpath)[1].lower()
         if ext == ".xls":
             try:
-                return pd.read_excel(filepath_or_buffer, engine="xlrd", **kwargs)
+                return pd.read_excel(filepath_or_buffer, engine="openpyxl", **kwargs)
             except Exception:
                 pass
         elif ext == ".xlsx":

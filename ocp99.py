@@ -61,12 +61,11 @@ MP_KW = ["CRPR ATPD","CRPR ATMR","CRPR ATER","CRPR ATRS","CRPR ATMO","ATPD","ATM
 MPLAN_KW = ["ATPL ATEI","ATPL ATAL","ATPL ATER","ATPL AGAR","ATPL ATHS","ATEI","ATAL","ATAS","AGAR","ATHS"]
 
 CHANGELOG = [
-    {"version":"2.6","date":"2025-06-24","changes":[
-        "Application du filtre periode sur le fichier avis.xlsx (colonne Créé le)",
-        "Ajout du logo.png en haut a gauche de la page dans l'en-tete",
-        "Ligne de repere 90% avec legende sur le graphique Comparaison Performance/Qualite par poste",
-        "Centrage vertical des pie charts a la hauteur des tableaux",
-        "Filtres poste/atelier/division appliques egalement sur les donnees avis"
+    {"version":"2.7","date":"2025-06-24","changes":[
+        "Optimisation extreme des performances grace a st.cache_data",
+        "Les filtres s'appliquent instantanement sans recalculer les donnees de base",
+        "Les calculs lourds ne se font que lors d'un changement de date.txt ou de fichier",
+        "Filtre periode et logo ajoutes aux versions precedentes"
     ]}
 ]
 
@@ -103,7 +102,6 @@ CONSIGNES_HSE = [
     "Aucun travail n'est plus urgent que la securite.","Zero accident commence par un comportement sur."]
 
 def get_logo_base64():
-    """Charge le logo en base64 pour l'afficher dans le HTML."""
     for path in ["logo.png", "./logo.png", "../logo.png"]:
         if os.path.exists(path):
             try:
@@ -113,16 +111,71 @@ def get_logo_base64():
                 pass
     return None
 
-def compute_cache_key(file_date, filters_dict, now_str):
-    key_data = {"file_date": file_date, "filters": filters_dict, "now": now_str}
-    return hashlib.md5(json.dumps(key_data, sort_keys=True, default=str).encode()).hexdigest()
-
 def get_date_from_file():
     if os.path.exists("date.txt"):
         try:
             with open("date.txt","r",encoding="utf-8") as f: return f.read().strip()
         except Exception: pass
     return datetime.now().strftime("%d/%m/%Y")
+
+# --- HELPERS FOR PREPARE_DATA ---
+def contient_mot(t,lm):
+    t=str(t); return any(m in t for l in lm for m in l.split())
+def cat_age(a):
+    if pd.isna(a): return "Inconnu"
+    if a<=1: return "<1 mois"
+    elif a>=3: return ">3 mois"
+    return "1 mois < <3 mois"
+def excr(df):
+    if "Poste travail princ." in df.columns:
+        return df[~df["Poste travail princ."].astype(str).str.contains("cresseur",case=False,na=False)].copy()
+    return df
+
+# ============================================================
+# CACHED HEAVY DATA PREPARATION
+# ============================================================
+@st.cache_data(show_spinner=False)
+def prepare_data(ot_bytes, av_bytes, date_str):
+    raw_ot = pd.read_excel(io.BytesIO(ot_bytes))
+    raw_av = pd.read_excel(io.BytesIO(av_bytes))
+    raw_ot = excr(raw_ot)
+    raw_av = excr(raw_av)
+    
+    for c in ["Créé le","Date de début planifiée","Date de clôture","Début réel","Fin réelle"]:
+        if c in raw_ot.columns: raw_ot[c]=pd.to_datetime(raw_ot[c],errors="coerce")
+    for c in ["Créé le","Début souhaité","Date de la clôture"]:
+        if c in raw_av.columns: raw_av[c]=pd.to_datetime(raw_av[c],errors="coerce")
+        
+    now_ts = pd.to_datetime(date_str, format="%d/%m/%Y", errors='coerce')
+    if pd.isna(now_ts): now_ts = pd.Timestamp.now()
+    
+    df = raw_ot.copy()
+    
+    # Heavy feature engineering
+    df["Backlog preparation"]=np.where(df["Statut utilisateur"].apply(lambda x:contient_mot(x,MP_KW)),"CARACTERISE","NON CARACTERISE")
+    df["Backlog planification"]=np.where(df["Statut utilisateur"].apply(lambda x:contient_mot(x,MPLAN_KW)),"CARACTERISE","NON CARACTERISE")
+    df["Type Carac Prep"]=df["Statut utilisateur"].apply(lambda x: next((kw for kw in MP_KW if kw in str(x)), "NON CARACTERISE"))
+    df["Type Carac Plan"]=df["Statut utilisateur"].apply(lambda x: next((kw for kw in MPLAN_KW if kw in str(x)), "NON CARACTERISE"))
+    
+    for dc,am,ac in [('Créé le',"amp","ap"),('Date de début planifiée',"amlp","alp"),('Date de début planifiée',"amex","aex")]:
+        if dc in df.columns:
+            df[am]=((now_ts.year-df[dc].dt.year)*12+(now_ts.month-df[dc].dt.month)).round(2)
+            df[ac]=df[am].apply(cat_age)
+        else: df[am]=np.nan; df[ac]="Inconnu"
+        
+    df["OT CONFIME"]=np.where(df["Statut système"].str.contains("CLO",na=False)&df["Statut système"].str.contains("CONF",na=False),"OUI","NON")
+    df["Contient SOPL"]=df["Statut utilisateur"].str.contains("SOPL",na=False).map({True:1,False:0})
+    df["OT LANC ESTIME"]=np.where(df["Total coûts budgétés"].fillna(0)==0,"NON","OUI")
+    df["OT_COR_EGAL"]=np.where((df["Total coûts budgétés"].fillna(0)-df["Total coûts réels"].fillna(0))==0,"OUI","NON")
+    df["_tw_num"]=pd.to_numeric(df.get("Type de travail",pd.Series(dtype=float)),errors="coerce")
+    
+    if "Statut système" in df.columns: df["Statut OT"]=df["Statut système"].fillna("").astype(str).str.strip().str.split().str[0]
+    
+    avf = raw_av[(raw_av["Ordre"].isna())|(raw_av["Ordre"].astype(str).str.strip()=="")].copy()
+    
+    apm = sorted(df[df["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"),na=False)]["Poste travail princ."].dropna().unique().tolist())
+    
+    return df, avf, apm, now_ts
 
 def save_kpis_to_excel(prows,pcols,qrows,qcols,ano_p_r,ano_p_c,ano_q_r,ano_q_c,sheet_name):
     kpis_dir="kpis"; os.makedirs(kpis_dir,exist_ok=True)
@@ -205,14 +258,12 @@ def calculate_variations(hist_df):
                     if abs(diff)<=0.5: trend="stabilite"
                     elif diff>0.5: trend="hausse"
                     else: trend="baisse"
-                    
                     sens = "Stable"
                     if trend != "stabilite":
                         if (trend == "hausse" and kpi not in LOWER_BETTER) or (trend == "baisse" and kpi in LOWER_BETTER):
                             sens = "Amelioration"
                         else:
                             sens = "Degradation"
-                            
                     variations.append({"Date precedente":prev_date,"Date actuelle":curr_date,"Poste":poste,
                         "Type":sec_name,"KPI":kpi,"Valeur precedente":round(pv,2),"Valeur actuelle":round(cv,2),
                         "Ecart":round(diff,2),"Ecart %":round(pct,2),"Tendance":trend, "Sens":sens})
@@ -244,7 +295,6 @@ def inject_custom_css():
     .stApp{background:#edf2f7;font-family:'Inter',sans-serif}
     .main .block-container{padding-top:.8rem;padding-bottom:.8rem}
     .stTabs,.stTabs>div,.stTabs [data-baseweb="tab-list"]{width:100%!important;max-width:100%!important}
-    /* === EN-TETE AVEC LOGO === */
     .mh{background:linear-gradient(135deg,var(--p),var(--pl));padding:10px 20px;border-radius:var(--r);margin-bottom:6px;box-shadow:0 6px 20px rgba(0,0,0,.1);overflow:hidden;display:flex;align-items:center;gap:12px}
     .mh h1{color:#fff;font-size:20px;font-weight:800;margin:0;display:inline;flex:1}
     .mh .logo{height:40px;width:auto;max-width:120px;object-fit:contain;flex-shrink:0;border-radius:4px}
@@ -297,7 +347,6 @@ def inject_custom_css():
     .gbr:last-child{border:none}
     .gbr-l{width:160px;font-weight:600;color:#1a202c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
     .gbr-g{display:flex;align-items:center;gap:4px;flex:1;position:relative}
-    /* === LIGNE REPERE 90% === */
     .gbr-target{position:absolute;left:90%;top:-4px;bottom:-4px;width:2px;background:#e53e3e;z-index:10;box-shadow:0 0 3px rgba(229,62,62,.6)}
     .gbr-target-label{position:absolute;left:90%;top:-18px;transform:translateX(-50%);font-size:9px;font-weight:800;color:#fff;background:#e53e3e;padding:1px 5px;border-radius:3px;white-space:nowrap;z-index:11;box-shadow:0 1px 3px rgba(0,0,0,.2)}
     .gbr-w{flex:1;height:20px;background:#edf2f7;border-radius:3px;overflow:hidden}
@@ -331,10 +380,8 @@ def inject_custom_css():
     .synth-tbl tbody tr:nth-child(even) td{background:#f7fafc}
     .synth-tbl tbody tr:hover td{background:#ebf8ff!important}
     .synth-tbl .poste-cell{text-align:left;font-weight:700;white-space:nowrap;min-width:140px}
-    /* === CENTRAGE VERTICAL DES COLONNES (pie charts centres sur hauteur tableaux) === */
     div[data-testid="stHorizontalBlock"]{align-items:center!important}
     @media(max-width:768px){.cr{grid-template-columns:repeat(2,1fr)}.mh h1{font-size:17px}.cg,.dgrid{grid-template-columns:1fr}.car .cal{width:120px}.gbr-l{width:100px}}
-    
     @media print {
         section[data-testid="stSidebar"] { display: none !important; }
         div[data-testid="stToolbar"] { display: none !important; }
@@ -372,20 +419,9 @@ def main():
         <style>@keyframes ld{from{width:0}to{width:100%%}}</style></div>"""%c,unsafe_allow_html=True)
         time.sleep(6); st.session_state.hse_affiche=True; st.rerun(); st.stop()
 
-    def contient_mot(t,lm):
-        t=str(t); return any(m in t for l in lm for m in l.split())
-    def cat_age(a):
-        if pd.isna(a): return "Inconnu"
-        if a<=1: return "<1 mois"
-        elif a>=3: return ">3 mois"
-        return "1 mois < <3 mois"
     def ckpi(n,d,sz=100): return np.where(d==0,sz,(n/d)*100)
     def cpiv(df,f,c,p):
         return pd.pivot_table(df[f],index="Poste travail princ.",columns=c,values="Ordre",aggfunc="count",fill_value=0).reindex(p,fill_value=0)
-    def excr(df):
-        if "Poste travail princ." in df.columns:
-            return df[~df["Poste travail princ."].astype(str).str.contains("cresseur",case=False,na=False)].copy()
-        return df
     def get_text_col(df):
         for c in ["Désignation","Designation","Désignation OT","Texte ordre","Texte","Description","Libellé","Libelle"]:
             if c in df.columns: return c
@@ -454,25 +490,9 @@ def main():
         else:
             st.markdown('<div class="es">Aucune donnee</div>',unsafe_allow_html=True)
 
-    def calc_kpis(df_i,av_i,now,posts):
+    # LIGHTWEIGHT CALC_KPIS (only fast groupbys on pre-filtered data)
+    def calc_kpis(df_i, av_i, now_ts, posts):
         res={}; df=df_i.copy(); av=av_i.copy()
-        df["Backlog preparation"]=np.where(df["Statut utilisateur"].apply(lambda x:contient_mot(x,MP_KW)),"CARACTERISE","NON CARACTERISE")
-        df["Backlog planification"]=np.where(df["Statut utilisateur"].apply(lambda x:contient_mot(x,MPLAN_KW)),"CARACTERISE","NON CARACTERISE")
-        
-        df["Type Carac Prep"]=df["Statut utilisateur"].apply(lambda x: next((kw for kw in MP_KW if kw in str(x)), "NON CARACTERISE"))
-        df["Type Carac Plan"]=df["Statut utilisateur"].apply(lambda x: next((kw for kw in MPLAN_KW if kw in str(x)), "NON CARACTERISE"))
-        
-        for dc,am,ac in [('Créé le',"amp","ap"),('Date de début planifiée',"amlp","alp"),('Date de début planifiée',"amex","aex")]:
-            if dc in df.columns:
-                df[dc]=pd.to_datetime(df[dc],errors="coerce")
-                df[am]=((now.year-df[dc].dt.year)*12+(now.month-df[dc].dt.month)).round(2)
-                df[ac]=df[am].apply(cat_age)
-            else: df[am]=np.nan; df[ac]="Inconnu"
-        df["OT CONFIME"]=np.where(df["Statut système"].str.contains("CLO",na=False)&df["Statut système"].str.contains("CONF",na=False),"OUI","NON")
-        df["Contient SOPL"]=df["Statut utilisateur"].str.contains("SOPL",na=False).map({True:1,False:0})
-        df["OT LANC ESTIME"]=np.where(df["Total coûts budgétés"].fillna(0)==0,"NON","OUI")
-        df["OT_COR_EGAL"]=np.where((df["Total coûts budgétés"].fillna(0)-df["Total coûts réels"].fillna(0))==0,"OUI","NON")
-        df["_tw_num"]=pd.to_numeric(df.get("Type de travail",pd.Series(dtype=float)),errors="coerce")
         res['dfp']=df
         filt_corr=(df["Nº appel pl.entret."].fillna(0)==0)&(df["Contient SOPL"]==1)
         an=cpiv(df,filt_corr,"Statut OT",posts)
@@ -480,50 +500,62 @@ def main():
         an["OT_CLOTURES"]=an["CLOT"]+an["TCLO"]
         an["TOTAL_OT"]=an[["CLOT","CRÉÉ","LANC","TCLO"]].sum(axis=1)
         an["TAUX_REALISATION_CORRECTIF/PT"]=np.where(an["TOTAL_OT"]==0,100.0,ckpi(an["OT_CLOTURES"],an["TOTAL_OT"]))
+        
         pr=cpiv(df,(df["Statut OT"]=="CRÉÉ")&(df["Statut utilisateur"].str.contains("CRPR",na=False)),"ap",posts)
         for c in ["<1 mois",">3 mois","1 mois < <3 mois","Inconnu"]: pr[c]=pr.get(c,0)
         pr["Total"]=pr[["<1 mois","1 mois < <3 mois",">3 mois","Inconnu"]].sum(axis=1)
         pr["OT préparation <1 mois"]=ckpi(pr["<1 mois"],pr["Total"]); pr["OT préparation >3 mois"]=ckpi(pr[">3 mois"],pr["Total"],0); pr["OT préparation 1mois< <3mois"]=ckpi(pr["1 mois < <3 mois"],pr["Total"],0)
+        
         pl=cpiv(df,(df["Statut OT"]=="LANC")&(df["Statut utilisateur"].str.contains("ATPL",case=False,na=False)),"alp",posts)
         for c in ["<1 mois",">3 mois","1 mois < <3 mois","Inconnu"]: pl[c]=pl.get(c,0)
         pl["Total"]=pl[["<1 mois","1 mois < <3 mois",">3 mois","Inconnu"]].sum(axis=1)
         pl["OT planification <1 mois"]=ckpi(pl["<1 mois"],pl["Total"]); pl["OT planification >3 mois"]=ckpi(pl[">3 mois"],pl["Total"],0); pl["OT planification 1mois< <3mois"]=ckpi(pl["1 mois < <3 mois"],pl["Total"],0)
+        
         ex=cpiv(df,(df["Statut OT"]=="LANC")&(df["Contient SOPL"]==1),"aex",posts)
         for c in ["<1 mois",">3 mois","1 mois < <3 mois","Inconnu"]: ex[c]=ex.get(c,0)
         ex["Total"]=ex[["<1 mois","1 mois < <3 mois",">3 mois","Inconnu"]].sum(axis=1)
         ex["OT exécution <1 mois"]=ckpi(ex["<1 mois"],ex["Total"]); ex["OT exécution >3 mois"]=ckpi(ex[">3 mois"],ex["Total"],0); ex["OT exécution 1mois< <3mois"]=ckpi(ex["1 mois < <3 mois"],ex["Total"],0)
+        
         la=pd.pivot_table(df[df["Statut OT"]=="LANC"],index="Poste travail princ.",columns="OT LANC ESTIME",values="Ordre",aggfunc="count",fill_value=0).reindex(posts,fill_value=0)
         for c in ["OUI","NON"]: la[c]=la.get(c,0)
         la["Total"]=la["OUI"]+la["NON"]; la["OT LANC ESTIME"]=ckpi(la["OUI"],la["Total"])
+        
         pc=pd.pivot_table(df[df["Statut OT"]=="CRÉÉ"],index="Poste travail princ.",columns="Backlog preparation",values="Ordre",aggfunc="count",fill_value=0).reindex(posts,fill_value=0)
         for c in ["CARACTERISE","NON CARACTERISE"]: pc[c]=pc.get(c,0)
         pc["Total"]=pc["CARACTERISE"]+pc["NON CARACTERISE"]; pc["Backlog préparation caractérisé"]=ckpi(pc["CARACTERISE"],pc["Total"])
+        
         plc=pd.pivot_table(df[df["Statut OT"]=="LANC"],index="Poste travail princ.",columns="Backlog planification",values="Ordre",aggfunc="count",fill_value=0).reindex(posts,fill_value=0)
         for c in ["CARACTERISE","NON CARACTERISE"]: plc[c]=plc.get(c,0)
         plc["Total"]=plc["CARACTERISE"]+plc["NON CARACTERISE"]; plc["Backlog planification caractérisé"]=ckpi(plc["CARACTERISE"],plc["Total"])
+        
         for kn,cn in [("OT CONFIME","OT CONFIME"),("OT_COR_EGAL","OT_COR_EGAL")]:
             pv=pd.pivot_table(df,index="Poste travail princ.",columns=cn,values="Ordre",aggfunc="count",fill_value=0).reindex(posts,fill_value=0)
             for c in ["OUI","NON"]: pv[c]=pv.get(c,0)
             pv["Total"]=pv["OUI"]+pv["NON"]; pv[cn]=ckpi(pv["OUI"],pv["Total"]); res[kn.lower().replace(" ","_")]=pv
-        avf=av[(av["Ordre"].isna())|(av["Ordre"].astype(str).str.strip()=="")].copy(); res['avf']=avf
+            
+        avf=av.copy(); res['avf']=avf
         tca=pd.pivot_table(avf,index="Poste travail princ.",columns="Statut utilisateur",values="Avis",aggfunc="count",fill_value=0).reindex(posts,fill_value=0)
         for c in ["APRQ","APRV","APRV AVAU","REJT"]: tca[c]=tca.get(c,0)
         tca["Total"]=tca[["APRQ","APRV","APRV AVAU","REJT"]].sum(axis=1); tca["appel avis approuvé"]=ckpi(tca["APRV"],tca["Total"])
+        
         g_num=df[(df["Statut OT"].isin(["CLOT","TCLO"]))&(df["_tw_num"]==350)].groupby("Poste travail princ.")["Ordre"].count()
         g_den=df[(df["Contient SOPL"]==1)&(df["_tw_num"]==350)].groupby("Poste travail princ.")["Ordre"].count()
         g_df=pd.DataFrame({"_n":g_num,"_d":g_den}).reindex(posts,fill_value=0)
         g_df["Performance Graissage"]=np.where(g_df["_d"]==0,100.0,(g_df["_n"]/g_df["_d"])*100)
+        
         ins_types=[290,300,310]
-        ins_base=(df["_tw_num"].isin(ins_types))&(df["Date de début planifiée"].notna())&(df["Date de début planifiée"]<=now)
+        ins_base=(df["_tw_num"].isin(ins_types))&(df["Date de début planifiée"].notna())&(df["Date de début planifiée"]<=now_ts)
         ins_num=df[(df["Statut OT"].isin(["CLOT","TCLO"]))&ins_base].groupby("Poste travail princ.")["Ordre"].count()
         ins_den=df[(df["Contient SOPL"]==1)&ins_base].groupby("Poste travail princ.")["Ordre"].count()
         ins_df=pd.DataFrame({"_n":ins_num,"_d":ins_den}).reindex(posts,fill_value=0)
         ins_df["Performance Inspection"]=np.where(ins_df["_d"]==0,100.0,(ins_df["_n"]/ins_df["_d"])*100)
-        sys_base=(df["_tw_num"]==360)&(df["Date de début planifiée"].notna())&(df["Date de début planifiée"]<=now)
+        
+        sys_base=(df["_tw_num"]==360)&(df["Date de début planifiée"].notna())&(df["Date de début planifiée"]<=now_ts)
         sys_num=df[(df["Statut OT"].isin(["CLOT","TCLO"]))&sys_base].groupby("Poste travail princ.")["Ordre"].count()
         sys_den=df[(df["Contient SOPL"]==1)&sys_base].groupby("Poste travail princ.")["Ordre"].count()
         sys_df=pd.DataFrame({"_n":sys_num,"_d":sys_den}).reindex(posts,fill_value=0)
         sys_df["Performance Appels Systématiques"]=np.where(sys_df["_d"]==0,100.0,(sys_df["_n"]/sys_df["_d"])*100)
+        
         fiab_s=pd.Series(100.0,index=posts); avpan_s=pd.Series(100.0,index=posts)
         res['ckdf']=pd.DataFrame({
             "TAUX_REALISATION_CORRECTIF/PT":an["TAUX_REALISATION_CORRECTIF/PT"],
@@ -643,12 +675,10 @@ def main():
         
     def html_grouped_bars(posts,pscores,qscores,title):
         h='<div class="ca"><div class="ct" style="color:#1e3a5f">%s</div>'%title
-        # Legende avec ligne 90%
         h+='<div class="gbr-legend"><span><i style="background:linear-gradient(90deg,#2b6cb0,#4299e1)"></i> Performance</span><span><i style="background:linear-gradient(90deg,#276749,#48bb78)"></i> Qualite</span><span><span class="target-icon"></span> Cible 90%%</span></div>'
         sorted_posts = sorted(posts,key=lambda x:(pscores.get(x,0)+qscores.get(x,0))/2,reverse=True)
         for idx,p in enumerate(sorted_posts):
             pv,qv=pscores.get(p,0),qscores.get(p,0)
-            # Afficher le label "90%" uniquement sur la premiere ligne
             label_html = '<div class="gbr-target-label">90%%</div>' if idx==0 else ''
             h+='<div class="gbr"><div class="gbr-l">%s</div><div class="gbr-g"><div class="gbr-target"></div>%s<div class="gbr-w"><div class="gbr-f gb-p" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div><div class="gbr-w"><div class="gbr-f gb-q" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div></div></div>'%(p,label_html,min(max(pv,0),100),pv,min(max(qv,0),100),qv)
         return h+'</div>'
@@ -698,15 +728,24 @@ def main():
         h+='</tr></tbody></table></div>'
         return h
 
+    # ===================== LOAD CACHED DATA =====================
+    ot_bytes, av_bytes = None, None
+    if os.path.exists("ot.xlsx") and os.path.exists("avis.xlsx"):
+        with open("ot.xlsx", "rb") as f: ot_bytes = f.read()
+        with open("avis.xlsx", "rb") as f: av_bytes = f.read()
+
+    if ot_bytes and av_bytes:
+        df_full, av_full, apm, now_ts = prepare_data(ot_bytes, av_bytes, fichier_date)
+    else:
+        df_full, av_full, apm, now_ts = pd.DataFrame(), pd.DataFrame(), [], pd.Timestamp.now()
+
     # ===================== SIDEBAR =====================
     with st.sidebar:
         st.markdown("""<div style="padding:10px 0 4px 0"><div style="font-size:22px;margin-bottom:2px">⚙️</div><div style="font-size:14px;font-weight:800;color:white">Filtres & Parametres</div><div style="font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Configuration</div></div>""",unsafe_allow_html=True)
         st.markdown("---")
         
         if st.button("🔄 Rafraîchir le cache", use_container_width=True):
-            for key in list(st.session_state.keys()):
-                if key.startswith("kpi_"):
-                    del st.session_state[key]
+            st.cache_data.clear()
             st.rerun()
 
         if st.button("🖥️ Mode Présentation (Slide/PDF)", use_container_width=True):
@@ -716,7 +755,7 @@ def main():
         show_filters=st.checkbox("Afficher les filtres",value=True,key="show_filters")
         if show_filters:
             unf=st.toggle("📁 Charger nouveaux fichiers",value=False,key="tf")
-            ot_f=av_f=None; apm=[]
+            ot_f=av_f=None
             if unf:
                 pwd = st.text_input("Mot de passe administrateur", type="password")
                 if pwd == "779900":
@@ -733,18 +772,13 @@ def main():
                             with open("date.txt", "w", encoding="utf-8") as f: f.write(new_date)
                             st.success("Fichiers et date mis à jour avec succès !")
                             time.sleep(2)
-                            for key in list(st.session_state.keys()): del st.session_state[key]
+                            st.cache_data.clear()
                             st.rerun()
                         except ValueError:
                             st.error("Format de date invalide. Veuillez utiliser JJ/MM/AAAA.")
                 elif pwd != "":
                     st.error("Mot de passe incorrect.")
             else:
-                if os.path.exists("ot.xlsx"):
-                    try:
-                        _t=excr(pd.read_excel("ot.xlsx"))
-                        apm=sorted(_t[_t["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"),na=False)]["Poste travail princ."].dropna().unique().tolist())
-                    except Exception: pass
                 st.markdown("""<div style="background:rgba(255,255,255,.1);padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.15)"><div style="font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Donnees</div><div style="font-size:14px;color:white;font-weight:600;margin-top:2px">📅 %s</div></div>"""%fichier_date,unsafe_allow_html=True)
             st.markdown("---"); st.markdown("**🎯 Postes**")
             sp=st.multiselect("Poste",["All"]+apm,["All"],key="sp")
@@ -755,25 +789,16 @@ def main():
             st.markdown("---"); st.markdown("**📅 Periode**")
             dr=st.date_input("Date debut planifiee",value=(datetime(2025,1,1).date(),datetime.today().date()),format="DD/MM/YYYY",key="dr")
         else:
-            unf=False; ot_f=av_f=None; apm=[]; sp=["All"]; sa=["All"]; sd=["All"]
+            unf=False; ot_f=av_f=None; sp=["All"]; sa=["All"]; sd=["All"]
             dr=(datetime(2025,1,1).date(),datetime.today().date())
-            if os.path.exists("ot.xlsx"):
-                try:
-                    _t=excr(pd.read_excel("ot.xlsx"))
-                    apm=sorted(_t[_t["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"),na=False)]["Poste travail princ."].dropna().unique().tolist())
-                except Exception: pass
 
-    # ===================== DATA LOADING =====================
-    if not unf or (ot_f is not None and av_f is not None):
+    # ===================== APPLY FAST FILTERS & CALCULATIONS =====================
+    if not df_full.empty:
         try:
-            if unf: raw_ot=pd.read_excel(ot_f); raw_av=pd.read_excel(av_f)
-            else: raw_ot=pd.read_excel("ot.xlsx"); raw_av=pd.read_excel("avis.xlsx")
-            raw_ot=excr(raw_ot); raw_av=excr(raw_av)
-            for c in ["Créé le","Date de début planifiée","Date de clôture","Début réel","Fin réelle"]:
-                if c in raw_ot.columns: raw_ot[c]=pd.to_datetime(raw_ot[c],errors="coerce")
-            for c in ["Créé le","Début souhaité","Date de la clôture"]:
-                if c in raw_av.columns: raw_av[c]=pd.to_datetime(raw_av[c],errors="coerce")
-            if not apm: apm=sorted(raw_ot[raw_ot["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"),na=False)]["Poste travail princ."].dropna().unique().tolist())
+            # If new files were uploaded, we re-run prepare_data to cache them
+            if unf and ot_f is not None and av_f is not None:
+                df_full, av_full, apm, now_ts = prepare_data(ot_f.getvalue(), av_f.getvalue(), fichier_date)
+                
             if "All" in sp or not sp: sp=apm
             if "All" in sa or not sa: sa=["All"]
             if "All" in sd or not sd: sd=["All"]
@@ -798,35 +823,18 @@ def main():
 
             vp=[p for p in apm if mf(p) and p in sp]
             
-            # === FILTRE OT PAR PERIODE ===
-            df=raw_ot[(raw_ot["Poste travail princ."].isin(vp))&(raw_ot["Date de début planifiée"].between(sdt,edt))].copy()
-            
-            # === FILTRE AVIS PAR PERIODE (colonne "Créé le") ET PAR POSTE/ATELIER/DIVISION ===
-            avdf=raw_av[raw_av["Poste travail princ."].isin(vp)].copy()
-            # Application du filtre periode sur avis.xlsx
+            # Fast pandas filtering
+            df = df_full[(df_full["Poste travail princ."].isin(vp)) & (df_full["Date de début planifiée"].between(sdt,edt))].copy()
+            avdf = av_full[av_full["Poste travail princ."].isin(vp)].copy()
             if "Créé le" in avdf.columns:
-                avdf=avdf[avdf["Créé le"].between(sdt,edt)]
-            avdf=excr(avdf[(avdf["Ordre"].isna())|(avdf["Ordre"].astype(str).str.strip().eq(""))].drop_duplicates())
+                avdf = avdf[avdf["Créé le"].between(sdt,edt)]
+                
+            df_dash = df_full[df_full["Poste travail princ."].isin(vp)].copy()
+            avdf_dash = av_full[av_full["Poste travail princ."].isin(vp)].copy()
             
-            df=excr(df[df["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"),na=False)].drop_duplicates())
-            
-            # === AVIS NON FILTRE PAR PERIODE (pour dashboard global) ===
-            avdf_dash=raw_av[raw_av["Poste travail princ."].isin(vp)].copy()
-            avdf_dash=excr(avdf_dash[(avdf_dash["Ordre"].isna())|(avdf_dash["Ordre"].astype(str).str.strip().eq(""))].drop_duplicates())
-            
-            if "Statut système" in df.columns: df["Statut OT"]=df["Statut système"].fillna("").astype(str).str.strip().str.split().str[0]
-            df_dash=raw_ot[raw_ot["Poste travail princ."].isin(vp)].copy()
-            df_dash=excr(df_dash[df_dash["Poste travail princ."].astype(str).str.startswith(("SF1","SF2"),na=False)].drop_duplicates())
-            if "Statut système" in df_dash.columns: df_dash["Statut OT"]=df_dash["Statut système"].fillna("").astype(str).str.strip().str.split().str[0]
-
-            now=pd.Timestamp.now()
-            cache_key=compute_cache_key(fichier_date,{"sp":sorted(sp),"sa":sorted(sa),"sd":sorted(sd),"dr":[str(dr[0]),str(dr[1])],"vp":sorted(vp)},now.strftime("%Y-%m-%d %H:%M"))
-            if "kpi_cache_key" in st.session_state and st.session_state.kpi_cache_key==cache_key and "kpi_results" in st.session_state and "kpi_results_dash" in st.session_state:
-                res=st.session_state.kpi_results; res_d=st.session_state.kpi_results_dash
-            else:
-                # res: calcul avec avis filtre par periode ; res_d: calcul avec avis non filtre (dashboard global)
-                res=calc_kpis(df,avdf,now,vp); res_d=calc_kpis(df_dash,avdf_dash,now,vp)
-                st.session_state.kpi_cache_key=cache_key; st.session_state.kpi_results=res; st.session_state.kpi_results_dash=res_d
+            # Fast KPI calculations
+            res = calc_kpis(df, avdf, now_ts, vp)
+            res_d = calc_kpis(df_dash, avdf_dash, now_ts, vp)
 
             ckdf=res['ckdf']; dfp=res['dfp']; avf=res['avf']; ckdf_d=res_d['ckdf']
             pa={k:round(ckdf[k].mean(),2) for k in QK}; qa={k:round(ckdf[k].mean(),2) for k in PK}
@@ -860,8 +868,8 @@ def main():
             ano_map["OT exécution 1mois< <3mois"] = dfp[exec_filt & (dfp["aex"]=="1 mois < <3 mois")].groupby("Poste travail princ.")["Ordre"].count()
             perf_filt = (dfp["Contient SOPL"]==1)&(~dfp["Statut OT"].isin(["CLOT","TCLO"]))
             ano_map["Performance Graissage"] = dfp[perf_filt & (dfp["_tw_num"]==350)].groupby("Poste travail princ.")["Ordre"].count()
-            ano_map["Performance Inspection"] = dfp[perf_filt & (dfp["_tw_num"].isin([290,300,310]))&(dfp["Date de début planifiée"]<=now)].groupby("Poste travail princ.")["Ordre"].count()
-            ano_map["Performance Appels Systématiques"] = dfp[perf_filt & (dfp["_tw_num"]==360)&(dfp["Date de début planifiée"]<=now)].groupby("Poste travail princ.")["Ordre"].count()
+            ano_map["Performance Inspection"] = dfp[perf_filt & (dfp["_tw_num"].isin([290,300,310]))&(dfp["Date de début planifiée"]<=now_ts)].groupby("Poste travail princ.")["Ordre"].count()
+            ano_map["Performance Appels Systématiques"] = dfp[perf_filt & (dfp["_tw_num"]==360)&(dfp["Date de début planifiée"]<=now_ts)].groupby("Poste travail princ.")["Ordre"].count()
             avf_tot = avf.groupby("Poste travail princ.")["Avis"].count()
             avf_aprv = avf[avf["Statut utilisateur"].isin(["APRV","APRV AVAU"])].groupby("Poste travail princ.")["Avis"].count()
             ano_map["appel avis approuvé"] = avf_tot.sub(avf_aprv, fill_value=0)
@@ -925,8 +933,8 @@ def main():
             anomaly_dfs["OT exécution >3 mois"] = dfp[exec_filt & (dfp["aex"]==">3 mois")].copy()
             anomaly_dfs["OT exécution 1mois< <3mois"] = dfp[exec_filt & (dfp["aex"]=="1 mois < <3 mois")].copy()
             anomaly_dfs["Performance Graissage"] = dfp[perf_filt & (dfp["_tw_num"]==350)].copy()
-            anomaly_dfs["Performance Inspection"] = dfp[perf_filt & (dfp["_tw_num"].isin([290,300,310]))&(dfp["Date de début planifiée"]<=now)].copy()
-            anomaly_dfs["Performance Appels Systématiques"] = dfp[perf_filt & (dfp["_tw_num"]==360)&(dfp["Date de début planifiée"]<=now)].copy()
+            anomaly_dfs["Performance Inspection"] = dfp[perf_filt & (dfp["_tw_num"].isin([290,300,310]))&(dfp["Date de début planifiée"]<=now_ts)].copy()
+            anomaly_dfs["Performance Appels Systématiques"] = dfp[perf_filt & (dfp["_tw_num"]==360)&(dfp["Date de début planifiée"]<=now_ts)].copy()
             anomaly_dfs["appel avis approuvé"] = avf[~avf["Statut utilisateur"].isin(["APRV","APRV AVAU"])].copy()
             anomaly_dfs["OT LANC ESTIME"] = dfp[(dfp["Statut OT"]=="LANC")&(dfp["OT LANC ESTIME"]=="NON")].copy()
             anomaly_dfs["Backlog préparation caractérisé"] = dfp[(dfp["Statut OT"]=="CRÉÉ")&(dfp["Backlog preparation"]=="NON CARACTERISE")].copy()
@@ -1045,7 +1053,6 @@ def main():
             total_ano_q=sum([r["Total Anomalies"] for r in ano_q_rows if r.get("Poste de travail")!="Total"])
             total_ot=len(df)
 
-            # === EN-TETE AVEC LOGO ===
             logo_b64 = get_logo_base64()
             if logo_b64:
                 st.markdown('<div class="mh"><img src="data:image/png;base64,%s" class="logo" alt="Logo"><h1>📊 Tableau de Bord KPI Maintenance</h1><span class="db">📅 %s</span></div>'%(logo_b64,fichier_date),unsafe_allow_html=True)

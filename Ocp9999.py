@@ -870,7 +870,37 @@ def main():
         df_full, av_full, apm, now_ts = pd.DataFrame(), pd.DataFrame(), [], pd.Timestamp.now()
 
     # ===================== SIDEBAR =====================
+    
+
+    # ===================== APPLY FAST FILTERS & CALCULATIONS =====================
+    if not df_full.empty:
+        try:
+            if unf and ot_f is not None and av_f is not None:
+                df_full, av_full, apm, now_ts = prepare_data(ot_f.getvalue(), av_f.getvalue(), fichier_date)
+                
+            if "All" in sp or not sp: sp=apm
+            if "All" in sa or not sa: sa=["All"]
+            if "All" in sd or not sd: sd=["All"]
+            sdt=pd.to_datetime(dr[0]) if len(dr)==2 else pd.to_datetime(datetime(2025,1,1))
+            edt=pd.to_datetime(dr[1]) if len(dr)==2 else pd.to_datetime(datetime.today())
+
+            def mf(poste):
+                p=str(poste).upper()
+                if "All" not in sa:
+                    m=False
+                    if "Sulfurique (PS)" in sa and "PS" in p: m=True
+                    if "Phosphorique (PP)" in sa and "PP" in p: m=True
+                    if "Engrais (TSP/REX)" in sa and ("TSP" in p or "REX" in p): m=True
+                    if "Feed (MCP/DCP)" in sa and ("MCP" in p or "DCP" in p): m=True
+                    if not m: return False
+                if "All" not in sd:
+                    m=False
+                    if "SF1" in sd and "SF1" in p: m=True
+                    if "SF2" in sd and "SF2" in p: m=True
+                    if not m: return False  
+                          # ===================== SIDEBAR =====================
     with st.sidebar:
+        # Replaced Text with Logo (agrandi 2.5x par rapport à 80px -> 200px)
         logo_b64 = get_logo_base64()
         if logo_b64:
             st.markdown('<div style="display:flex;justify-content:center;padding:10px 0 15px 0;border-bottom:1px solid rgba(255,255,255,0.1);margin-bottom:10px;"><img src="data:image/png;base64,%s" style="max-width:100%%;height:auto;max-height:200px;object-fit:contain;border-radius:4px;"></div>'%logo_b64,unsafe_allow_html=True)
@@ -881,6 +911,7 @@ def main():
             st.cache_data.clear()
             st.rerun()
 
+        # BOUTON PRINT / MODE PRÉSENTATION
         if st.button("🖥️ Mode Présentation (Slide/PDF)", use_container_width=True):
             components.html("<script>window.print();</script>", height=0, width=0)
             
@@ -923,33 +954,6 @@ def main():
         else:
             unf=False; ot_f=av_f=None; sp=["All"]; sa=["All"]; sd=["All"]
             dr=(datetime(2025,1,1).date(),datetime.today().date())
-
-    # ===================== APPLY FAST FILTERS & CALCULATIONS =====================
-    if not df_full.empty:
-        try:
-            if unf and ot_f is not None and av_f is not None:
-                df_full, av_full, apm, now_ts = prepare_data(ot_f.getvalue(), av_f.getvalue(), fichier_date)
-                
-            if "All" in sp or not sp: sp=apm
-            if "All" in sa or not sa: sa=["All"]
-            if "All" in sd or not sd: sd=["All"]
-            sdt=pd.to_datetime(dr[0]) if len(dr)==2 else pd.to_datetime(datetime(2025,1,1))
-            edt=pd.to_datetime(dr[1]) if len(dr)==2 else pd.to_datetime(datetime.today())
-
-            def mf(poste):
-                p=str(poste).upper()
-                if "All" not in sa:
-                    m=False
-                    if "Sulfurique (PS)" in sa and "PS" in p: m=True
-                    if "Phosphorique (PP)" in sa and "PP" in p: m=True
-                    if "Engrais (TSP/REX)" in sa and ("TSP" in p or "REX" in p): m=True
-                    if "Feed (MCP/DCP)" in sa and ("MCP" in p or "DCP" in p): m=True
-                    if not m: return False
-                if "All" not in sd:
-                    m=False
-                    if "SF1" in sd and "SF1" in p: m=True
-                    if "SF2" in sd and "SF2" in p: m=True
-                    if not m: return False
                 return True
 
             vp=[p for p in apm if mf(p) and p in sp]

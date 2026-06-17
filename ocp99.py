@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import io, locale, random, time, os, hashlib, json, base64
@@ -61,11 +62,10 @@ MP_KW = ["CRPR ATPD","CRPR ATMR","CRPR ATER","CRPR ATRS","CRPR ATMO","ATPD","ATM
 MPLAN_KW = ["ATPL ATEI","ATPL ATAL","ATPL ATER","ATPL AGAR","ATPL ATHS","ATEI","ATAL","ATAS","AGAR","ATHS"]
 
 CHANGELOG = [
-    {"version":"2.7","date":"2025-06-24","changes":[
-        "Optimisation extreme des performances grace a st.cache_data",
-        "Les filtres s'appliquent instantanement sans recalculer les donnees de base",
-        "Les calculs lourds ne se font que lors d'un changement de date.txt ou de fichier",
-        "Filtre periode et logo ajoutes aux versions precedentes"
+    {"version":"2.8","date":"2025-06-24","changes":[
+        "Fix telechargement Slide/PDF via components.html",
+        "Suppression de 'NON CARACTERISE' sur les pie charts de Type de Caracterisation",
+        "Stabilisation de l'affichage du logo"
     ]}
 ]
 
@@ -480,6 +480,9 @@ def main():
             st.markdown('<div class="es">Aucune donnee</div>',unsafe_allow_html=True)
 
     def show_simple_pie(piv_df, title):
+        # Explicitly drop "NON CARACTERISE" to show only types of caracterisation
+        if "NON CARACTERISE" in piv_df.columns:
+            piv_df = piv_df.drop(columns=["NON CARACTERISE"])
         counts = piv_df.sum()
         counts = counts[counts > 0]
         if not counts.empty:
@@ -749,8 +752,8 @@ def main():
             st.rerun()
 
         if st.button("🖥️ Mode Présentation (Slide/PDF)", use_container_width=True):
-            js = "window.print();"
-            st.markdown(f"<script>{js}</script>", unsafe_allow_html=True)
+            # Utilisation de components.html pour forcer l'impression
+            components.html("<script>window.print();</script>", height=0, width=0)
             
         show_filters=st.checkbox("Afficher les filtres",value=True,key="show_filters")
         if show_filters:

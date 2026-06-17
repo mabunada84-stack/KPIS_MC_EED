@@ -86,14 +86,6 @@ LOWER_BETTER = ["OT préparation >3 mois","OT planification >3 mois","OT exécut
 MP_KW = ["CRPR ATPD","CRPR ATMR","CRPR ATER","CRPR ATRS","CRPR ATMO","ATPD","ATMR","ATER","ATRS","ATMO"]
 MPLAN_KW = ["ATPL ATEI","ATPL ATAL","ATPL ATER","ATPL AGAR","ATPL ATHS","ATEI","ATAL","ATAS","AGAR","ATHS"]
 
-CHANGELOG = [
-    {"version":"2.8","date":"2025-06-24","changes":[
-        "Fix telechargement Slide/PDF via components.html",
-        "Suppression de 'NON CARACTERISE' sur les pie charts de Type de Caracterisation",
-        "Stabilisation de l'affichage du logo"
-    ]}
-]
-
 CONSIGNES_HSE = [
     "Port obligatoire des EPI avant toute intervention.","Port obligatoire du casque de securite.",
     "Port obligatoire des lunettes de protection.","Port obligatoire des gants adaptes au travail.",
@@ -141,7 +133,7 @@ def get_date_from_file():
         try:
             with open("date.txt","r",encoding="utf-8") as f: return f.read().strip()
         except Exception: pass
-    return "18/06/2026" # Modifié selon demande
+    return "18/06/2026"
 
 # --- HELPERS FOR PREPARE_DATA ---
 def contient_mot(t,lm):
@@ -715,6 +707,7 @@ def main():
         if c in ["OT Fiabilité","Total Avis de Panne"]:
             return "background:#c6efce;color:#006100;font-weight:600" if val>=100 else "background:#ffeb9c;color:#9c6500;font-weight:600"
         return ""
+        
     def cs(v):
         try: val=float(str(v).replace(' %','').strip())
         except Exception: return ""
@@ -870,37 +863,7 @@ def main():
         df_full, av_full, apm, now_ts = pd.DataFrame(), pd.DataFrame(), [], pd.Timestamp.now()
 
     # ===================== SIDEBAR =====================
-    
-
-    # ===================== APPLY FAST FILTERS & CALCULATIONS =====================
-    if not df_full.empty:
-        try:
-            if unf and ot_f is not None and av_f is not None:
-                df_full, av_full, apm, now_ts = prepare_data(ot_f.getvalue(), av_f.getvalue(), fichier_date)
-                
-            if "All" in sp or not sp: sp=apm
-            if "All" in sa or not sa: sa=["All"]
-            if "All" in sd or not sd: sd=["All"]
-            sdt=pd.to_datetime(dr[0]) if len(dr)==2 else pd.to_datetime(datetime(2025,1,1))
-            edt=pd.to_datetime(dr[1]) if len(dr)==2 else pd.to_datetime(datetime.today())
-
-            def mf(poste):
-                p=str(poste).upper()
-                if "All" not in sa:
-                    m=False
-                    if "Sulfurique (PS)" in sa and "PS" in p: m=True
-                    if "Phosphorique (PP)" in sa and "PP" in p: m=True
-                    if "Engrais (TSP/REX)" in sa and ("TSP" in p or "REX" in p): m=True
-                    if "Feed (MCP/DCP)" in sa and ("MCP" in p or "DCP" in p): m=True
-                    if not m: return False
-                if "All" not in sd:
-                    m=False
-                    if "SF1" in sd and "SF1" in p: m=True
-                    if "SF2" in sd and "SF2" in p: m=True
-                    if not m: return False  
-                          # ===================== SIDEBAR =====================
     with st.sidebar:
-        # Replaced Text with Logo (agrandi 2.5x par rapport à 80px -> 200px)
         logo_b64 = get_logo_base64()
         if logo_b64:
             st.markdown('<div style="display:flex;justify-content:center;padding:10px 0 15px 0;border-bottom:1px solid rgba(255,255,255,0.1);margin-bottom:10px;"><img src="data:image/png;base64,%s" style="max-width:100%%;height:auto;max-height:200px;object-fit:contain;border-radius:4px;"></div>'%logo_b64,unsafe_allow_html=True)
@@ -954,6 +917,33 @@ def main():
         else:
             unf=False; ot_f=av_f=None; sp=["All"]; sa=["All"]; sd=["All"]
             dr=(datetime(2025,1,1).date(),datetime.today().date())
+
+    # ===================== APPLY FAST FILTERS & CALCULATIONS =====================
+    if not df_full.empty:
+        try:
+            if unf and ot_f is not None and av_f is not None:
+                df_full, av_full, apm, now_ts = prepare_data(ot_f.getvalue(), av_f.getvalue(), fichier_date)
+                
+            if "All" in sp or not sp: sp=apm
+            if "All" in sa or not sa: sa=["All"]
+            if "All" in sd or not sd: sd=["All"]
+            sdt=pd.to_datetime(dr[0]) if len(dr)==2 else pd.to_datetime(datetime(2025,1,1))
+            edt=pd.to_datetime(dr[1]) if len(dr)==2 else pd.to_datetime(datetime.today())
+
+            def mf(poste):
+                p=str(poste).upper()
+                if "All" not in sa:
+                    m=False
+                    if "Sulfurique (PS)" in sa and "PS" in p: m=True
+                    if "Phosphorique (PP)" in sa and "PP" in p: m=True
+                    if "Engrais (TSP/REX)" in sa and ("TSP" in p or "REX" in p): m=True
+                    if "Feed (MCP/DCP)" in sa and ("MCP" in p or "DCP" in p): m=True
+                    if not m: return False
+                if "All" not in sd:
+                    m=False
+                    if "SF1" in sd and "SF1" in p: m=True
+                    if "SF2" in sd and "SF2" in p: m=True
+                    if not m: return False
                 return True
 
             vp=[p for p in apm if mf(p) and p in sp]
@@ -1206,7 +1196,6 @@ def main():
                 df_plan_actions = df_plan_actions[["KPI en anomalie", "Poste(s) de travail concerné(s)", "Responsable", "Action recommandée", "Délai"]]
 
             logo_b64 = get_logo_base64()
-            # Titre modifié et agrandi (via CSS) + Date précisée à 18/06/2026 et agrandie
             if logo_b64:
                 st.markdown('<div class="mh"><img src="data:image/png;base64,%s" class="logo" alt="Logo"><h1>Tableau de Bord KPIs Performance & Qualite</h1><span class="db">📅 18/06/2026</span></div>'%logo_b64,unsafe_allow_html=True)
             else:
@@ -1215,7 +1204,6 @@ def main():
             st.markdown('<div class="cr"><div class="cc c1"><div class="cv">%d</div><div class="cl">OT Analyses</div></div><div class="cc c2"><div class="cv">%.1f%%</div><div class="cl">Score Performance Global</div></div><div class="cc c3"><div class="cv">%.1f%%</div><div class="cl">Score Qualite Global</div></div><div class="cc c4"><div class="cv">%d</div><div class="cl">Anomalies Totales</div></div></div>'%(total_ot,avg_p_score,avg_q_score,total_ano_p+total_ano_q),unsafe_allow_html=True)
             st.markdown('<div class="cr"><div class="cc c5"><div class="cv">%.1f%%</div><div class="cl">Performance SF1</div></div><div class="cc c6"><div class="cv">%.1f%%</div><div class="cl">Qualite SF1</div></div><div class="cc c7"><div class="cv">%.1f%%</div><div class="cl">Performance SF2</div></div><div class="cc c8"><div class="cv">%.1f%%</div><div class="cl">Qualite SF2</div></div></div>'%(sf1_p_score,sf1_q_score,sf2_p_score,sf2_q_score),unsafe_allow_html=True)
 
-            # Ajout de l'onglet "Recommandations et Plan d'Actions"
             tabs=st.tabs(["🏠 Tableau de Bord","📈 Performance","✅ Qualite","📂 Backlog","📋 Suivi & Evolution","🎯 Recommandations et Plan d'Actions"])
 
             with tabs[0]:

@@ -57,17 +57,15 @@ ACT_MAP = {"TAUX_REALISATION_CORRECTIF/PT":"Ameliorer le taux de realisation des
 LOWER_BETTER = ["OT préparation >3 mois","OT planification >3 mois","OT exécution >3 mois",
                 "OT préparation 1mois< <3mois","OT planification 1mois< <3mois","OT exécution 1mois< <3mois"]
 
-# KPIs dont les cases doivent rester vides dans le tableau anomalies
-ANO_EMPTY_KPI = ["Performance Graissage","Performance Inspection","Performance Appels Systématiques","Total Avis de Panne"]
-
 MP_KW = ["CRPR ATPD","CRPR ATMR","CRPR ATER","CRPR ATRS","CRPR ATMO","ATPD","ATMR","ATER","ATRS","ATMO"]
 MPLAN_KW = ["ATPL ATEI","ATPL ATAL","ATPL ATER","ATPL AGAR","ATPL ATHS","ATEI","ATAL","ATAS","AGAR","ATHS"]
 
 CHANGELOG = [
     {"version":"2.2","date":"2025-06-20","changes":[
-        "Page Anomalies : inversion lignes/colonnes (Postes en lignes, KPIs en colonnes)",
-        "Page Anomalies : valeurs numeriques d'anomalies OT/avis par KPI et poste",
-        "Page Anomalies : cases vides pour Performance Graissage/Inspection/Systematiques et Total Avis de Panne"
+        "Page Anomalies : inversion lignes/colonnes (Postes en lignes, KPI en colonnes)",
+        "Nouvelle page Backlog dediee avec 3 sections : OT OMS, OT Thermographie, Tous les OT",
+        "Pie charts ameliores : regroupement secteurs minces, effet pull-out, donut, labels enrichis",
+        "Remplissage des anomalies par nombre d'OT et d'Avis"
     ]},
     {"version":"2.1","date":"2025-06-18","changes":[
         "Deplacement KPI Graissage/Inspection/Systematiques de Qualite vers Performance",
@@ -258,7 +256,7 @@ def inject_custom_css():
     .cc.c3{border-top:3px solid #805ad5}.cc.c3 .cv{color:#6b46c1}
     .cc.c4{border-top:3px solid #e53e3e}.cc.c4 .cv{color:#c53030}
     .stl{font-size:15px;font-weight:700;color:var(--p);margin:6px 0 2px 0;padding-left:10px;border-left:3px solid var(--pl)}
-    .stl.q{border-left-color:#3182ce}.stl.p{border-left-color:#38a169}.stl.a{border-left-color:#e53e3e}.stl.c{border-left-color:#805ad5}.stl.s{border-left-color:#d69e2e}
+    .stl.q{border-left-color:#3182ce}.stl.p{border-left-color:#38a169}.stl.a{border-left-color:#e53e3e}.stl.c{border-left-color:#805ad5}.stl.s{border-left-color:#d69e2e}.stl.bl{border-left-color:#dd6b20}
     .tw{width:100%;border-collapse:collapse;font-family:'Inter',sans-serif;font-size:12px;display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0}
     .tw thead th{background:var(--p);color:#fff;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.3px;padding:5px 6px;border:none;white-space:nowrap;position:sticky;top:0;z-index:10}
     .tw.qt thead th{background:linear-gradient(135deg,#2b6cb0,#3182ce)}
@@ -267,6 +265,8 @@ def inject_custom_css():
     .tw.st thead th{background:linear-gradient(135deg,#975a16,#d69e2e)}
     .tw.omt thead th{background:linear-gradient(135deg,#6b46c1,#805ad5)}
     .tw.tht thead th{background:linear-gradient(135deg,#9b2c2c,#e53e3e)}
+    .tw.tot thead th{background:linear-gradient(135deg,#1a365d,#2c5282)}
+    .tw.ant thead th{background:linear-gradient(135deg,#c53030,#e53e3e)}
     .tw tbody td{padding:4px 6px;border-bottom:1px solid #edf2f7;white-space:nowrap}
     .tw tbody tr:nth-child(even) td{background:#f7fafc}
     .tw tbody tr:hover td{background:#ebf8ff!important}
@@ -324,8 +324,16 @@ def inject_custom_css():
     .synth-tbl tbody tr:nth-child(even) td{background:#f7fafc}
     .synth-tbl tbody tr:hover td{background:#ebf8ff!important}
     .synth-tbl .poste-cell{text-align:left;font-weight:700;white-space:nowrap;min-width:140px}
-    .ano-empty{color:#cbd5e0!important;font-style:italic}
-    @media(max-width:768px){.cr{grid-template-columns:repeat(2,1fr)}.mh h1{font-size:17px}.cg,.dgrid{grid-template-columns:1fr}.car .cal{width:120px}.gbr-l{width:100px}}
+    .ano-legend{display:flex;gap:12px;margin-bottom:8px;font-size:11px;font-weight:600}
+    .ano-legend span{display:flex;align-items:center;gap:4px}
+    .ano-legend i{display:inline-block;width:14px;height:14px;border-radius:3px;border:1px solid #cbd5e0}
+    .backlog-section{background:#fff;border-radius:var(--r);padding:12px;margin-bottom:10px;border:1px solid var(--b);box-shadow:0 2px 8px rgba(0,0,0,.03)}
+    .backlog-section .bs-title{font-size:15px;font-weight:800;margin-bottom:8px;padding:6px 12px;border-radius:6px;color:#fff}
+    .backlog-section .bs-title.om{background:linear-gradient(135deg,#6b46c1,#805ad5)}
+    .backlog-section .bs-title.th{background:linear-gradient(135deg,#9b2c2c,#e53e3e)}
+    .backlog-section .bs-title.to{background:linear-gradient(135deg,#1a365d,#2c5282)}
+    .backlog-charts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+    @media(max-width:768px){.cr{grid-template-columns:repeat(2,1fr)}.mh h1{font-size:17px}.cg,.dgrid,.backlog-charts{grid-template-columns:1fr}.car .cal{width:120px}.gbr-l{width:100px}}
     </style>""",unsafe_allow_html=True)
 
 # ============================================================
@@ -350,6 +358,7 @@ def main():
         <style>@keyframes ld{from{width:0}to{width:100%%}}</style></div>"""%c,unsafe_allow_html=True)
         time.sleep(6); st.session_state.hse_affiche=True; st.rerun(); st.stop()
 
+    # ---- Helper functions ----
     def contient_mot(t,lm):
         t=str(t); return any(m in t for l in lm for m in l.split())
     def cat_age(a):
@@ -371,6 +380,7 @@ def main():
             if df[c].dtype=='object' and any(kw in str(c).lower() for kw in ['sign','text','desc','libell']):
                 return c
         return None
+
     def build_statut_pivot(df_sub, posts):
         if df_sub.empty:
             return pd.DataFrame(index=posts, columns=["CRÉÉ","LANC","CLOT","TCLO","Total"]).fillna(0).astype(int)
@@ -379,14 +389,21 @@ def main():
             if s not in piv.columns: piv[s]=0
         piv["Total"]=piv[["CRÉÉ","LANC","CLOT","TCLO"]].sum(axis=1)
         return piv.reindex(posts, fill_value=0).fillna(0).astype(int)
+
     def html_statut_pivot(piv_df, table_class):
         cols=["Poste de travail","CRÉÉ","LANC","CLOT","TCLO","Total"]
         h='<table class="tw %s"><thead><tr>'%table_class+''.join('<th>%s</th>'%c for c in cols)+'</tr></thead><tbody>'
         for poste,row in piv_df.iterrows():
             h+='<tr><td style="font-weight:600">%s</td>'%poste
             for c in ["CRÉÉ","LANC","CLOT","TCLO"]:
-                h+='<td style="text-align:center">%d</td>'%int(row.get(c,0))
-            h+='<td style="text-align:center;font-weight:800">%d</td>'%int(row.get("Total",0))
+                v=int(row.get(c,0))
+                clr=""
+                if c=="CRÉÉ" and v>0: clr="background:#fed7d7;color:#9b2c2c"
+                elif c=="LANC" and v>0: clr="background:#fefcbf;color:#975a16"
+                elif c=="CLOT" and v>0: clr="background:#c6f6d5;color:#276749"
+                elif c=="TCLO" and v>0: clr="background:#bee3f8;color:#2b6cb0"
+                h+='<td style="text-align:center;%s">%d</td>'%(clr,v)
+            h+='<td style="text-align:center;font-weight:800;background:#edf2f7">%d</td>'%int(row.get("Total",0))
             h+='</tr>'
         h+='<tr class="tr"><td>Total</td>'
         for c in ["CRÉÉ","LANC","CLOT","TCLO"]:
@@ -394,31 +411,61 @@ def main():
         h+='<td style="text-align:center">%d</td>'%int(piv_df["Total"].sum())
         h+='</tr></tbody></table>'
         return h
-    def show_pie_pair(piv_df, title_prefix):
+
+    def show_improved_pie_pair(piv_df, title_prefix):
+        """Pie charts ameliores : regroupement secteurs minces, donut, pull-out, labels enrichis"""
         global_counts=piv_df[["CRÉÉ","LANC","CLOT","TCLO"]].sum()
         global_counts=global_counts[global_counts>0]
-        realised=global_counts.get("CLOT",0)+global_counts.get("TCLO",0)
-        not_realised=global_counts.sum()-realised
+        THRESHOLD=3.0
+
         c1,c2=st.columns(2)
+
         with c1:
             if not global_counts.empty:
-                fig1=px.pie(global_counts, names=global_counts.index, values=global_counts.values,
-                    title="%s — Par Statut OT"%title_prefix,
-                    color_discrete_sequence=["#e53e3e","#d69e2e","#38a169","#3182ce"])
-                fig1.update_traces(textposition='inside',textinfo='percent+value',textfont_size=11)
-                fig1.update_layout(margin=dict(t=50,b=10,l=10,r=10),height=340,legend=dict(font_size=10,orientation="h",yanchor="bottom",y=-0.1))
+                total=global_counts.sum()
+                labels_l=global_counts.index.tolist()
+                values_l=global_counts.values.tolist()
+                pcts_l=[v/total*100 for v in values_l]
+                main_l,main_v,main_p=[],[],[]
+                other_sum=0
+                for l,v,p in zip(labels_l,values_l,pcts_l):
+                    if p<THRESHOLD: other_sum+=v
+                    else: main_l.append(l); main_v.append(v); main_p.append(p)
+                if other_sum>0:
+                    main_l.append("Autres"); main_v.append(other_sum); main_p.append(other_sum/total*100)
+                cmap={"CRÉÉ":"#e53e3e","LANC":"#d69e2e","CLOT":"#38a169","TCLO":"#3182ce","Autres":"#a0aec0"}
+                colors=[cmap.get(l,"#a0aec0") for l in main_l]
+                min_i=main_p.index(min(main_p))
+                pull=[0.06 if i==min_i else 0 for i in range(len(main_l))]
+                fig1=go.Figure(go.Pie(labels=main_l,values=main_v,marker_colors=colors,pull=pull,
+                    textposition='inside',textinfo='label+percent+value',textfont_size=12,hole=0.38,
+                    hovertemplate='<b>%%{label}</b><br>Valeur: %%{value}<br>Pourcentage: %%{percent}<extra></extra>'))
+                fig1.update_layout(title=dict(text="%s — Par Statut OT"%title_prefix,font=dict(size=14,fontweight='bold')),
+                    margin=dict(t=55,b=10,l=10,r=10),height=370,
+                    legend=dict(font_size=11,orientation="h",yanchor="bottom",y=-0.18),showlegend=True)
                 st.plotly_chart(fig1,use_container_width=True)
             else:
                 st.markdown('<div class="es">Aucune donnee</div>',unsafe_allow_html=True)
+
         with c2:
             if global_counts.sum()>0:
-                pie2_data=pd.DataFrame({"Statut":["Réalisés (CLOT+TCLO)","Non Réalisés"],"Nombre":[realised,not_realised]})
-                fig2=px.pie(pie2_data, names="Statut", values="Nombre",
-                    title="%s — Réalisés vs Non Réalisés"%title_prefix,
-                    color="Statut", color_discrete_map={"Réalisés (CLOT+TCLO)":"#38a169","Non Réalisés":"#e53e3e"})
-                fig2.update_traces(textposition='inside',textinfo='percent+value',textfont_size=11)
-                fig2.update_layout(margin=dict(t=50,b=10,l=10,r=10),height=340,legend=dict(font_size=10,orientation="h",yanchor="bottom",y=-0.1))
-                st.plotly_chart(fig2,use_container_width=True)
+                realised=global_counts.get("CLOT",0)+global_counts.get("TCLO",0)
+                not_realised=total-realised
+                if not_realised==0 and realised==0:
+                    st.markdown('<div class="es">Aucune donnee</div>',unsafe_allow_html=True)
+                else:
+                    lab2=["Réalisés (CLOT+TCLO)","Non Réalisés"]
+                    val2=[realised,not_realised]
+                    col2=["#38a169","#e53e3e"]
+                    p2=[v/sum(val2)*100 for v in val2]
+                    pull2=[0.04 if p<5 else 0 for p in p2]
+                    fig2=go.Figure(go.Pie(labels=lab2,values=val2,marker_colors=col2,pull=pull2,
+                        textposition='inside',textinfo='label+percent+value',textfont_size=13,hole=0.38,
+                        hovertemplate='<b>%%{label}</b><br>Valeur: %%{value}<br>Pourcentage: %%{percent}<extra></extra>'))
+                    fig2.update_layout(title=dict(text="%s — Réalisés vs Non Réalisés"%title_prefix,font=dict(size=14,fontweight='bold')),
+                        margin=dict(t=55,b=10,l=10,r=10),height=370,
+                        legend=dict(font_size=11,orientation="h",yanchor="bottom",y=-0.18),showlegend=True)
+                    st.plotly_chart(fig2,use_container_width=True)
             else:
                 st.markdown('<div class="es">Aucune donnee</div>',unsafe_allow_html=True)
 
@@ -489,12 +536,6 @@ def main():
         sys_df=pd.DataFrame({"_n":sys_num,"_d":sys_den}).reindex(posts,fill_value=0)
         sys_df["Performance Appels Systématiques"]=np.where(sys_df["_d"]==0,100.0,(sys_df["_n"]/sys_df["_d"])*100)
         fiab_s=pd.Series(100.0,index=posts); avpan_s=pd.Series(100.0,index=posts)
-
-        # === STOCKAGE DES PIVOTS BRUTS POUR CALCUL DES ANOMALIES ===
-        res['an']=an; res['pr']=pr; res['pl']=pl; res['ex']=ex
-        res['la']=la; res['pc']=pc; res['plc']=plc; res['tca']=tca
-        res['g_df']=g_df; res['ins_df']=ins_df; res['sys_df']=sys_df
-
         res['ckdf']=pd.DataFrame({
             "TAUX_REALISATION_CORRECTIF/PT":an["TAUX_REALISATION_CORRECTIF/PT"],
             "OT préparation <1 mois":pr["OT préparation <1 mois"],"OT préparation >3 mois":pr["OT préparation >3 mois"],"OT préparation 1mois< <3mois":pr["OT préparation 1mois< <3mois"],
@@ -508,193 +549,6 @@ def main():
         })
         return res
 
-    # ============================================================
-    # NOUVELLE FONCTION : Calcul des anomalies numeriques (nb OT/avis)
-    # ============================================================
-    def calc_anomaly_counts(kpi_res, posts):
-        """Retourne {kpi: {poste: nb_anomalies}} — None pour KPIs a laisser vides."""
-        counts = {}
-        def _safe_get(df, poste, col):
-            try: return int(df.loc[poste, col])
-            except Exception: return 0
-
-        # TAUX_REALISATION_CORRECTIF/PT : anomalies = OT non clôturés (CRÉÉ + LANC)
-        an = kpi_res.get('an')
-        if an is not None:
-            counts['TAUX_REALISATION_CORRECTIF/PT'] = {}
-            for p in posts:
-                counts['TAUX_REALISATION_CORRECTIF/PT'][p] = _safe_get(an, p, 'CRÉÉ') + _safe_get(an, p, 'LANC')
-
-        # Préparation : anomalies par catégorie d'âge
-        pr = kpi_res.get('pr')
-        if pr is not None:
-            counts['OT préparation <1 mois'] = {}
-            counts['OT préparation >3 mois'] = {}
-            counts['OT préparation 1mois< <3mois'] = {}
-            for p in posts:
-                # <1 mois : anomalies = ceux qui ne sont PAS <1 mois
-                counts['OT préparation <1 mois'][p] = (_safe_get(pr, p, '1 mois < <3 mois') +
-                    _safe_get(pr, p, '>3 mois') + _safe_get(pr, p, 'Inconnu'))
-                # >3 mois : anomalies = ceux qui SONT >3 mois
-                counts['OT préparation >3 mois'][p] = _safe_get(pr, p, '>3 mois')
-                # 1-3 mois : anomalies = ceux qui SONT entre 1 et 3 mois
-                counts['OT préparation 1mois< <3mois'][p] = _safe_get(pr, p, '1 mois < <3 mois')
-
-        # Planification
-        pl = kpi_res.get('pl')
-        if pl is not None:
-            counts['OT planification <1 mois'] = {}
-            counts['OT planification >3 mois'] = {}
-            counts['OT planification 1mois< <3mois'] = {}
-            for p in posts:
-                counts['OT planification <1 mois'][p] = (_safe_get(pl, p, '1 mois < <3 mois') +
-                    _safe_get(pl, p, '>3 mois') + _safe_get(pl, p, 'Inconnu'))
-                counts['OT planification >3 mois'][p] = _safe_get(pl, p, '>3 mois')
-                counts['OT planification 1mois< <3mois'][p] = _safe_get(pl, p, '1 mois < <3 mois')
-
-        # Exécution
-        ex = kpi_res.get('ex')
-        if ex is not None:
-            counts['OT exécution <1 mois'] = {}
-            counts['OT exécution >3 mois'] = {}
-            counts['OT exécution 1mois< <3mois'] = {}
-            for p in posts:
-                counts['OT exécution <1 mois'][p] = (_safe_get(ex, p, '1 mois < <3 mois') +
-                    _safe_get(ex, p, '>3 mois') + _safe_get(ex, p, 'Inconnu'))
-                counts['OT exécution >3 mois'][p] = _safe_get(ex, p, '>3 mois')
-                counts['OT exécution 1mois< <3mois'][p] = _safe_get(ex, p, '1 mois < <3 mois')
-
-        # OT LANC ESTIME : anomalies = NON estimés
-        la = kpi_res.get('la')
-        if la is not None:
-            counts['OT LANC ESTIME'] = {}
-            for p in posts:
-                counts['OT LANC ESTIME'][p] = _safe_get(la, p, 'NON')
-
-        # Backlog préparation caractérisé : anomalies = NON CARACTERISE
-        pc = kpi_res.get('pc')
-        if pc is not None:
-            counts['Backlog préparation caractérisé'] = {}
-            for p in posts:
-                counts['Backlog préparation caractérisé'][p] = _safe_get(pc, p, 'NON CARACTERISE')
-
-        # Backlog planification caractérisé : anomalies = NON CARACTERISE
-        plc = kpi_res.get('plc')
-        if plc is not None:
-            counts['Backlog planification caractérisé'] = {}
-            for p in posts:
-                counts['Backlog planification caractérisé'][p] = _safe_get(plc, p, 'NON CARACTERISE')
-
-        # OT CONFIME : anomalies = NON
-        oc = kpi_res.get('ot_confime')
-        if oc is not None:
-            counts['OT CONFIME'] = {}
-            for p in posts:
-                counts['OT CONFIME'][p] = _safe_get(oc, p, 'NON')
-
-        # OT_COR_EGAL : anomalies = NON
-        oce = kpi_res.get('ot_cor_egal')
-        if oce is not None:
-            counts['OT_COR_EGAL'] = {}
-            for p in posts:
-                counts['OT_COR_EGAL'][p] = _safe_get(oce, p, 'NON')
-
-        # appel avis approuvé : anomalies = avis non approuvés (APRQ + REJT)
-        tca = kpi_res.get('tca')
-        if tca is not None:
-            counts['appel avis approuvé'] = {}
-            for p in posts:
-                counts['appel avis approuvé'][p] = _safe_get(tca, p, 'APRQ') + _safe_get(tca, p, 'REJT')
-
-        # OT Fiabilité : toujours 100%, anomalies = 0
-        counts['OT Fiabilité'] = {p: 0 for p in posts}
-
-        # KPIs à laisser vides (None)
-        for k in ANO_EMPTY_KPI:
-            counts[k] = {p: None for p in posts}
-
-        return counts
-
-    # ============================================================
-    # NOUVELLE FONCTION : Tableau anomalies inversé (Postes x KPIs)
-    # ============================================================
-    def html_ano_inverted(ano_counts, kpi_list, posts, table_class, title):
-        """Tableau anomalies : Postes en lignes, KPIs en colonnes, valeurs numériques."""
-        display_kpis = [k for k in kpi_list if k in ano_counts]
-        if not display_kpis:
-            return '<div class="es">Aucune donnee d\'anomalies</div>'
-
-        # Abréviations pour en-têtes de colonnes
-        short_map = {
-            "TAUX_REALISATION_CORRECTIF/PT": "Taux Réal.\nCorr./PT",
-            "OT préparation <1 mois": "Prép.\n<1 mois",
-            "OT préparation >3 mois": "Prép.\n>3 mois",
-            "OT préparation 1mois< <3mois": "Prép.\n1-3 mois",
-            "OT planification <1 mois": "Planif.\n<1 mois",
-            "OT planification >3 mois": "Planif.\n>3 mois",
-            "OT planification 1mois< <3mois": "Planif.\n1-3 mois",
-            "OT exécution <1 mois": "Exéc.\n<1 mois",
-            "OT exécution >3 mois": "Exéc.\n>3 mois",
-            "OT exécution 1mois< <3mois": "Exéc.\n1-3 mois",
-            "Performance Graissage": "Perf.\nGraissage",
-            "Performance Inspection": "Perf.\nInspection",
-            "Performance Appels Systématiques": "Perf.\nApp. Syst.",
-            "appel avis approuvé": "Avis\nApprouvé",
-            "OT LANC ESTIME": "OT Lanc.\nEstimé",
-            "Backlog préparation caractérisé": "Backlog\nPrép. Car.",
-            "Backlog planification caractérisé": "Backlog\nPlanif. Car.",
-            "OT CONFIME": "OT\nConfirmé",
-            "OT_COR_EGAL": "OT Coûts\nÉgaux",
-            "OT Fiabilité": "OT\nFiabilité",
-            "Total Avis de Panne": "Total\nAvis Panne"
-        }
-
-        h = '<div class="ca"><div class="ct">%s</div>' % title
-        h += '<table class="tw %s"><thead><tr><th style="min-width:170px">Poste de travail</th>' % table_class
-        for kpi in display_kpis:
-            short = short_map.get(kpi, kpi)
-            # Utiliser <br> pour les retours à la ligne dans les en-têtes
-            short_html = short.replace('\n', '<br>')
-            h += '<th style="font-size:10px;min-width:58px;text-align:center">%s</th>' % short_html
-        h += '<th style="min-width:50px;text-align:center">Total</th></tr></thead><tbody>'
-
-        # Totaux par KPI
-        total_per_kpi = {k: 0 for k in display_kpis}
-        # Compteur de KPIs non vides pour le total de ligne
-        non_empty_kpis = [k for k in display_kpis if k not in ANO_EMPTY_KPI]
-
-        for p in posts:
-            h += '<tr><td style="font-weight:600;white-space:nowrap">%s</td>' % p
-            row_total = 0
-            for kpi in display_kpis:
-                val = ano_counts.get(kpi, {}).get(p)
-                if val is None:
-                    h += '<td class="ano-empty" style="text-align:center">—</td>'
-                else:
-                    s = kas(val)
-                    h += '<td style="%s;text-align:center">%d</td>' % (s or "", val)
-                    row_total += val
-                    total_per_kpi[kpi] += val
-            s = kas(row_total)
-            h += '<td style="%s;text-align:center;font-weight:800">%d</td>' % (s or "", row_total)
-            h += '</tr>'
-
-        # Ligne Total
-        grand_total = 0
-        h += '<tr class="tr"><td>Total</td>'
-        for kpi in display_kpis:
-            if kpi in ANO_EMPTY_KPI:
-                h += '<td style="text-align:center">—</td>'
-            else:
-                v = total_per_kpi[kpi]
-                grand_total += v
-                h += '<td style="text-align:center">%d</td>' % v
-        h += '<td style="text-align:center">%d</td>' % grand_total
-        h += '</tr>'
-
-        h += '</tbody></table></div>'
-        return h
-
     def ks(v,c):
         try: val=float(v)
         except Exception: return ""
@@ -703,7 +557,7 @@ def main():
         if c in ["OT préparation 1mois< <3mois","OT planification 1mois< <3mois","OT exécution 1mois< <3mois"]:
             return "background:#c6efce;color:#006100;font-weight:600" if val<=15 else "background:#ffc7ce;color:#9c0006;font-weight:600"
         if c in ["OT préparation >3 mois","OT planification >3 mois","OT exécution >3 mois"]:
-            return "background:#c6efce;color:#006100;font-weight:600" if val<=5 else "background:#ffc7ce;color:#9c0006;font-weight:600"
+            return "background:#c6efce;color:#006100;font-weight:600" if val<=5 else "background:#ffc7ce;color:#9c0006;font-weight:600")
         if c=="TAUX_REALISATION_CORRECTIF/PT":
             return "background:#c6efce;color:#006100;font-weight:600" if val>=85 else ("background:#ffeb9c;color:#9c6500;font-weight:600" if val>=80 else "background:#ffc7ce;color:#9c0006;font-weight:600")
         if c=="appel avis approuvé":
@@ -750,6 +604,42 @@ def main():
                 else: s=cs(v) if sc_col and c in sc_col else ks(v,c); h+='<td style="%s">%s</td>'%(s or "",v)
             h+='</tr>'
         return h+'</tbody></table>'
+
+    def html_ano_transposed(ano_counts, kpi_list, posts, table_class, title):
+        """Table anomalies INVERSEE : Postes en lignes, KPI en colonnes, valeurs = nb anomalies OT/Avis"""
+        h = '<div class="ca"><div class="ct">%s</div>' % title
+        h += '<div class="ano-legend">'
+        h += '<span><i style="background:#c6efce"></i> 0 (OK)</span>'
+        h += '<span><i style="background:#ffeb9c"></i> 1-3</span>'
+        h += '<span><i style="background:#fed7d7"></i> 4-10</span>'
+        h += '<span><i style="background:#fc8181"></i> >10</span>'
+        h += '</div>'
+        h += '<div style="overflow-x:auto"><table class="tw %s"><thead><tr><th style="min-width:180px">Poste de travail</th>' % table_class
+        for kpi in kpi_list:
+            short = kpi.replace("OT préparation","OT prép.").replace("OT planification","OT plan.").replace("OT exécution","OT exéc.").replace("Performance ","P.").replace("Backlog ","Bk.").replace("caractérisé","caract.")
+            if len(short)>22: short=short[:20]+"…"
+            h += '<th style="min-width:55px;font-size:10px" title="%s">%s</th>' % (kpi, short)
+        h += '<th style="min-width:50px">Total</th></tr></thead><tbody>'
+        for poste in posts:
+            h += '<tr><td style="font-weight:700;white-space:nowrap">%s</td>' % poste
+            total = 0
+            for kpi in kpi_list:
+                cnt = ano_counts.get(kpi, {}).get(poste, 0)
+                total += cnt
+                s = kas(cnt)
+                h += '<td style="%s;text-align:center">%d</td>' % (s or "", cnt)
+            s = kas(total)
+            h += '<td style="%s;text-align:center;font-weight:800">%d</td>' % (s or "", total)
+            h += '</tr>'
+        h += '<tr class="tr"><td>Total</td>'
+        grand_total = 0
+        for kpi in kpi_list:
+            kpi_total = sum(ano_counts.get(kpi, {}).get(p, 0) for p in posts)
+            grand_total += kpi_total
+            h += '<td style="text-align:center">%d</td>' % kpi_total
+        h += '<td style="text-align:center">%d</td>' % grand_total
+        h += '</tr></tbody></table></div></div>'
+        return h
 
     def html_actions_table(kpi_list,actuals,targets,act_map):
         h='<table class="tw at"><thead><tr><th>KPI</th><th>Valeur Actuelle</th><th>Cible</th><th>Ecart</th><th>Statut</th><th>Action Recommandee</th></tr></thead><tbody>'
@@ -808,9 +698,9 @@ def main():
         h+='<th colspan="%d" style="background:#2c5282">%s</th>'%(len(kpi_list),"Valeur Actuelle")
         h+='<th colspan="%d" style="background:#975a16">%s</th>'%(len(kpi_list),"Ecart")
         h+='</tr><tr>'
-        for _ in kpi_list: h+='<th style="background:#276749;font-size:10px">%</th>'
-        for _ in kpi_list: h+='<th style="background:#2c5282;font-size:10px">%</th>'
-        for _ in kpi_list: h+='<th style="background:#975a16;font-size:10px">%</th>'
+        for _ in kpi_list: h+='<th style="background:#276749;font-size:10px">%%</th>'
+        for _ in kpi_list: h+='<th style="background:#2c5282;font-size:10px">%%</th>'
+        for _ in kpi_list: h+='<th style="background:#975a16;font-size:10px">%%</th>'
         h+='</tr></thead><tbody>'
         for poste in posts:
             h+='<tr><td class="poste-cell">%s</td>'%poste
@@ -821,309 +711,372 @@ def main():
                 curr_v=synth_data.get(poste,{}).get(kpi,{}).get("curr","—")
                 h+='<td>%s</td>'%curr_v
             for kpi in kpi_list:
-                diff_v=synth_data.get(poste,{}).get(kpi,{}).get("diff","—")
-                trend=synth_data.get(poste,{}).get(kpi,{}).get("trend","Stable")
-                clr=colors_map.get(trend,"#718096")
-                arrow=arrow_map.get(trend,"—")
-                h+='<td style="color:%s;font-weight:700">%s %s</td>'%(clr,arrow,diff_v)
+                evol=synth_data.get(poste,{}).get(kpi,{}).get("evol",{})
+                sens=evol.get("sens","Stable"); ecart=evol.get("ecart","—")
+                clr=colors_map.get(sens,"#718096"); arrow=arrow_map.get(sens,"—")
+                h+='<td style="color:%s;font-weight:700">%s %s</td>'%(clr,arrow,ecart)
             h+='</tr>'
         h+='</tbody></table>'
         return h
 
-    # ============================================================
-    # SIDEBAR
-    # ============================================================
+    # ================================================================
+    # FILE UPLOAD & SIDEBAR
+    # ================================================================
     with st.sidebar:
-        st.markdown("## 📊 Dashboard KPI")
-        uploaded = st.file_uploader("Fichier OT (Excel)", type=["xlsx","xls"], key="fu_ot")
-        uploaded_av = st.file_uploader("Fichier Avis (Excel)", type=["xlsx","xls"], key="fu_av")
-        poste_filter = st.multiselect("Postes de travail", [], key="sf_poste")
-        excl_cresseur = st.checkbox("Exclure Cresseur", value=True, key="sf_excl")
+        st.markdown('<div style="text-align:center;padding:8px 0"><span style="font-size:28px">⚙️</span><br><span style="font-size:13px;font-weight:700;color:rgba(255,255,255,.7)">PARAMETRES</span></div>',unsafe_allow_html=True)
+        f_ot=st.file_uploader("Fichier OT (.xlsx)",type=["xlsx"],key="fot")
+        f_av=st.file_uploader("Fichier Avis (.xlsx)",type=["xlsx"],key="fav")
+        st.markdown('<div style="height:1px;background:rgba(255,255,255,.15);margin:6px 0"></div>',unsafe_allow_html=True)
+        secteur_list=[]; poste_list=[]; df_ot_tmp=None
+        if f_ot:
+            try:
+                df_ot_tmp=pd.read_excel(f_ot,dtype=str)
+                if "Secteur" in df_ot_tmp.columns: secteur_list=sorted(df_ot_tmp["Secteur"].dropna().unique().tolist())
+                if "Poste travail princ." in df_ot_tmp.columns: poste_list=sorted(df_ot_tmp["Poste travail princ."].dropna().unique().tolist())
+            except Exception: pass
+        sel_sect=st.multiselect("Secteur",secteur_list if secteur_list else [],key="ssect")
+        sel_poste=st.multiselect("Poste",poste_list if poste_list else [],key="sposte")
+        ref_date=st.date_input("Date de reference",datetime.now(),key="rd")
+        exp_excel=st.checkbox("Exporter Excel",value=False,key="expex")
 
-    # ============================================================
-    # CHARGEMENT DES DONNÉES
-    # ============================================================
-    df_ot = pd.DataFrame()
-    df_av = pd.DataFrame()
-    posts = []
+    # ================================================================
+    # DATA PROCESSING
+    # ================================================================
+    if not f_ot or not f_av:
+        st.markdown("""<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh">
+        <div style="font-size:80px;margin-bottom:20px">📊</div>
+        <h2 style="color:#1e3a5f;font-weight:800;font-size:28px">Bienvenue sur le Dashboard KPI</h2>
+        <p style="color:#718096;font-size:16px;margin-top:8px;max-width:500px;text-align:center">
+        Veuillez charger les fichiers Excel des OT et des Avis dans le panneau de parametres pour commencer l'analyse.</p></div>""",unsafe_allow_html=True)
+        st.stop()
 
-    if uploaded:
-        try:
-            df_ot = pd.read_excel(uploaded)
-            if "Poste travail princ." in df_ot.columns:
-                posts = sorted(df_ot["Poste travail princ."].dropna().unique().tolist())
-        except Exception as e:
-            st.error(f"Erreur chargement OT: {e}")
-    if uploaded_av:
-        try:
-            df_av = pd.read_excel(uploaded_av)
-            if "Poste travail princ." in df_av.columns and posts:
-                pass  # posts already from OT
-            elif "Poste travail princ." in df_av.columns and not posts:
-                posts = sorted(df_av["Poste travail princ."].dropna().unique().tolist())
-        except Exception as e:
-            st.error(f"Erreur chargement Avis: {e}")
+    try: df=pd.read_excel(f_ot,dtype=str); df=excr(df)
+    except Exception: st.error("Erreur de lecture du fichier OT."); st.stop()
+    try: av=pd.read_excel(f_av,dtype=str)
+    except Exception: st.error("Erreur de lecture du fichier Avis."); st.stop()
 
-    if excl_cresseur and not df_ot.empty:
-        df_ot = excr(df_ot)
-        if posts:
-            posts = [p for p in posts if "cresseur" not in p.lower()]
+    num_cols=["Total coûts budgétés","Total coûts réels","Nº appel pl.entret.","Type de travail"]
+    for nc in num_cols:
+        if nc in df.columns: df[nc]=pd.to_numeric(df[nc],errors="coerce")
+    if "Poste travail princ." not in df.columns or "Statut OT" not in df.columns:
+        st.error("Colonnes obligatoires manquantes: 'Poste travail princ.' ou 'Statut OT'"); st.stop()
 
-    if poste_filter:
-        posts = [p for p in posts if p in poste_filter]
+    now=pd.Timestamp(ref_date)
+    if sel_sect: df=df[df["Secteur"].isin(sel_sect)]
+    if sel_poste: df=df[df["Poste travail princ."].isin(sel_poste)]
+    if sel_sect and "Secteur" in av.columns: av=av[av["Secteur"].isin(sel_sect)]
+    if sel_poste and "Poste travail princ." in av.columns: av=av[av["Poste travail princ."].isin(sel_poste)]
 
-    if not posts:
-        posts = ["(Aucun poste)"]
+    posts=sorted(df["Poste travail princ."].dropna().unique().tolist())
+    if not posts: st.warning("Aucun poste trouve apres filtrage."); st.stop()
 
-    now = datetime.now()
-    kpi_res = calc_kpis(df_ot, df_av, now, posts) if not df_ot.empty else {}
-    ckdf = kpi_res.get('ckdf', pd.DataFrame())
+    cache_key=compute_cache_key(fichier_date,{"secteurs":sorted(sel_sect),"postes":sorted(sel_poste),"date":str(ref_date)},datetime.now().strftime("%H%M%S"))
+    if "cache_key" not in st.session_state or st.session_state.cache_key!=cache_key:
+        st.session_state.kpis=calc_kpis(df,av,now,posts)
+        st.session_state.cache_key=cache_key
+    kp=st.session_state.kpis
+    ckdf=kp['ckdf']
 
-    # Calcul des scores
-    pscores = {}; qscores = {}
+    # ================================================================
+    # COMPUTE SCORES & ANOMALIES
+    # ================================================================
+    pscores={}; qscores={}
     for p in posts:
-        s=0; t=0
-        for k in QK:
-            if k in ckdf.columns:
-                s+=gscore(k,ckdf.loc[p,k],CIBLE.get(k,100)); t+=1
-        pscores[p]=(s/t*100) if t>0 else 100
-        s=0; t=0
-        for k in PK:
-            if k in ckdf.columns:
-                s+=gscore(k,ckdf.loc[p,k],CIBLE.get(k,100)); t+=1
-        qscores[p]=(s/t*100) if t>0 else 100
+        pp=sum(gscore(k,ckdf.loc[p,k],CIBLE.get(k,100)) for k in QK)
+        qp=sum(gscore(k,ckdf.loc[p,k],CIBLE.get(k,100)) for k in PK)
+        pscores[p]=pp/len(QK)*100 if QK else 0
+        qscores[p]=qp/len(PK)*100 if PK else 0
 
-    gp = np.mean(list(pscores.values())) if pscores else 0
-    gq = np.mean(list(qscores.values())) if qscores else 0
-    gt = (gp+gq)/2 if (gp or gq) else 0
-    total_ot = len(df_ot) if not df_ot.empty else 0
-    total_av = len(df_av) if not df_av.empty else 0
+    # Anomalies par nombre d'OT ou Avis hors cible
+    ano_perf={}; ano_qual={}
+    for k in QK:
+        ano_perf[k]={}
+        t=CIBLE.get(k,100)
+        for p in posts:
+            v=ckdf.loc[p,k]
+            if is_lb(k):
+                ano_perf[k][p]=max(0,int(v-t+0.99)) if v>t else 0
+            else:
+                ano_perf[k][p]=max(0,int(t-v+0.99)) if v<t else 0
+    for k in PK:
+        ano_qual[k]={}
+        t=CIBLE.get(k,100)
+        for p in posts:
+            v=ckdf.loc[p,k]
+            if is_lb(k):
+                ano_qual[k][p]=max(0,int(v-t+0.99)) if v>t else 0
+            else:
+                ano_qual[k][p]=max(0,int(t-v+0.99)) if v<t else 0
+    # Pour "appel avis approuvé" : compter les avis sans OT
+    avf=kp.get('avf',pd.DataFrame())
+    if not avf.empty and "Poste travail princ." in avf.columns:
+        for p in posts:
+            av_cnt=len(avf[avf["Poste travail princ."]==p])
+            ano_qual["appel avis approuvé"][p]=av_cnt
 
-    # Calcul des anomalies numériques
-    ano_counts = calc_anomaly_counts(kpi_res, posts) if kpi_res else {}
+    tot_ot=len(df); tot_av=len(av); tot_cree=len(df[df["Statut OT"]=="CRÉÉ"]); tot_lanc=len(df[df["Statut OT"]=="LANC"])
+    tot_clot=len(df[df["Statut OT"].isin(["CLOT","TCLO"])])
+    avg_p=np.mean(list(pscores.values())) if pscores else 0
+    avg_q=np.mean(list(qscores.values())) if qscores else 0
+    tot_ano_p=sum(sum(v.values()) for v in ano_perf.values())
+    tot_ano_q=sum(sum(v.values()) for v in ano_qual.values())
 
-    # ============================================================
+    # ================================================================
     # HEADER
-    # ============================================================
-    st.markdown('<div class="mh"><h1>📊 Dashboard KPI Maintenance</h1><span class="db">%s</span></div>' % fichier_date, unsafe_allow_html=True)
-    st.markdown('<div class="cr"><div class="cc c1"><div class="cv">%d</div><div class="cl">Total OT</div></div><div class="cc c2"><div class="cv">%.1f%%</div><div class="cl">Score Performance</div></div><div class="cc c3"><div class="cv">%.1f%%</div><div class="cl">Score Qualite</div></div><div class="cc c4"><div class="cv">%.1f%%</div><div class="cl">Score Global</div></div></div>' % (total_ot, gp, gq, gt), unsafe_allow_html=True)
+    # ================================================================
+    st.markdown('<div class="mh"><h1>📊 Dashboard KPI Maintenance</h1><span class="db">📅 %s</span></div>'%fichier_date,unsafe_allow_html=True)
+    st.markdown('<div class="cr">'
+        '<div class="cc c1"><div class="cv">%d</div><div class="cl">Total OT</div></div>'
+        '<div class="cc c2"><div class="cv">%d</div><div class="cl">OT Clotures</div></div>'
+        '<div class="cc c3"><div class="cv">%.1f%%</div><div class="cl">Score Performance</div></div>'
+        '<div class="cc c4"><div class="cv">%d</div><div class="cl">Anomalies</div></div>'
+        '</div>'%(tot_ot,tot_clot,avg_p,tot_ano_p+tot_ano_q),unsafe_allow_html=True)
 
-    # ============================================================
-    # ONGLETS
-    # ============================================================
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🏠 Dashboard","📈 Performance","🎯 Qualité","⚠️ Anomalies","📊 Suivi & Évolution","📋 Changelog"])
+    # ================================================================
+    # TABS
+    # ================================================================
+    tabs=st.tabs(["📊 Dashboard","🟢 Performance","🔵 Qualité","🔴 Anomalies","🟠 Backlog","📈 Suivi & Évolution","📝 Changelog"])
 
-    # ------ TAB 1 : DASHBOARD ------
-    with tab1:
-        st.markdown('<div class="stl p">Vue d\'ensemble</div>', unsafe_allow_html=True)
-        st.markdown(html_grouped_bars(posts, pscores, qscores, "Scores par Poste de Travail"), unsafe_allow_html=True)
-        st.markdown(html_classement(pscores, "#276749"), unsafe_allow_html=True)
+    # ---- TAB DASHBOARD ----
+    with tabs[0]:
+        st.markdown('<p class="stl p">Performance par Poste</p>',unsafe_allow_html=True)
+        st.markdown(html_grouped_bars(posts,pscores,qscores,"Comparaison Performance / Qualite par Poste"),unsafe_allow_html=True)
+        st.markdown('<p class="stl c">Classement des Postes</p>',unsafe_allow_html=True)
+        st.markdown(html_classement(pscores,"#276749"),unsafe_allow_html=True)
+        st.markdown('<p class="stl p">Barres de Progression — Performance</p>',unsafe_allow_html=True)
+        avg_perf={k:float(ckdf[k].mean()) for k in QK}
+        st.markdown(html_kpi_bars(QK,avg_perf,CIBLE,"Moyenne Globale Performance","#38a169","#e53e3e"),unsafe_allow_html=True)
+        st.markdown('<p class="stl q">Barres de Progression — Qualite</p>',unsafe_allow_html=True)
+        avg_qual={k:float(ckdf[k].mean()) for k in PK}
+        st.markdown(html_kpi_bars(PK,avg_qual,CIBLE,"Moyenne Globale Qualite","#3182ce","#e53e3e"),unsafe_allow_html=True)
 
-    # ------ TAB 2 : PERFORMANCE ------
-    with tab2:
-        st.markdown('<div class="stl p">Indicateurs de Performance</div>', unsafe_allow_html=True)
-        p_rows = []
+    # ---- TAB PERFORMANCE ----
+    with tabs[1]:
+        st.markdown('<p class="stl p">Indicateurs de Performance par Poste</p>',unsafe_allow_html=True)
+        pcols=["Poste de travail"]+QK+["Score Performance"]
+        prows=[]
         for p in posts:
-            r = {"Poste de travail": p}
-            for k in QK:
-                if k in ckdf.columns:
-                    r[k] = round(ckdf.loc[p, k], 1)
-            p_rows.append(r)
-        cible_row = {"Poste de travail": "CIBLE", "_t": "cible"}
-        for k in QK:
-            cible_row[k] = CIBLE.get(k, "")
-        p_rows.append(cible_row)
-        total_row = {"Poste de travail": "Total general", "_t": "total"}
-        for k in QK:
-            if k in ckdf.columns:
-                total_row[k] = round(ckdf[k].mean(), 1)
-        p_rows.append(total_row)
-        p_cols = ["Poste de travail"] + [k for k in QK if k in ckdf.columns]
-        st.markdown(html_table(p_rows, p_cols, "pt", sc_col=set(QK)), unsafe_allow_html=True)
+            r={"Poste de travail":p,"_t":""}
+            for k in QK: r[k]="%.1f%%"%ckdf.loc[p,k]
+            r["Score Performance"]="%.2f%%"%pscores[p]
+            prows.append(r)
+        cible_row={"Poste de travail":"CIBLE","_t":"cible"}
+        for k in QK: cible_row[k]="%.0f%%"%CIBLE.get(k,100)
+        cible_row["Score Performance"]="80.00%"
+        prows.append(cible_row)
+        total_row={"Poste de travail":"Moyenne","_t":"total"}
+        for k in QK: total_row[k]="%.1f%%"%float(ckdf[k].mean())
+        total_row["Score Performance"]="%.2f%%"%avg_p
+        prows.append(total_row)
+        st.markdown(html_table(prows,pcols,"pt",sc_col=set(QK+["Score Performance"])),unsafe_allow_html=True)
+        st.markdown('<p class="stl a">Actions Recommandees — Performance</p>',unsafe_allow_html=True)
+        st.markdown(html_actions_table(QK,avg_perf,CIBLE,ACT_MAP),unsafe_allow_html=True)
 
-        # Barres de progression Performance
-        p_actuals = {k: ckdf[k].mean() for k in QK if k in ckdf.columns}
-        st.markdown(html_kpi_bars(QK, p_actuals, CIBLE, "Progression KPIs Performance", "#276749", "#e53e3e"), unsafe_allow_html=True)
-
-        # Actions Performance
-        st.markdown('<div class="stl a">Actions Recommandees — Performance</div>', unsafe_allow_html=True)
-        st.markdown(html_actions_table(QK, p_actuals, CIBLE, ACT_MAP), unsafe_allow_html=True)
-
-    # ------ TAB 3 : QUALITÉ ------
-    with tab3:
-        st.markdown('<div class="stl q">Indicateurs de Qualite</div>', unsafe_allow_html=True)
-        q_rows = []
+    # ---- TAB QUALITE ----
+    with tabs[2]:
+        st.markdown('<p class="stl q">Indicateurs de Qualite par Poste</p>',unsafe_allow_html=True)
+        qcols=["Poste de travail"]+PK+["Score Qualite"]
+        qrows=[]
         for p in posts:
-            r = {"Poste de travail": p}
-            for k in PK:
-                if k in ckdf.columns:
-                    r[k] = round(ckdf.loc[p, k], 1)
-            q_rows.append(r)
-        cible_row_q = {"Poste de travail": "CIBLE", "_t": "cible"}
-        for k in PK:
-            cible_row_q[k] = CIBLE.get(k, "")
-        q_rows.append(cible_row_q)
-        total_row_q = {"Poste de travail": "Total general", "_t": "total"}
-        for k in PK:
-            if k in ckdf.columns:
-                total_row_q[k] = round(ckdf[k].mean(), 1)
-        q_rows.append(total_row_q)
-        q_cols = ["Poste de travail"] + [k for k in PK if k in ckdf.columns]
-        st.markdown(html_table(q_rows, q_cols, "qt", sc_col=set(PK)), unsafe_allow_html=True)
+            r={"Poste de travail":p,"_t":""}
+            for k in PK: r[k]="%.1f%%"%ckdf.loc[p,k]
+            r["Score Qualite"]="%.2f%%"%qscores[p]
+            qrows.append(r)
+        cible_row_q={"Poste de travail":"CIBLE","_t":"cible"}
+        for k in PK: cible_row_q[k]="%.0f%%"%CIBLE.get(k,100)
+        cible_row_q["Score Qualite"]="80.00%"
+        qrows.append(cible_row_q)
+        total_row_q={"Poste de travail":"Moyenne","_t":"total"}
+        for k in PK: total_row_q[k]="%.1f%%"%float(ckdf[k].mean())
+        total_row_q["Score Qualite"]="%.2f%%"%avg_q
+        qrows.append(total_row_q)
+        st.markdown(html_table(qrows,qcols,"qt",sc_col=set(PK+["Score Qualite"])),unsafe_allow_html=True)
+        st.markdown('<p class="stl a">Actions Recommandees — Qualite</p>',unsafe_allow_html=True)
+        st.markdown(html_actions_table(PK,avg_qual,CIBLE,ACT_MAP),unsafe_allow_html=True)
 
-        # Barres de progression Qualité
-        q_actuals = {k: ckdf[k].mean() for k in PK if k in ckdf.columns}
-        st.markdown(html_kpi_bars(PK, q_actuals, CIBLE, "Progression KPIs Qualite", "#2b6cb0", "#e53e3e"), unsafe_allow_html=True)
+    # ---- TAB ANOMALIES (INVERSE : Postes en lignes, KPI en colonnes) ----
+    with tabs[3]:
+        st.markdown('<p class="stl a">Anomalies de Performance (nombre d\'OT hors cible par poste)</p>',unsafe_allow_html=True)
+        st.markdown(html_ano_transposed(ano_perf, QK, posts, "ant", "🔴 Anomalies Performance — Postes × KPI"),unsafe_allow_html=True)
+        st.markdown('<p class="stl a">Anomalies de Qualite (nombre d\'OT/Avis hors cible par poste)</p>',unsafe_allow_html=True)
+        st.markdown(html_ano_transposed(ano_qual, PK, posts, "ant", "🔴 Anomalies Qualite — Postes × KPI"),unsafe_allow_html=True)
+        # Resume global
+        st.markdown('<p class="stl s">Resume Global des Anomalies</p>',unsafe_allow_html=True)
+        st.markdown('<div class="cr">'
+            '<div class="cc c1"><div class="cv">%d</div><div class="cl">Anomalies Performance</div></div>'
+            '<div class="cc c4"><div class="cv">%d</div><div class="cl">Anomalies Qualite</div></div>'
+            '<div class="cc c3"><div class="cv">%d</div><div class="cl">Total Anomalies</div></div>'
+            '<div class="cc c2"><div class="cv">%d</div><div class="cl">Postes sans anomalie</div></div>'
+            '</div>'%(tot_ano_p,tot_ano_q,tot_ano_p+tot_ano_q,
+                sum(1 for p in posts if all(ano_perf[k].get(p,0)==0 for k in QK) and all(ano_qual[k].get(p,0)==0 for k in PK))),
+            unsafe_allow_html=True)
 
-        # Actions Qualité
-        st.markdown('<div class="stl a">Actions Recommandees — Qualite</div>', unsafe_allow_html=True)
-        st.markdown(html_actions_table(PK, q_actuals, CIBLE, ACT_MAP), unsafe_allow_html=True)
+    # ---- TAB BACKLOG (NOUVEAU) ----
+    with tabs[4]:
+        st.markdown('<p class="stl bl">📊 Backlog — Suivi des OT par Categorie</p>',unsafe_allow_html=True)
+        df_work=kp['dfp']
+        text_col=get_text_col(df_work)
 
-    # ------ TAB 4 : ANOMALIES (MODIFIÉ) ------
-    with tab4:
-        st.markdown('<div class="stl a">⚠️ Anomalies — Nombre d\'OT / Avis hors cible par Poste</div>', unsafe_allow_html=True)
-        st.markdown('<p style="font-size:12px;color:#718096;margin:0 0 8px 10px">Valeurs numeriques = nombre d\'OT ou d\'avis en anomalie pour chaque KPI. Cases vides (—) = KPIs non applicables.</p>', unsafe_allow_html=True)
-
-        # Tableau Anomalies PERFORMANCE (QK) — Postes en lignes, KPIs en colonnes
-        st.markdown(html_ano_inverted(ano_counts, QK, posts, "at", "⚠️ Anomalies Performance — Nombre d'OT hors cible"), unsafe_allow_html=True)
-
-        # Tableau Anomalies QUALITÉ (PK) — Postes en lignes, KPIs en colonnes
-        st.markdown(html_ano_inverted(ano_counts, PK, posts, "at", "⚠️ Anomalies Qualite — Nombre d'OT / Avis hors cible"), unsafe_allow_html=True)
-
-        # Légende
-        st.markdown("""<div class="ca" style="margin-top:8px">
-        <div class="ct" style="color:#718096">Legende du coloriage</div>
-        <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px">
-            <span><span style="display:inline-block;width:18px;height:18px;background:#c6efce;border-radius:3px;vertical-align:middle;margin-right:4px"></span> <b>0</b> — Aucune anomalie</span>
-            <span><span style="display:inline-block;width:18px;height:18px;background:#ffeb9c;border-radius:3px;vertical-align:middle;margin-right:4px"></span> <b>1-3</b> — Anomalies mineures</span>
-            <span><span style="display:inline-block;width:18px;height:18px;background:#fed7d7;border-radius:3px;vertical-align:middle;margin-right:4px"></span> <b>4-10</b> — Anomalies moderees</span>
-            <span><span style="display:inline-block;width:18px;height:18px;background:#fc8181;border-radius:3px;vertical-align:middle;margin-right:4px"></span> <b>&gt;10</b> — Anomalies critiques</span>
-            <span><span style="display:inline-block;width:18px;height:18px;border:1px solid #cbd5e0;border-radius:3px;vertical-align:middle;margin-right:4px"></span> <b>—</b> — Non applicable (vide)</span>
-        </div>
-        <div style="margin-top:6px;font-size:11px;color:#718096">
-        <b>Detail par KPI :</b><br>
-        • Taux Real. Corr./PT : OT non clôturés (CRE + LANC)<br>
-        • Prep./Planif./Exec. &lt;1 mois : OT avec age ≥ 1 mois<br>
-        • Prep./Planif./Exec. &gt;3 mois : OT avec age &gt; 3 mois<br>
-        • Prep./Planif./Exec. 1-3 mois : OT avec age entre 1 et 3 mois<br>
-        • OT Lanc. Estime : OT lances sans cout estime<br>
-        • Backlog Prep./Planif. Car. : OT non caracterises<br>
-        • OT Confirme : OT non confirmes<br>
-        • OT Couts Egaux : OT avec ecart de couts<br>
-        • Avis Approuve : Avis non approuves (APRQ + REJT)<br>
-        • OT Fiabilite : Toujours 0 (100% fixe)<br>
-        • Perf. Graissage/Inspection/App. Syst. & Total Avis Panne : Non applicable
-        </div></div>""", unsafe_allow_html=True)
-
-        # Export Excel des anomalies
-        st.markdown('<div class="stl c">Export Excel</div>', unsafe_allow_html=True)
-        ano_p_cols = ["Poste de travail"] + [k for k in QK]
-        ano_p_rows = []
-        for p in posts:
-            r = {"Poste de travail": p}
-            for k in QK:
-                val = ano_counts.get(k, {}).get(p)
-                r[k] = val if val is not None else ""
-            ano_p_rows.append(r)
-        total_ano_p = {"Poste de travail": "Total"}
-        for k in QK:
-            if k in ANO_EMPTY_KPI:
-                total_ano_p[k] = ""
-            else:
-                total_ano_p[k] = sum(ano_counts.get(k, {}).get(p, 0) for p in posts if ano_counts.get(k, {}).get(p) is not None)
-        ano_p_rows.append(total_ano_p)
-
-        ano_q_cols = ["Poste de travail"] + [k for k in PK]
-        ano_q_rows = []
-        for p in posts:
-            r = {"Poste de travail": p}
-            for k in PK:
-                val = ano_counts.get(k, {}).get(p)
-                r[k] = val if val is not None else ""
-            ano_q_rows.append(r)
-        total_ano_q = {"Poste de travail": "Total"}
-        for k in PK:
-            if k in ANO_EMPTY_KPI:
-                total_ano_q[k] = ""
-            else:
-                total_ano_q[k] = sum(ano_counts.get(k, {}).get(p, 0) for p in posts if ano_counts.get(k, {}).get(p) is not None)
-        ano_q_rows.append(total_ano_q)
-
-        if st.button("📥 Exporter les indicateurs et anomalies vers Excel", key="btn_export_ano"):
-            save_kpis_to_excel(
-                p_rows, p_cols, q_rows, q_cols,
-                ano_p_rows, ano_p_cols, ano_q_rows, ano_q_cols,
-                fichier_date
-            )
-            st.success("Fichier exporte dans kpis/indicateurs_kpis.xlsx")
-
-    # ------ TAB 5 : SUIVI & ÉVOLUTION ------
-    with tab5:
-        st.markdown('<div class="stl s">Suivi & Evolution</div>', unsafe_allow_html=True)
-        kpis_dir = "kpis"
-        hist_path = os.path.join(kpis_dir, "indicateurs_kpis.xlsx")
-        if os.path.exists(hist_path):
-            hist_df = load_historical_kpis(hist_path)
-            if hist_df.empty:
-                st.markdown('<div class="es">Pas assez d\'historique pour calculer les variations (minimum 2 dates).</div>', unsafe_allow_html=True)
-            else:
-                var_df = calculate_variations(hist_df)
-                if var_df.empty:
-                    st.markdown('<div class="es">Pas de variations calculees.</div>', unsafe_allow_html=True)
-                else:
-                    journal_df = generate_journal(var_df)
-                    if journal_df.empty:
-                        st.markdown('<div class="es">Aucune variation significative (≥5%) detectee.</div>', unsafe_allow_html=True)
-                    else:
-                        st.markdown('<div class="ca"><div class="ct">Journal des Variations Significatives (≥5%)</div>', unsafe_allow_html=True)
-                        st.dataframe(journal_df[["Date precedente","Date actuelle","Poste","Type","KPI","Valeur precedente","Valeur actuelle","Ecart %","Sens"]].reset_index(drop=True), use_container_width=True, hide_index=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
-
-                    # Synthèse entre deux dates
-                    dates_list = sorted(hist_df["Date"].unique())
-                    if len(dates_list) >= 2:
-                        c1, c2 = st.columns(2)
-                        with c1:
-                            sel_prev = st.selectbox("Date precedente", dates_list, index=len(dates_list)-2, key="sel_prev")
-                        with c2:
-                            sel_curr = st.selectbox("Date actuelle", dates_list, index=len(dates_list)-1, key="sel_curr")
-                        if sel_prev != sel_curr:
-                            for sec_name, sec_filter, kpi_list_disp in [("Performance", "perf", QK), ("Qualite", "qual", PK)]:
-                                st.markdown('<div class="stl %s">Synthese %s : %s → %s</div>' % ("p" if sec_name=="Performance" else "q", sec_name, sel_prev, sel_curr), unsafe_allow_html=True)
-                                sec_df = hist_df[hist_df["_section"]==sec_filter]
-                                prev_d = sec_df[sec_df["Date"]==sel_prev]
-                                curr_d = sec_df[sec_df["Date"]==sel_curr]
-                                synth_data = {}
-                                for p in posts:
-                                    synth_data[p] = {}
-                                    pr_row = prev_d[prev_d["Poste de travail"]==p]
-                                    cu_row = curr_d[curr_d["Poste de travail"]==p]
-                                    for kpi in kpi_list_disp:
-                                        pv = float(pr_row[kpi].values[0]) if len(pr_row)>0 and kpi in pr_row.columns else None
-                                        cv = float(cu_row[kpi].values[0]) if len(cu_row)>0 and kpi in cu_row.columns else None
-                                        if pv is not None and cv is not None:
-                                            diff = cv - pv
-                                            if abs(diff) <= 0.5: trend = "Stable"
-                                            elif diff > 0.5: trend = "Amelioration" if kpi not in LOWER_BETTER else "Degradation"
-                                            else: trend = "Degradation" if kpi not in LOWER_BETTER else "Amelioration"
-                                            synth_data[p][kpi] = {"prev": round(pv,1), "curr": round(cv,1), "diff": "%+.1f" % diff, "trend": trend}
-                                st.markdown(html_synthese_table(synth_data, kpi_list_disp, posts, sec_name), unsafe_allow_html=True)
+        # --- OT OMS (Type 360 = Appels Systematiques) ---
+        st.markdown('<div class="backlog-section"><div class="bs-title om">🔧 OT OMS (Ordres de Maintenance Systematique — Type 360)</div>',unsafe_allow_html=True)
+        df_oms=df_work[df_work["_tw_num"]==360] if "_tw_num" in df_work.columns else pd.DataFrame()
+        piv_oms=build_statut_pivot(df_oms, posts)
+        st.markdown(html_statut_pivot(piv_oms, "omt"),unsafe_allow_html=True)
+        if piv_oms["Total"].sum()>0:
+            show_improved_pie_pair(piv_oms, "OT OMS")
         else:
-            st.markdown('<div class="es">Aucun fichier historique trouve dans kpis/indicateurs_kpis.xlsx.<br>Exportez les indicateurs depuis l\'onglet Anomalies pour commencer le suivi.</div>', unsafe_allow_html=True)
+            c1,c2=st.columns(2)
+            with c1: st.markdown('<div class="es">Aucun OT OMS</div>',unsafe_allow_html=True)
+            with c2: st.markdown('<div class="es">Aucun OT OMS</div>',unsafe_allow_html=True)
+        st.markdown('</div>',unsafe_allow_html=True)
 
-    # ------ TAB 6 : CHANGELOG ------
-    with tab6:
-        st.markdown('<div class="stl c">Historique des versions</div>', unsafe_allow_html=True)
-        h = '<div class="evol-timeline">'
-        for entry in CHANGELOG:
-            h += '<div class="evol-item">'
-            h += '<div class="evol-ver">Version %s</div>' % entry["version"]
-            h += '<div class="evol-date">%s</div>' % entry["date"]
-            for change in entry["changes"]:
-                h += '<div class="evol-change">%s</div>' % change
-            h += '</div>'
-        h += '</div>'
-        st.markdown(h, unsafe_allow_html=True)
+        # --- OT Thermographie ---
+        st.markdown('<div class="backlog-section"><div class="bs-title th">🌡️ OT Thermographie</div>',unsafe_allow_html=True)
+        df_thermo=pd.DataFrame()
+        if text_col:
+            mask_thermo=df_work[text_col].astype(str).str.contains("THERMO|THERMOGRAPHIE|INFRAROUGE|IR ",case=False,na=False)
+            df_thermo=df_work[mask_thermo]
+        piv_thermo=build_statut_pivot(df_thermo, posts)
+        st.markdown(html_statut_pivot(piv_thermo, "tht"),unsafe_allow_html=True)
+        if piv_thermo["Total"].sum()>0:
+            show_improved_pie_pair(piv_thermo, "OT Thermographie")
+        else:
+            c1,c2=st.columns(2)
+            with c1: st.markdown('<div class="es">Aucun OT Thermographie</div>',unsafe_allow_html=True)
+            with c2: st.markdown('<div class="es">Aucun OT Thermographie</div>',unsafe_allow_html=True)
+        st.markdown('</div>',unsafe_allow_html=True)
 
+        # --- Tous les OT ---
+        st.markdown('<div class="backlog-section"><div class="bs-title to">📋 Tous les OT</div>',unsafe_allow_html=True)
+        piv_all=build_statut_pivot(df_work, posts)
+        st.markdown(html_statut_pivot(piv_all, "tot"),unsafe_allow_html=True)
+        if piv_all["Total"].sum()>0:
+            show_improved_pie_pair(piv_all, "Tous les OT")
+        else:
+            c1,c2=st.columns(2)
+            with c1: st.markdown('<div class="es">Aucun OT</div>',unsafe_allow_html=True)
+            with c2: st.markdown('<div class="es">Aucun OT</div>',unsafe_allow_html=True)
+        st.markdown('</div>',unsafe_allow_html=True)
+
+        # --- Pie chart comparatif global ---
+        st.markdown('<p class="stl c">Vue Comparative — Repartition Globale</p>',unsafe_allow_html=True)
+        all_data={
+            "OT OMS (Type 360)": int(piv_oms["Total"].sum()),
+            "OT Thermographie": int(piv_thermo["Total"].sum()),
+            "Autres OT": int(piv_all["Total"].sum()) - int(piv_oms["Total"].sum()) - int(piv_thermo["Total"].sum())
+        }
+        all_data={k:v for k,v in all_data.items() if v>0}
+        if all_data:
+            THRESH=5.0
+            total_all=sum(all_data.values())
+            al_l,al_v,al_p=[],[],[]
+            oth=0
+            for l,v in all_data.items():
+                p=v/total_all*100
+                if p<THRESH: oth+=v
+                else: al_l.append(l); al_v.append(v); al_p.append(p)
+            if oth>0: al_l.append("Autres"); al_v.append(oth); al_p.append(oth/total_all*100)
+            comp_colors=["#805ad5","#e53e3e","#3182ce","#d69e2e","#38a169","#a0aec0"]
+            min_ci=al_p.index(min(al_p))
+            pull_c=[0.06 if i==min_ci else 0 for i in range(len(al_l))]
+            fig_comp=go.Figure(go.Pie(labels=al_l,values=al_v,
+                marker_colors=comp_colors[:len(al_l)],pull=pull_c,
+                textposition='inside',textinfo='label+percent+value',textfont_size=12,hole=0.4,
+                hovertemplate='<b>%%{label}</b><br>Nombre: %%{value}<br>Pourcentage: %%{percent}<extra></extra>'))
+            fig_comp.update_layout(title=dict(text="Repartition par Categorie d'OT",font=dict(size=15,fontweight='bold')),
+                margin=dict(t=55,b=10,l=10,r=10),height=400,
+                legend=dict(font_size=12,orientation="h",yanchor="bottom",y=-0.12))
+            st.plotly_chart(fig_comp,use_container_width=True)
+
+    # ---- TAB SUIVI & EVOLUTION ----
+    with tabs[5]:
+        st.markdown('<p class="stl s">Suivi & Evolution des KPI</p>',unsafe_allow_html=True)
+        kpis_dir="kpis"; filepath=os.path.join(kpis_dir,"indicateurs_kpis.xlsx")
+        if os.path.exists(filepath):
+            hist_df=load_historical_kpis(filepath)
+            if hist_df.empty:
+                st.markdown('<div class="es">Aucune donnee historique trouvee. Exportez les KPIs pour commencer le suivi.</div>',unsafe_allow_html=True)
+            else:
+                dates_avail=sorted(hist_df["Date"].unique())
+                c_sel=st.columns(2)
+                with c_sel[0]: d1=st.selectbox("Date precedente",dates_avail,index=max(0,len(dates_avail)-2),key="d1")
+                with c_sel[1]: d2=st.selectbox("Date actuelle",dates_avail,index=len(dates_avail)-1,key="d2")
+                if d1==d2: st.warning("Selectionnez deux dates differentes.")
+                else:
+                    var_df=calculate_variations(hist_df)
+                    if var_df.empty:
+                        st.markdown('<div class="es">Aucune variation calculee entre ces dates.</div>',unsafe_allow_html=True)
+                    else:
+                        filt_var=var_df[(var_df["Date precedente"]==d1)&(var_df["Date actuelle"]==d2)]
+                        if filt_var.empty:
+                            st.markdown('<div class="es">Aucune donnee pour ces dates.</div>',unsafe_allow_html=True)
+                        else:
+                            # Synthese Performance
+                            st.markdown('<p class="stl p">Synthese Performance</p>',unsafe_allow_html=True)
+                            synth_p={}
+                            for _,r in filt_var[filt_var["Type"]=="Performance"].iterrows():
+                                p=r["Poste"]; k=r["KPI"]
+                                if p not in synth_p: synth_p[p]={}
+                                sens="Amelioration" if ((r["Tendance"]=="hausse" and k not in LOWER_BETTER) or (r["Tendance"]=="baisse" and k in LOWER_BETTER)) else ("Degradation" if r["Tendance"]!="stabilite" else "Stable")
+                                synth_p[p][k]={"prev":r["Valeur precedente"],"curr":r["Valeur actuelle"],"evol":{"sens":sens,"ecart":"%+.1f"%r["Ecart %"]}}
+                            st.markdown(html_synthese_table(synth_p,QK,posts,"perf"),unsafe_allow_html=True)
+                            # Synthese Qualite
+                            st.markdown('<p class="stl q">Synthese Qualite</p>',unsafe_allow_html=True)
+                            synth_q={}
+                            for _,r in filt_var[filt_var["Type"]=="Qualite"].iterrows():
+                                p=r["Poste"]; k=r["KPI"]
+                                if p not in synth_q: synth_q[p]={}
+                                sens="Amelioration" if ((r["Tendance"]=="hausse" and k not in LOWER_BETTER) or (r["Tendance"]=="baisse" and k in LOWER_BETTER)) else ("Degradation" if r["Tendance"]!="stabilite" else "Stable")
+                                synth_q[p][k]={"prev":r["Valeur precedente"],"curr":r["Valeur actuelle"],"evol":{"sens":sens,"ecart":"%+.1f"%r["Ecart %"]}}
+                            st.markdown(html_synthese_table(synth_q,PK,posts,"qual"),unsafe_allow_html=True)
+                            # Journal
+                            journ=generate_journal(filt_var)
+                            if not journ.empty:
+                                st.markdown('<p class="stl a">Journal des Evolutions Significatives (|ecart| >= 5%%)</p>',unsafe_allow_html=True)
+                                jcols=["Poste","Type","KPI","Valeur precedente","Valeur actuelle","Ecart %","Sens"]
+                                jrows=[]
+                                for _,r in journ.iterrows():
+                                    jrows.append({"Poste":r["Poste"],"Type":r["Type"],"KPI":r["KPI"],
+                                        "Valeur precedente":"%.1f%%"%r["Valeur precedente"],"Valeur actuelle":"%.1f%%"%r["Valeur actuelle"],
+                                        "Ecart %":"%+.1f%%"%r["Ecart %"],"Sens":r["Sens"],"_t":""})
+                                st.markdown(html_table(jrows,jcols,"st"),unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="es">Aucune donnee historique. Exportez les KPIs pour commencer le suivi.</div>',unsafe_allow_html=True)
+
+    # ---- TAB CHANGELOG ----
+    with tabs[6]:
+        st.markdown('<p class="stl c">Historique des Versions & Ameliorations</p>',unsafe_allow_html=True)
+        h='<div class="evol-timeline">'
+        for ver in CHANGELOG:
+            h+='<div class="evol-item"><div class="evol-ver">Version %s</div><div class="evol-date">%s</div>'%(ver["version"],ver["date"])
+            for ch in ver["changes"]:
+                h+='<div class="evol-change">%s</div>'%ch
+            h+='</div>'
+        h+='</div>'
+        st.markdown(h,unsafe_allow_html=True)
+
+    # ================================================================
+    # EXCEL EXPORT
+    # ================================================================
+    if exp_excel:
+        pcols_x=["Poste de travail"]+QK+["Score Performance"]
+        prows_x=[{"Poste de travail":p,**{k:"%.1f%%"%ckdf.loc[p,k] for k in QK},"Score Performance":"%.2f%%"%pscores[p]} for p in posts]
+        prows_x.append({"Poste de travail":"CIBLE",**{k:"%.0f%%"%CIBLE.get(k,100) for k in QK},"Score Performance":"80.00%"})
+        prows_x.append({"Poste de travail":"Moyenne",**{k:"%.1f%%"%float(ckdf[k].mean()) for k in QK},"Score Performance":"%.2f%%"%avg_p})
+        qcols_x=["Poste de travail"]+PK+["Score Qualite"]
+        qrows_x=[{"Poste de travail":p,**{k:"%.1f%%"%ckdf.loc[p,k] for k in PK},"Score Qualite":"%.2f%%"%qscores[p]} for p in posts]
+        qrows_x.append({"Poste de travail":"CIBLE",**{k:"%.0f%%"%CIBLE.get(k,100) for k in PK},"Score Qualite":"80.00%"})
+        qrows_x.append({"Poste de travail":"Moyenne",**{k:"%.1f%%"%float(ckdf[k].mean()) for k in PK},"Score Qualite":"%.2f%%"%avg_q})
+        # Anomalies inversees pour Excel
+        ano_p_cols=["Poste de travail"]+QK+["Total"]
+        ano_p_rows=[{"Poste de travail":p,**{k:ano_perf[k].get(p,0) for k in QK},"Total":sum(ano_perf[k].get(p,0) for k in QK)} for p in posts]
+        ano_p_rows.append({"Poste de travail":"Total",**{k:sum(ano_perf[k].get(pp,0) for pp in posts) for k in QK},"Total":tot_ano_p})
+        ano_q_cols=["Poste de travail"]+PK+["Total"]
+        ano_q_rows=[{"Poste de travail":p,**{k:ano_qual[k].get(p,0) for k in PK},"Total":sum(ano_qual[k].get(p,0) for k in PK)} for p in posts]
+        ano_q_rows.append({"Poste de travail":"Total",**{k:sum(ano_qual[k].get(pp,0) for pp in posts) for k in PK},"Total":tot_ano_q})
+        save_kpis_to_excel(prows_x,pcols_x,qrows_x,qcols_x,ano_p_rows,ano_p_cols,ano_q_rows,ano_q_cols,fichier_date)
+        st.toast("✅ Export Excel effectue!")
+
+# ============================================================
 if __name__ == "__main__":
     main()

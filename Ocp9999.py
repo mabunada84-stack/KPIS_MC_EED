@@ -151,7 +151,6 @@ def prepare_data(ot_bytes, av_bytes, date_str):
     
     df = raw_ot.copy()
     
-    # Heavy feature engineering
     df["Backlog preparation"]=np.where(df["Statut utilisateur"].apply(lambda x:contient_mot(x,MP_KW)),"CARACTERISE","NON CARACTERISE")
     df["Backlog planification"]=np.where(df["Statut utilisateur"].apply(lambda x:contient_mot(x,MPLAN_KW)),"CARACTERISE","NON CARACTERISE")
     df["Type Carac Prep"]=df["Statut utilisateur"].apply(lambda x: next((kw for kw in MP_KW if kw in str(x)), "NON CARACTERISE"))
@@ -295,10 +294,13 @@ def inject_custom_css():
     .stApp{background:#edf2f7;font-family:'Inter',sans-serif}
     .main .block-container{padding-top:.8rem;padding-bottom:.8rem}
     .stTabs,.stTabs>div,.stTabs [data-baseweb="tab-list"]{width:100%!important;max-width:100%!important}
-    .mh{background:linear-gradient(135deg,var(--p),var(--pl));padding:10px 20px;border-radius:var(--r);margin-bottom:6px;box-shadow:0 6px 20px rgba(0,0,0,.1);overflow:hidden;display:flex;align-items:center;gap:12px}
-    .mh h1{color:#fff;font-size:27px;font-weight:800;margin:0;display:inline;flex:1}
-    .mh .logo{height:47px;width:auto;max-width:140px;object-fit:contain;flex-shrink:0;border-radius:4px}
-    .mh .db{background:rgba(255,255,255,.15);padding:3px 12px;border-radius:14px;color:#fff;font-size:14px;font-weight:500;border:1px solid rgba(255,255,255,.2);white-space:nowrap;flex-shrink:0}
+    
+    /* ===== TITRE ET DATE GRANDIS (3x) ===== */
+    .mh{background:linear-gradient(135deg,var(--p),var(--pl));padding:15px 30px;border-radius:var(--r);margin-bottom:6px;box-shadow:0 6px 20px rgba(0,0,0,.1);overflow:hidden;display:flex;align-items:center;gap:15px}
+    .mh h1{color:#fff;font-size:60px;font-weight:900;margin:0;display:inline;flex:1;line-height:1.2}
+    .mh .logo{height:80px;width:auto;max-width:160px;object-fit:contain;flex-shrink:0;border-radius:4px}
+    .mh .db{background:rgba(255,255,255,.15);padding:8px 24px;border-radius:14px;color:#fff;font-size:32px;font-weight:700;border:1px solid rgba(255,255,255,.2);white-space:nowrap;flex-shrink:0}
+    
     .cr{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:6px}
     .cc{background:#fff;border-radius:var(--r);padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.04);border:1px solid var(--b);text-align:center}
     .cc .cv{font-size:26px;font-weight:900;line-height:1}
@@ -392,8 +394,35 @@ def inject_custom_css():
     .gbr:last-child{border:none}
     .gbr-l{width:160px;font-weight:600;color:#1a202c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
     .gbr-g{display:flex;align-items:center;gap:4px;flex:1;position:relative}
-    .gbr-target{position:absolute;left:90%;top:-4px;bottom:-4px;width:3px;background:#e53e3e;z-index:10;box-shadow:0 0 6px rgba(229,62,62,.8);border-radius:2px}
-    .gbr-target-label{position:absolute;left:90%;top:-20px;transform:translateX(-50%);font-size:9px;font-weight:800;color:#fff;background:#e53e3e;padding:1px 5px;border-radius:3px;white-space:nowrap;z-index:11;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+    
+    /* ===== LIGNE CIBLE BLEUE RENDUE VISIBLE ===== */
+    .gbr-target{
+        position:absolute;
+        left:90%;
+        top:-8px;
+        bottom:-8px;
+        width:4px;
+        background:#e53e3e;
+        z-index:15;
+        box-shadow:0 0 8px rgba(229,62,62,1);
+        border-radius:2px;
+    }
+    .gbr-target-label{
+        position:absolute;
+        left:90%;
+        top:-24px;
+        transform:translateX(-50%);
+        font-size:13px;
+        font-weight:800;
+        color:#fff;
+        background:#e53e3e;
+        padding:2px 8px;
+        border-radius:4px;
+        white-space:nowrap;
+        z-index:16;
+        box-shadow:0 2px 4px rgba(0,0,0,.3);
+    }
+    
     .gbr-w{flex:1;height:22px;background:#edf2f7;border-radius:3px;overflow:hidden}
     .gbr-f{height:100%;border-radius:3px}
     .gb-p{background:linear-gradient(90deg,#2b6cb0,#4299e1)}.gb-q{background:linear-gradient(90deg,#276749,#48bb78)}
@@ -414,9 +443,9 @@ def inject_custom_css():
     .stButton>button[kind="primary"]{background:linear-gradient(135deg,var(--p),var(--pl));border:none;border-radius:6px;padding:8px 14px;font-weight:700;font-size:15px;width:100%}
     ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:#f1f1f1}::-webkit-scrollbar-thumb{background:#cbd5e0;border-radius:3px}
     
-    /* ===== SIDEBAR BACKGROUND BLEU ===== */
+    /* ===== SIDEBAR BACKGROUND BLEU AD OUCI ===== */
     div[data-testid="stSidebar"]{
-        background:linear-gradient(180deg,#1e40af 0%,#1e3a8a 50%,#1e3a5f 100%)!important;
+        background:linear-gradient(180deg,#3b82f6 0%,#2563eb 50%,#1e40af 100%)!important;
     }
     div[data-testid="stSidebar"]*{color:rgba(255,255,255,.9)!important}
     div[data-testid="stSidebar"] .stSelectbox label,div[data-testid="stSidebar"] .stMultiSelect label,div[data-testid="stSidebar"] .stDateInput label,div[data-testid="stSidebar"] .stCheckbox label,div[data-testid="stSidebar"] .stTextInput label{color:rgba(255,255,255,.9)!important;font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.5px}
@@ -432,14 +461,13 @@ def inject_custom_css():
     .synth-tbl .poste-cell{text-align:left;font-weight:700;white-space:nowrap;min-width:140px;color:#1a202c !important}
     div[data-testid="stHorizontalBlock"]{align-items:center!important}
     
-    /* ===== SUPPRIMER LES ICONES DU TOOLBAR (Share, star, pencil, refresh) ===== */
+    /* ===== SUPPRIMER LES ICONES DU TOOLBAR ===== */
     header[data-testid="stHeader"] [data-testid="stToolbar"]{display:none !important;}
     [data-testid="stHeaderActionElements"]{display:none !important;}
     [data-testid="stActionButtonContainer"]{display:none !important;}
     [data-testid="stHeader"] [data-testid="stToolbar"]{display:none !important;}
     #stAppViewblockContainer > header button[kind="header"]{display:none !important;}
     
-    /* Footer */
     .footer {
         text-align: center;
         margin-top: 30px;
@@ -450,13 +478,12 @@ def inject_custom_css():
         font-weight: 600;
     }
 
-    /* Mobile Responsiveness Improvements */
     @media(max-width:768px){
         .cr{grid-template-columns:repeat(2,1fr)}
         .mh{padding:8px 10px;gap:8px}
-        .mh h1{font-size:18px}
-        .mh .logo{height:35px;max-width:70px}
-        .mh .db{font-size:11px;padding:2px 8px}
+        .mh h1{font-size:24px}
+        .mh .logo{height:40px;max-width:80px}
+        .mh .db{font-size:14px;padding:4px 10px}
         .cg,.dgrid{grid-template-columns:1fr}
         .car{flex-wrap:wrap;gap:2px}
         .car .cal{width:100%;text-align:left;padding-right:0;margin-bottom:2px}
@@ -572,8 +599,6 @@ def main():
             st.markdown('<div class="es">Aucune donnee</div>',unsafe_allow_html=True)
 
     def show_simple_pie(piv_df, title, keep_non_carac=False):
-        # Si keep_non_carac=True (Répartition Globale), on garde NON CARACTERISE
-        # Si keep_non_carac=False (Répartition par Type), on l'exclut
         if not keep_non_carac and "NON CARACTERISE" in piv_df.columns:
             piv_df = piv_df.drop(columns=["NON CARACTERISE"])
         counts = piv_df.sum()
@@ -596,7 +621,6 @@ def main():
         else:
             st.markdown('<div class="es">Aucune donnee</div>', unsafe_allow_html=True)
 
-    # LIGHTWEIGHT CALC_KPIS (only fast groupbys on pre-filtered data)
     def calc_kpis(df_i, av_i, now_ts, posts):
         res={}; df=df_i.copy(); av=av_i.copy()
         res['dfp']=df
@@ -788,9 +812,10 @@ def main():
         h='<div class="ca"><div class="ct" style="color:#1e3a5f">%s</div>'%title
         h+='<div class="gbr-legend"><span><i style="background:linear-gradient(90deg,#2b6cb0,#4299e1)"></i> Performance</span><span><i style="background:linear-gradient(90deg,#276749,#48bb78)"></i> Qualite</span><span><span class="target-icon"></span> Cible 90%%</span></div>'
         sorted_posts = sorted(posts,key=lambda x:(pscores.get(x,0)+qscores.get(x,0))/2,reverse=True)
-        for idx,p in enumerate(sorted_posts):
+        for p in sorted_posts:
             pv,qv=pscores.get(p,0),qscores.get(p,0)
-            label_html = '<div class="gbr-target-label">90%%</div>' if idx==0 else ''
+            # Affichage de l'étiquette cible 90% sur toutes les lignes pour bien la voir
+            label_html = '<div class="gbr-target-label">90%%</div>'
             h+='<div class="gbr"><div class="gbr-l">%s</div><div class="gbr-g"><div class="gbr-target"></div>%s<div class="gbr-w"><div class="gbr-f gb-p" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div><div class="gbr-w"><div class="gbr-f gb-q" style="width:%s%%"></div></div><div class="gbr-v">%.1f%%</div></div></div>'%(p,label_html,min(max(pv,0),100),pv,min(max(qv,0),100),qv)
         return h+'</div>'
         
@@ -852,7 +877,6 @@ def main():
 
     # ===================== SIDEBAR =====================
     with st.sidebar:
-        # Replaced Text with Logo (agrandi 2.5x par rapport à 80px -> 200px)
         logo_b64 = get_logo_base64()
         if logo_b64:
             st.markdown('<div style="display:flex;justify-content:center;padding:10px 0 15px 0;border-bottom:1px solid rgba(255,255,255,0.1);margin-bottom:10px;"><img src="data:image/png;base64,%s" style="max-width:100%%;height:auto;max-height:200px;object-fit:contain;border-radius:4px;"></div>'%logo_b64,unsafe_allow_html=True)
@@ -864,7 +888,6 @@ def main():
             st.rerun()
 
         if st.button("🖥️ Mode Présentation (Slide/PDF)", use_container_width=True):
-            # Utilisation de components.html pour forcer l'impression
             components.html("<script>window.print();</script>", height=0, width=0)
             
         show_filters=st.checkbox("Afficher les filtres",value=True,key="show_filters")
@@ -897,8 +920,11 @@ def main():
                 st.markdown("""<div style="background:rgba(255,255,255,.1);padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.15)"><div style="font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Donnees</div><div style="font-size:14px;color:white;font-weight:600;margin-top:2px">📅 %s</div></div>"""%fichier_date,unsafe_allow_html=True)
             st.markdown("---"); st.markdown("**🎯 Postes**")
             sp=st.multiselect("Poste",["All"]+apm,["All"],key="sp")
+            
+            # Ajout de l'atelier CU ici
             st.markdown("**🏭 Atelier**")
-            sa=st.multiselect("Atelier",["All","Sulfurique (PS)","Phosphorique (PP)","Engrais (TSP/REX)","Feed (MCP/DCP)"],["All"],key="sa")
+            sa=st.multiselect("Atelier",["All","Sulfurique (PS)","Phosphorique (PP)","Engrais (TSP/REX)","Feed (MCP/DCP)","Centrale et Utilitaires(CU)"],["All"],key="sa")
+            
             st.markdown("**🏢 Division**")
             sd=st.multiselect("Division",["All","SF1","SF2"],["All"],key="sd")
             st.markdown("---"); st.markdown("**📅 Periode**")
@@ -910,7 +936,6 @@ def main():
     # ===================== APPLY FAST FILTERS & CALCULATIONS =====================
     if not df_full.empty:
         try:
-            # If new files were uploaded, we re-run prepare_data to cache them
             if unf and ot_f is not None and av_f is not None:
                 df_full, av_full, apm, now_ts = prepare_data(ot_f.getvalue(), av_f.getvalue(), fichier_date)
                 
@@ -928,6 +953,8 @@ def main():
                     if "Phosphorique (PP)" in sa and "PP" in p: m=True
                     if "Engrais (TSP/REX)" in sa and ("TSP" in p or "REX" in p): m=True
                     if "Feed (MCP/DCP)" in sa and ("MCP" in p or "DCP" in p): m=True
+                    # Equation 5: Centrale et Utilitaires
+                    if "Centrale et Utilitaires(CU)" in sa and "CU" in p: m=True
                     if not m: return False
                 if "All" not in sd:
                     m=False
@@ -938,7 +965,6 @@ def main():
 
             vp=[p for p in apm if mf(p) and p in sp]
             
-            # Fast pandas filtering
             df = df_full[(df_full["Poste travail princ."].isin(vp)) & (df_full["Date de début planifiée"].between(sdt,edt))].copy()
             avdf = av_full[av_full["Poste travail princ."].isin(vp)].copy()
             if "Créé le" in avdf.columns:
@@ -947,7 +973,6 @@ def main():
             df_dash = df_full[df_full["Poste travail princ."].isin(vp)].copy()
             avdf_dash = av_full[av_full["Poste travail princ."].isin(vp)].copy()
             
-            # Fast KPI calculations
             res = calc_kpis(df, avdf, now_ts, vp)
             res_d = calc_kpis(df_dash, avdf_dash, now_ts, vp)
 
@@ -966,7 +991,6 @@ def main():
             sf2_p_score = np.mean([pscores[p] for p in sf2_posts]) if sf2_posts else 0
             sf2_q_score = np.mean([qscores[p] for p in sf2_posts]) if sf2_posts else 0
 
-            # ANOMALIES
             ano_map = {}
             ano_map["TAUX_REALISATION_CORRECTIF/PT"] = dfp[(dfp["Nº appel pl.entret."].fillna(0)==0)&(dfp["Contient SOPL"]==1)&(~dfp["Statut OT"].isin(["CLOT","TCLO"]))].groupby("Poste travail princ.")["Ordre"].count()
             prep_filt = (dfp["Statut OT"]=="CRÉÉ")&(dfp["Statut utilisateur"].str.contains("CRPR",na=False))
@@ -1035,7 +1059,6 @@ def main():
             tot_row_q["Total Anomalies"] = tot_tot
             ano_q_rows.append(tot_row_q)
 
-            # ANOMALIES DETAILED EXPORT
             anomaly_dfs = {}
             anomaly_dfs["TAUX_REALISATION_CORRECTIF/PT"] = dfp[(dfp["Nº appel pl.entret."].fillna(0)==0)&(dfp["Contient SOPL"]==1)&(~dfp["Statut OT"].isin(["CLOT","TCLO"]))].copy()
             anomaly_dfs["OT préparation <1 mois"] = dfp[prep_filt & (dfp["ap"]!="<1 mois")].copy()
@@ -1080,7 +1103,6 @@ def main():
                 buf_anom.seek(0)
                 st.sidebar.download_button("📥 Exporter Anomalies (Excel)", data=buf_anom, file_name="anomalies_kpis.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-            # TABLE ROWS
             pcols=["Poste de travail"]+QK+["Score Performance"]
             qcols=["Poste de travail"]+PK+["Score Qualite"]
             prows=[]; qrows=[]
@@ -1110,7 +1132,6 @@ def main():
             tot_q["Score Qualite"]="%.2f"%(sum(qscores.values())/len(qscores)) if qscores else "0.00"
             qrows.append({"_t":"total",**tot_q})
 
-            # BACKLOG PIVOTS
             prep_backlog_df = dfp[dfp["Statut OT"]=="CRÉÉ"].copy()
             plan_backlog_df = dfp[dfp["Statut OT"]=="LANC"].copy()
             
@@ -1122,7 +1143,6 @@ def main():
             plan_carac_df = plan_backlog_df[plan_backlog_df["Backlog planification"]=="CARACTERISE"]
             piv_carac_plan_type = pd.pivot_table(plan_carac_df, index="Poste travail princ.", columns="Type Carac Plan", values="Ordre", aggfunc="count", fill_value=0).reindex(vp, fill_value=0)
 
-            # PIVOTS OMS / THERMO / ALL
             text_col=get_text_col(dfp)
             oms_df_sub=dfp[dfp[text_col].astype(str).str.contains("OMS",case=False,na=False)] if text_col else pd.DataFrame()
             thm_df_sub=dfp[dfp[text_col].astype(str).str.contains("THERMO|THERMOGRAPH",case=False,na=False)] if text_col else pd.DataFrame()
@@ -1140,7 +1160,6 @@ def main():
             journal_df=generate_journal(var_df)
             top5_df,bot5_df=calculate_rankings(var_df)
 
-            # SYNTHESE DATA
             synth_perf={}; synth_qual={}
             if not var_df.empty and "Date precedente" in var_df.columns:
                 for poste in vp:
@@ -1161,7 +1180,6 @@ def main():
                         else:
                             synth_qual[poste][kpi]={"diff":"—"}
 
-            # RENDER
             avg_p_score=sum(pa.values())/len(pa) if pa else 0
             avg_q_score=sum(qa.values())/len(qa) if qa else 0
             total_ano_p=sum([r["Total Anomalies"] for r in ano_p_rows if r.get("Poste de travail")!="Total"])
@@ -1170,9 +1188,9 @@ def main():
 
             logo_b64 = get_logo_base64()
             if logo_b64:
-                st.markdown('<div class="mh"><img src="data:image/png;base64,%s" class="logo" alt="Logo"><h1>📊 Tableau de Bord KPI Maintenance</h1><span class="db">📅 %s</span></div>'%(logo_b64,fichier_date),unsafe_allow_html=True)
+                st.markdown('<div class="mh"><img src="data:image/png;base64,%s" class="logo" alt="Logo"><h1>📊 Tableau de Bord KPIs Performance & Qualite</h1><span class="db">📅 %s</span></div>'%(logo_b64,fichier_date),unsafe_allow_html=True)
             else:
-                st.markdown('<div class="mh"><h1>📊 Tableau de Bord KPI Maintenance</h1><span class="db">📅 %s</span></div>'%fichier_date,unsafe_allow_html=True)
+                st.markdown('<div class="mh"><h1>📊 Tableau de Bord KPIs Performance & Qualite</h1><span class="db">📅 %s</span></div>'%fichier_date,unsafe_allow_html=True)
             
             st.markdown('<div class="cr"><div class="cc c1"><div class="cv">%d</div><div class="cl">OT Analyses</div></div><div class="cc c2"><div class="cv">%.1f%%</div><div class="cl">Score Performance Global</div></div><div class="cc c3"><div class="cv">%.1f%%</div><div class="cl">Score Qualite Global</div></div><div class="cc c4"><div class="cv">%d</div><div class="cl">Anomalies Totales</div></div></div>'%(total_ot,avg_p_score,avg_q_score,total_ano_p+total_ano_q),unsafe_allow_html=True)
             st.markdown('<div class="cr"><div class="cc c5"><div class="cv">%.1f%%</div><div class="cl">Performance SF1</div></div><div class="cc c6"><div class="cv">%.1f%%</div><div class="cl">Qualite SF1</div></div><div class="cc c7"><div class="cv">%.1f%%</div><div class="cl">Performance SF2</div></div><div class="cc c8"><div class="cv">%.1f%%</div><div class="cl">Qualite SF2</div></div></div>'%(sf1_p_score,sf1_q_score,sf2_p_score,sf2_q_score),unsafe_allow_html=True)
@@ -1282,7 +1300,6 @@ def main():
     else:
         st.markdown('<div class="es">📁 Veuillez charger les fichiers OT et AVIS via le panneau de filtres.</div>',unsafe_allow_html=True)
 
-    # Footer copyright
     st.markdown('<div class="footer">Bureau Méthodes Maroc Chimie – © 2026 Tous droits réservés</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
